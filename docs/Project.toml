@@ -1,0 +1,3 @@
+[deps]
+Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
