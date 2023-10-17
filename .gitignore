@@ -6,3 +6,4 @@
 /docs/build/
 *.e
 *.log
+build/
