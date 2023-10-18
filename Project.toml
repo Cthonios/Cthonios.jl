@@ -18,6 +18,7 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
+ArgParse = "1"
 julia = "1"
 
 [extras]
