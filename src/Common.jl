@@ -1,3 +1,7 @@
+abstract type AbstractCthoniosType end
+
+
+
 ################################################### 
 # Logger below, for writing to log file
 ################################################### 
@@ -6,7 +10,7 @@
 # to automagically handle indentation for you
 """
 """
-struct CthoniosLogger
+struct CthoniosLogger <: AbstractCthoniosType
   logger::FormatLogger
 end
 
@@ -39,7 +43,7 @@ end
 
 """
 """
-struct CthoniosTimer
+struct CthoniosTimer <: AbstractCthoniosType
   timer::TimerOutput
 end
 
@@ -60,7 +64,7 @@ Base.show(io::IO, timer::CthoniosTimer) = Base.show(io::IO, timer.timer)
 
 """
 """
-struct CthoniosCommon
+struct CthoniosCommon <: AbstractCthoniosType
   logger::CthoniosLogger
   timer::CthoniosTimer
 end
@@ -103,6 +107,18 @@ function new_section(section_name::String)
   @info string
 end
 
+"""
+"""
+function end_section(section_name::String)
+  string = "\n" * repeat('=', 80)
+  string = string * "\n= End $section_name\n"
+  string = string * repeat('=', 80)
+  # with_logger(logger) do
+  #   @info string
+  # end
+  @info string
+end
+
 function cthonios_header(common::CthoniosCommon)
   str = raw"""
 
@@ -131,11 +147,27 @@ function dump_input_file(common::CthoniosCommon, file_name::String)
 
   with_logger(common) do 
     @info "Reading from input file $(abspath(file_name))\n"
-    new_section("Input FIle")
+    new_section("Input File")
     for line in lines
       @info line
     end
-    # @info "\n"
+    end_section("Input File")
+  end
+end
+
+################################################### 
+# Cthonios Container setup
+################################################### 
+
+# should be called on everything but the Common
+function setup(::Type{T}, common::CthoniosCommon, input_settings) where T <: AbstractCthoniosType
+  with_logger(common) do 
+    new_section("$T")
+    @info "Setting up $T"
+    @timeit timer(common) "$T setup" begin
+      T(common, input_settings)
+    end
+    # end_section("$T")
   end
 end
 
