@@ -1,6 +1,6 @@
-abstract type AbstractDomain <: AbstractCthoniosType end
+abstract type Domain <: AbstractCthoniosType end
 
-struct Domain{
+struct QuasiStaticDomain{
   Coords    <: NodalField,
   Dof       <: DofManager,
   Sections  <: NamedTuple,
@@ -11,7 +11,7 @@ struct Domain{
   #
   Disp      <: NodalField,
   Unknown   <: AbstractArray{<:Number, 1}
-}
+} <: Domain
   coords::Coords
   dof::Dof
   sections::Sections
@@ -24,7 +24,7 @@ struct Domain{
   Uu::Unknown
 end
 
-function Domain(input_settings::D) where D <: Dict
+function QuasiStaticDomain(input_settings::D) where D <: Dict
   # TODO make variable maybe?
   # arr_type = Vector
     
@@ -33,11 +33,11 @@ function Domain(input_settings::D) where D <: Dict
   end
 
   # break up input settings
-  mesh_settings = input_settings["mesh"]
-  bc_settings   = input_settings["boundary conditions"]
-  mat_settings  = input_settings["materials"]
-  sec_settings  = input_settings["sections"]
-  time_settings = input_settings["time stepper"]
+  mesh_settings   = input_settings["mesh"]
+  bc_settings     = input_settings["boundary conditions"]
+  mat_settings    = input_settings["materials"]
+  sec_settings    = input_settings["sections"]
+  time_settings   = input_settings["time stepper"]
 
   # set stuff up
   mesh_file             = read_mesh(mesh_settings)
@@ -52,23 +52,41 @@ function Domain(input_settings::D) where D <: Dict
   time                  = ConstantTimeStepper(time_settings)
   post_processor        = PostProcessor(mesh_file, "output.e", FiniteElementContainers.num_dimensions(mesh_file) |> Int64) # TODO change this
   U                     = FiniteElementContainers.create_fields(dof)
+  update_unknown_ids!(dof, bcs)
   Uu                    = FiniteElementContainers.create_unknowns(dof)
+  update_bcs!(U, coords, time, bcs)
+  FiniteElementContainers.update_fields!(U, dof, Uu)
 
-  return Domain(coords, dof, sections, assembler, bcs, time, post_processor, U, Uu)
+  # do first assembly pass just to initialize stuff
+  for section in sections
+    assemble!(assembler, section, coords, U)
+  end
+
+  return QuasiStaticDomain(coords, dof, sections, assembler, bcs, time, post_processor, U, Uu)
 end
 
-bounbdary_conditions(d::Domain) = d.bcs
-coordinates(d::Domain)          = d.coords
-dof_manager(d::Domain)          = d.dof
-sections(d::Domain)             = d.sections
+bounbdary_conditions(d::QuasiStaticDomain) = d.bcs
+coordinates(d::QuasiStaticDomain)          = d.coords
+dof_manager(d::QuasiStaticDomain)          = d.dof
+sections(d::QuasiStaticDomain)             = d.sections
 
-num_dimensions(d::Domain) = FiniteElementContainers.num_fields(coordinates(d))
+num_dimensions(d::QuasiStaticDomain) = FiniteElementContainers.num_fields(coordinates(d))
 
-create_fields(d::Domain)   = FiniteElementContainers.create_fields(d.dof)
-create_unknowns(d::Domain) = FiniteElementContainers.create_unknowns(d.dof)
+create_fields(d::QuasiStaticDomain)   = FiniteElementContainers.create_fields(d.dof)
+create_fields(d::QuasiStaticDomain, type) = FiniteElementContainers.create_fields(d.dof, type)
+create_unknowns(d::QuasiStaticDomain) = FiniteElementContainers.create_unknowns(d.dof)
+create_unknowns(d::QuasiStaticDomain, type) = FiniteElementContainers.create_unknowns(d.dof, type)
 
 # TODO place where units won't work
-function update_unknown_ids!(d::Domain)
+function update_unknown_ids!(dof::DofManager, bcs)
+  for bc in bcs
+    FiniteElementContainers.update_unknown_ids!(dof, bc.nodes, bc.dof)
+  end
+  resize!(dof.unknown_indices, sum(dof.is_unknown))
+  dof.unknown_indices .= FiniteElementContainers.dof_ids(dof)[dof.is_unknown]
+end
+
+function update_unknown_ids!(d::QuasiStaticDomain)
 
   dof = dof_manager(d)
   for bc in bounbdary_conditions(d)
@@ -79,7 +97,29 @@ function update_unknown_ids!(d::Domain)
   dof.unknown_indices .= FiniteElementContainers.dof_ids(dof)[dof.is_unknown]
 end
 
-function update_bcs!(d::Domain)
+function update_bcs!(U, coords, time, bcs)
+  for bc in bcs
+    for node in bc.nodes
+      # get coords
+      X = @views coords[:, node]
+      t = time.current_time
+      U[bc.dof, node] = bc.func(X, t)
+    end
+  end
+end
+
+function update_bcs!(U, d::QuasiStaticDomain)
+  for bc in d.bcs
+    for node in bc.nodes
+      # get coords
+      X = @views d.coords[:, node]
+      t = d.time.current_time
+      U[bc.dof, node] = bc.func(X, t)
+    end
+  end
+end
+
+function update_bcs!(d::QuasiStaticDomain)
   for bc in d.bcs
     for node in bc.nodes
       # get coords
@@ -90,7 +130,15 @@ function update_bcs!(d::Domain)
   end
 end
 
-function energy(domain::Domain, X::V, U::V) where V <: NodalField
+update_fields!(domain::QuasiStaticDomain) = FiniteElementContainers.update_fields!(domain.U, domain.dof, domain.Uu)
+update_fields!(U::V1, domain::QuasiStaticDomain, Uu::V2) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
+FiniteElementContainers.update_fields!(U, domain.dof, Uu)
+update_unknowns!(U::V1, domain::QuasiStaticDomain, Uu::V2) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
+FiniteElementContainers.update_fields!(U, domain.dof, Uu)
+################################################################
+
+# useful for adjoint calculations and other AD
+function energy(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
   W = 0.0 # Unitful error here # TODO 
   for section in domain.sections
     W = W + energy(section, X, U)
@@ -98,178 +146,112 @@ function energy(domain::Domain, X::V, U::V) where V <: NodalField
   W
 end
 
-# function energy_grad!(domain::Domain, X::V, dX::V, U::V, dU::V) where V <: NodalField
-#   autodiff_deferred(Reverse, energy, Active, domain, Duplicated(X, dX), Duplicated(U, dU))
-#   nothing
-# end
+function energy(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<:Number}
+  # Need to update BCs or AD won't do the right thing
+  FiniteElementContainers.update_fields!(domain.U, domain.dof, Uu)
+  update_bcs!(domain.U, domain.coords, domain.time, domain.bcs)
+  return energy(domain, domain.coords, domain.U)
+end
 
-# function energy_grad_U!(domain::Domain, X::V, U::V, dU::V) where V <: NodalField
-#   autodiff_deferred(Reverse, energy, Active, domain, X, Duplicated(U, dU))
-#   nothing
-# end
+function residual_ad end
+function energy_func end
+function energy_func! end
+function energy_gradient_ad end
+function energy_hvp_ad end
+function hvp end
+function jvp end
 
-# function energy_grad_X!(domain::Domain, X::V, dX::V, U::V) where V <: NodalField
-#   autodiff_deferred(Reverse, energy, Active, domain, Duplicated(X, dX), U)
-#   nothing
-# end
-
-# function residual_ad(domain::Domain, X::V, U::V) where V <: NodalField
-#   dU = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   dU .= 0.0
-#   energy_grad_U!(domain, X, U, dU)
-#   return dU[domain.dof.is_unknown]
-# end
-
-function residual(domain::Domain, X::V, U::V) where V <: NodalField
+function energy_gradient(domain::QuasiStaticDomain, X::V, U::V) where V <: NodalField
   domain.assembler.R .= 0.0 # Unitful issue here
   for section in domain.sections
-    residual!(domain.assembler.R, section, X, U)
+    # residual!(domain.assembler.R, section, X, U)
+    residual!(domain.assembler, section, X, U)
+  end
+  # return domain.assembler.R[domain.dof.is_unknown]
+  # return domain.assembler.R
+
+  # R = NodalField{size(X, 1), size(X, 2), Vector, eltype(X)}(undef)
+  # R .= domain.assembler.R
+  R = NodalField{size(X, 1), size(X, 2), Vector}(domain.assembler.R)
+  return R
+end
+
+function residual(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
+  domain.assembler.R .= 0.0 # Unitful issue here
+  for section in domain.sections
+    # residual!(domain.assembler.R, section, X, U)
+    residual!(domain.assembler, section, X, U)
   end
   return domain.assembler.R[domain.dof.is_unknown]
 end
 
-function stiffness(domain::Domain, X::V, U::V) where V <: NodalField
+function residual_for_AD(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
+  # R = Cthonios.create_unknowns(domain, eltype(U)) # Unitful issue here
+  R = Cthonios.create_fields(domain, eltype(U))
+  for section in domain.sections
+    residual!(R, section, X, U)
+  end
+  return R[domain.dof.is_unknown]
+end
+
+function residual(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<:Number}
+  FiniteElementContainers.update_fields!(domain.U, domain.dof, Uu)
+  update_bcs!(domain.U, domain.coords, domain.time, domain.bcs)
+  return residual(domain, domain.coords, domain.U)
+end
+
+function residual_for_AD(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
+  U = Cthonios.create_fields(domain, eltype(Uu))
+  update_fields!(U, domain, Uu)
+  update_bcs!(U, domain.coords, domain.time, domain.bcs)
+  return residual_for_AD(domain, domain.coords, U)
+end
+
+function stiffness(domain::QuasiStaticDomain, X::V, U::V) where V <: NodalField
   domain.assembler.K .= 0.0 # Unitful issue here
   for section in domain.sections
     stiffness!(domain.assembler.K, section, X, U)
   end
-  return domain.assembler.K[domain.dof.is_unknown, domain.dof.is_unknown]
+  K = domain.assembler.K[domain.dof.is_unknown, domain.dof.is_unknown]
+  return 0.5 * (K + K')
 end
 
-function solve(domain::Domain)
-  reset!(domain.time)
+function stiffness(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<:Number}
+  FiniteElementContainers.update_fields!(domain.U, domain.dof, Uu)
+  update_bcs!(domain.U, domain.coords, domain.time, domain.bcs)
+  return stiffness(domain, domain.coords, domain.U)
+end
 
-  time_step = 1
-  write_time(domain.post_processor, time_step, 0.0)
-  write_values(domain.post_processor, NodalVariable, time_step, "displ_x", domain.U[1, :])
-  write_values(domain.post_processor, NodalVariable, time_step, "displ_y", domain.U[2, :])
-
-  while domain.time.current_time <= domain.time.end_time
-    # time
-    step!(domain.time)
-
-    # update bcs
-    update_unknown_ids!(domain)
-    resize!(domain.Uu, sum(domain.dof.is_unknown))
-    update_bcs!(domain)
-    update_fields!(domain.U, domain.dof, domain.Uu)
-
-    # some temp calcs
-    # W    = energy(domain, domain.coords, domain.U)
-    # R_ad = residual_ad(domain, domain.coords, domain.U)
-
-    # TODO wrap in solver
-    for n in 1:10
-      update_fields!(domain.U, domain.dof, domain.Uu)
-      R   = residual(domain, domain.coords, domain.U)
-      K   = stiffness(domain, domain.coords, domain.U)
-      # @show det(K)
-
-      ΔUu = K \ R
-      domain.Uu .= domain.Uu .- ΔUu
-
-      norm_R = norm(R)
-      norm_U = norm(ΔUu)
-
-      @info "Iteration $n: ||R|| = $(norm_R)    ||ΔUu|| = $(norm_U)"
-
-      if norm_R < 1e-12 || norm_U < 1e-12
-        break
-      end
-    end
-
-    # post processing
-    time_step += 1
-    update_fields!(domain.U, domain.dof, domain.Uu)
-    write_time(domain.post_processor, time_step, domain.time.current_time)
-    write_values(domain.post_processor, NodalVariable, time_step, "displ_x", domain.U[1, :])
-    write_values(domain.post_processor, NodalVariable, time_step, "displ_y", domain.U[2, :])
+function assemble!(domain::QuasiStaticDomain, X::V, U::V) where V <: NodalField
+  domain.assembler.R .= 0.0
+  domain.assembler.K .= 0.0
+  for section in domain.sections
+    assemble!(domain.assembler, section, X, U)
   end
-
-  close(domain.post_processor)
 end
 
-# function vp_U!(domain::Domain, X::V1, U::V1, dU::V1, v::V2) where {V1 <: NodalField, V2 <: AbstractVector}
-#   @assert length(domain.dof.unknown_indices) == length(v)
-#   energy_grad_U!(domain, X, U, dU)
-#   R = dU[domain.dof.is_unknown]
-#   dot(R, v)
-# end
+function jvp(domain::QuasiStaticDomain, X::V, U::V, v::A) where {V <: NodalField, A <: AbstractArray{<:Number, 1}}
+  # domain.assembler.R .= 0.0
+  # domain.assembler.K .= 0.0
+  @assert length(v) == length(domain.dof.unknown_indices)
+  v_n = NodalField{size(U, 1), size(U, 2), Vector, eltype(U)}(undef)
+  v_n .= 0.0 # Unitful issue
+  y_n = zeros(Float64, size(U, 1) * size(U, 2))
+  FiniteElementContainers.update_fields!(v_n, domain.dof, v)
+  for section in domain.sections
+    jvp!(y_n, section, X, U, v_n)
+  end
+  return y_n[domain.dof.is_unknown]
+end
 
-# function residual_ad(domain::Domain, X::V, U::V) where V <: NodalField
-#   dU = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   dU .= 0.0
-#   energy_grad_U!(domain, X, U, dU)
-#   return dU[domain.dof.is_unknown]
-# end
+# more convenient methods when not worrying about AD or adjoints
+energy(domain::QuasiStaticDomain)    = energy(domain, domain.coords, domain.U)
+residual(domain::QuasiStaticDomain)  = residual(domain, domain.coords, domain.U)
+stiffness(domain::QuasiStaticDomain) = stiffness(domain, domain.coords, domain.U)
+assemble!(domain::QuasiStaticDomain) = assemble!(domain, domain.coords, domain.U)
 
-# function jvp_U!(domain::Domain, X::V1, U::V1, v::V2) where {V1 <: NodalField, V2 <: AbstractVector{<:Number}}
-#   dU = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   d2U = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   d3U = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   dU .= 0.0; d2U .= 0.0; d3U .= 0.0
-#   autodiff(Forward, vp_U!, domain, X, Duplicated(U, dU), Duplicated(d2U, d3U), v)
-#   return d3U[domain.dof.is_unknown]
-# end
-
-# # residual(domain::Domain::U)
-
-# function residual!(R::V, domain::Domain, Uu::V) where V <: AbstractVector{<:Number}
-#   update_fields!(domain.U, domain.dof, Uu)
-#   R_temp = residual(domain, domain.coords, domain.U)
-#   R     .= R_temp[domain.dof.is_unknown]
-# end
-
-# function jvp_U!(y::V, domain::Domain, Uu::V, v::V) where V <: AbstractVector{<:Number}
-#   update_fields!(domain.U, domain.dof, Uu)
-#   y = jvp_U!(domain, domain.coords, domain.U, v)
-# end
-
-# function load_step_old!(domain::Domain)
-#   # update time
-#   step!(domain.time)
-
-#   # update bcs
-#   update_unknown_ids!(domain)
-#   resize!(domain.Uu, sum(domain.dof.is_unknown))
-#   update_bcs!(domain)
-
-#   # make a linear map
-#   lm = LinearMap()
-
-# end
-
-# function load_step_old!(domain::Domain)
-#   # update time
-#   step!(domain.time)
-
-#   # update bcs
-#   update_unknown_ids!(domain)
-#   resize!(domain.Uu, sum(domain.dof.is_unknown))
-#   update_bcs!(domain)
-
-#   # do a solve here to update displacement
-#   # dUu = zeros(eltype(domain.Uu), size(domain.Uu))
-#   v  = ones(eltype(domain.Uu), size(domain.Uu))
-#   dU = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   # d2U = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   # d3U = NodalField{size(domain.U, 1), size(domain.U, 2), Vector, Float64}(undef)
-#   # dX = NodalField{size(domain.coords, 1), size(domain.coords, 2), Vector, Float64}(undef)
-#   # dU .= 0.0; d2U .= 0.0; d3U .= 0.0
-#   # @show dUu
-#   W   = energy(domain, domain.coords, domain.U)
-#   R_u = energy_grad_U!(domain, domain.coords, domain.U, dU)
-#   # vp  = vp_U(domain, domain.coords, domain.U, dU, v)
-#   jvp = jvp_U(domain, domain.coords, domain.U, v)
-#   R   = residual(domain, domain.coords, domain.U)
-#   dU
-#   # display(jvp)
-#   # R_x = energy_grad_X(domain, domain.coords, dX, domain.U)
-#   # R   = energy_grad(domain, domain.coords, dX, domain.U, dU)
-#   # dU
-#   # display(dU |> sum)
-#   # display(dX)
-# end
+jvp(domain::QuasiStaticDomain, v::V) where V <: AbstractArray{<:Number, 1} = 
+jvp(domain, domain.coords, domain.U, v)
 
 ##########################################################################
 
@@ -425,63 +407,20 @@ function read_sections(input_settings, mesh, dof, models, props, states)
   # return NamedTuple{Tuple(keys(sections))}(values(sections))
 end
 
-
-
-
 ###################################################################
 
 
-# struct DomainOperator{T}
-#   domain::Domain
-# end
+struct QuasiStaticDomainOperator{T}
+  domain::QuasiStaticDomain
+end
 
-# Base.eltype(::DomainOperator{T}) where T = T
-# Base.size(A::DomainOperator) = (A.domain.dof.unknown_indices |> length, A.domain.dof.unknown_indices |> length)
-# Base.size(A::DomainOperator, ::Int) = A.domain.dof.unknown_indices |> length
-# function Base.:*(A::DomainOperator, v)
-#   y = create_unknowns(A.domain)
-#   jvp_U!(A.domain, A.domain.coords, A.domain.U, v)
-# end
-# function LinearAlgebra.mul!(y, A::DomainOperator, v)
-#   y = jvp_U!(A.domain, A.domain.coords, A.domain.U, v)
-# end
-
-
-# function solve_domain(domain::Domain)
-#   reset!(domain.time)
-#   A = DomainOperator{Float64}(domain)
-
-#   # TODO wrap in loop
-
-#   # update time
-#   step!(domain.time)
-
-#   # update bcs
-#   update_unknown_ids!(domain)
-#   resize!(domain.Uu, sum(domain.dof.is_unknown))
-#   update_bcs!(domain)
-
-#   # R   = residual(domain, domain.coords, domain.U)
-#   # Uu  = domain.Uu
-#   # v   = create_unknowns(domain)
-#   # y   = create_unknowns(domain)
-
-#   for n in 1:1000
-#     # update_fields!(domain.U, domain.dof, domain.Uu)
-#     R  = residual(domain, domain.coords, domain.U)
-#     domain.Uu .= domain.Uu .- 1e-3 * R
-#     update_fields!(domain.U, domain.dof, domain.Uu)
-
-#     @show n norm(R) 
-#   end
-
-#   # jvp_U!(y, domain, Uu, v)
-  
-#   # sol = IterativeSolvers.cg(A, R)
-#   # A * v
-
-#   # A * v + y
-#   # mul!(y, A, v)
-#   # size(A, 1)
-#   # eltype(A)
-# end
+Base.eltype(::QuasiStaticDomainOperator{T}) where T = T
+Base.size(A::QuasiStaticDomainOperator) = 
+(A.domain.dof.unknown_indices |> length, A.domain.dof.unknown_indices |> length)
+Base.size(A::QuasiStaticDomainOperator, ::Int) = A.domain.dof.unknown_indices |> length
+function Base.:*(A::QuasiStaticDomainOperator, v)
+  return jvp(A.domain, v)
+end
+function LinearAlgebra.mul!(y, A::QuasiStaticDomainOperator, v)
+  y = jvp(A.domain, v)
+end

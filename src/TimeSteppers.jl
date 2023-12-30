@@ -9,11 +9,13 @@ mutable struct ConstantTimeStepper{T <: Number} <: TimeStepper{T}
   start_time::T
   end_time::T
   current_time::T
+  current_time_step::Int
   Δt::T
 end
 
 function reset!(time::ConstantTimeStepper)
   time.current_time = time.start_time
+  time.current_time_step = 1
 end
 
 function step!(time::ConstantTimeStepper) 
@@ -24,11 +26,12 @@ function step!(time::ConstantTimeStepper)
   #   @info "end time"
   # else
   time.current_time = temp
+  time.current_time_step += 1
   # end
 end
 
 function ConstantTimeStepper(start_time::T, end_time::T, Δt::T) where T <: Number
-  return ConstantTimeStepper(start_time, end_time, start_time, Δt)
+  return ConstantTimeStepper(start_time, end_time, start_time, 1, Δt)
 end
 
 function ConstantTimeStepper(input_settings::D) where D <: Dict

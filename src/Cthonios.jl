@@ -16,16 +16,18 @@ export EssentialBC
 # using AbstractDifferentiation
 using ConstitutiveModels
 using DocStringExtensions
-using Enzyme
 using Exodus
 using FiniteElementContainers
 using FunctionWrappers
 using IterativeSolvers
 using LinearAlgebra
 using LinearMaps
+using LinearOperators
 using Logging
 using LoggingExtras
 using Parameters
+using Preconditioners
+using Printf
 using ReferenceFiniteElements
 using StaticArrays
 using StructArrays
@@ -60,6 +62,9 @@ include("Sections.jl")
 include("TimeSteppers.jl")
 
 include("Domains.jl")
+include("Solvers.jl")
+
+include("Problems.jl")
 
 # CLI
 include("Main.jl")
