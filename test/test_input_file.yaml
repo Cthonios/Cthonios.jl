@@ -1,0 +1,58 @@
+mesh:
+  file name: test/mesh_1089.g
+  # file name: test/mesh_tri3_732.g
+
+boundary conditions:
+  displacement: 
+  - nodeset id: 3
+    dof: 1
+  - nodeset id: 3
+    dof : 2
+  - nodeset id: 1
+    dof: 1
+  - nodeset id: 1
+    dof: 2
+    function: (x, t) -> 1.0 * t
+
+materials:
+  soft rubber:
+    model: NeoHookean
+    properties:
+      bulk modulus: 0.833
+      shear modulus: 0.3846
+
+  hard rubber:
+    model: NeoHookean
+    properties:
+      bulk modulus: 100.0
+      shear modulus: 1.0
+
+sections:
+- block id: 1
+  formulation: plane strain
+  Fbar: true
+  # material: soft rubber
+  material: hard rubber
+
+# below is TODO
+time stepper:
+  type: ConstantTimeStepper
+  start time: 0.0
+  end time: 1.0
+  time step: 0.001
+  
+linear solvers:
+  cg:
+    type: IterativeSolversJL_CG
+    # preconditioner: Diagonal
+    AD: false
+
+# not general right now
+nonlinear solvers:
+  newton:
+    type: NewtonSolver
+    linear solver: cg
+
+problem:
+  type: ForwardProblem
+  solver: newton

@@ -17,6 +17,14 @@ struct Section{
   # state_new::State
 end
 
+function Base.show(io::IO, section::Section)
+  print(io, "          Section\n",
+        "            Function space            = $(section.fspace)\n",
+        "            Formulation               = $(section.formulation)\n",
+        "            Material model            = $(section.model)\n",
+        "            Material model properties = $(section.model)\n")
+end
+
 num_dimensions(sec::Section)           = FiniteElementContainers.num_dimensions(sec.fspace)
 num_elements(sec::Section)             = FiniteElementContainers.num_elements(sec.fspace)
 num_nodes_per_element(sec::Section)    = FiniteElementContainers.num_nodes_per_element(sec.fspace)

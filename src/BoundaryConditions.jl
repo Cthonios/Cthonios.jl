@@ -46,6 +46,11 @@ function DisplacementBC{D, DistType, TimeType}(
   return DisplacementBC{D, DistType, TimeType}(nodes, dof, func_temp)
 end
 
+function Base.show(io::IO, bc::DisplacementBC)
+  println(io, "          DisplacementBC")
+  println(io, "            Dof = $(bc.dof)")
+end
+
 # parsing
 function read_bcs(input_settings::D, mesh_file) where D <: Dict
   new_section("Boundary Conditions")

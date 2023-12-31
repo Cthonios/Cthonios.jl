@@ -44,9 +44,25 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict
   sections              = read_sections(sec_settings, mesh_file, dof, models, props, states)  
   assembler             = StaticAssembler(dof, map(x -> x.fspace, values(sections)))
   time                  = ConstantTimeStepper(time_settings)
-  post_processor        = PostProcessor(mesh_file, "output.e", FiniteElementContainers.num_dimensions(mesh_file) |> Int64) # TODO change this
+  post_processor        = PostProcessor(mesh_file, "output.e", dof, FiniteElementContainers.num_dimensions(mesh_file) |> Int64) # TODO change this
 
   return QuasiStaticDomain(coords, dof, sections, assembler, bcs, time, post_processor)
+end
+
+function Base.show(io::IO, domain::QuasiStaticDomain)
+  print(io, "\n    QuasiStaticDomain\n")
+  print(io, "      Sections\n")
+  for (key, val) in pairs(domain.sections)
+    println(io, "        $key")
+    println(io, val)
+  end
+  println(io, "      Boundary conditions")
+  for (key, val) in pairs(domain.bcs)
+    println(io, "        $key")
+    println(io, val)
+  end
+  println(io, "      PostProcessor")
+  println(io, domain.post_processor)
 end
 
 bounbdary_conditions(d::QuasiStaticDomain) = d.bcs
@@ -171,6 +187,16 @@ function stiffness(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<
   update_bcs!(U, domain.coords, domain.time, domain.bcs)
   return stiffness(domain, domain.coords, U)
 end
+
+# AD methods
+grad_energy_x(backend, domain::QuasiStaticDomain, x, u) = AD.gradient(backend, z -> energy(domain, z, u), x)[1]
+grad_energy_u(backend, domain::QuasiStaticDomain, x, u) = AD.gradient(backend, z -> energy(domain, x, z), u)[1]
+
+# note these return a method that takes in a direction v
+hvp_energy_x(backend, domain::QuasiStaticDomain, x, u) = 
+AD.pushforward_function(backend, z -> grad_energy_x(backend, domain, z, u), x)
+hvp_energy_u(backend, domain::QuasiStaticDomain, x, u) = 
+AD.pushforward_function(backend, z -> grad_energy_u(backend, domain, x, z), u)
 
 ##########################################################################
 # Parsing and setup helpers

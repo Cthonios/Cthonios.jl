@@ -2,8 +2,6 @@ module Cthonios
 
 # edpxort
 export CthoniosCommon
-export Domain
-export EssentialBC
 
 # export create_field
 
@@ -14,6 +12,7 @@ export EssentialBC
 
 # dependencies
 import AbstractDifferentiation as AD
+using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
 using Exodus
@@ -22,8 +21,7 @@ using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
 using LinearAlgebra
-using LinearMaps
-using LinearOperators
+using LinearSolve
 using Logging
 using LoggingExtras
 using Parameters
@@ -61,11 +59,12 @@ include("BoundaryConditions.jl")
 include("PostProcessors.jl")
 include("Sections.jl")
 include("TimeSteppers.jl")
-
 include("Domains.jl")
-include("Solvers.jl")
 
-include("Objective.jl")
+# solver
+include("solvers/NonlinearSolvers.jl")
+
+# include("Objective.jl")
 
 include("Problems.jl")
 
