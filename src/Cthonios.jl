@@ -13,11 +13,12 @@ export EssentialBC
 
 
 # dependencies
-# using AbstractDifferentiation
+import AbstractDifferentiation as AD
 using ConstitutiveModels
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
+using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
 using LinearAlgebra
@@ -63,6 +64,8 @@ include("TimeSteppers.jl")
 
 include("Domains.jl")
 include("Solvers.jl")
+
+include("Objective.jl")
 
 include("Problems.jl")
 

@@ -46,6 +46,51 @@ function DisplacementBC{D, DistType, TimeType}(
   return DisplacementBC{D, DistType, TimeType}(nodes, dof, func_temp)
 end
 
+# parsing
+function read_bcs(input_settings::D, mesh_file) where D <: Dict
+  new_section("Boundary Conditions")
+  @info "Reading Boundary Conditions"
+  @warn "Currently only supporting displacement bcs"
+  @assert "displacement" in keys(input_settings)
+  
+  @info "Reading Displacement BC nodesets from Exodus file"
+  # bcs = EssentialBC[]
+  bcs = Dict()
+  nset_ids = nodeset_ids(mesh_file)
+  ND = FiniteElementContainers.num_dimensions(mesh_file) |> Int64
+  for (n, bc) in enumerate(input_settings["displacement"])
+    @assert "nodeset id" in keys(bc)
+    @assert "dof" in keys(bc)
+    @assert bc["nodeset id"] in nset_ids
+
+    nset_id    = bc["nodeset id"]
+    nset_name  = read_name(mesh_file.mesh_obj, NodeSet, nset_id)
+    if nset_name == ""
+      nset_name = "cthonios_nodelist_$nset_id"
+    end
+    dof        = bc["dof"]
+    nset_nodes = convert.(Int64, nodeset(mesh_file, nset_id))
+    @show size(nset_nodes)
+    nset_nodes = NodalField{1, length(nset_nodes), Vector}(nset_nodes)
+
+    @info "  Displacement BC $n"
+    @info "    Nodeset ID   = $nset_id"
+    @info "    Nodeset Name = $nset_name"
+    @info "    Dof          = $dof"
+
+    if "function" in keys(bc)
+      @info "    Function     = $(bc["function"])"
+      bc = DisplacementBC{ND, Float64, Float64}(nset_nodes, dof, bc["function"])
+    else
+      bc = DisplacementBC{ND, Float64, Float64}(nset_nodes, dof)
+    end
+    bcs[Symbol("displacement_bc_$(nset_name)_dof_$(dof)")] = bc
+    @info ""
+  end 
+
+  return NamedTuple(bcs)
+end
+
 # # struct EssentialBC{V <: AbstractArray{<:Integer}, F}
 # #   nodes::V
 # #   dof::Int
