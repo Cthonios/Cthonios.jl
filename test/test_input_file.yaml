@@ -31,20 +31,21 @@ sections:
 - block id: 1
   formulation: plane strain
   Fbar: true
-  # material: soft rubber
-  material: hard rubber
+  material: soft rubber
+  # material: hard rubber
 
 # below is TODO
 time stepper:
   type: ConstantTimeStepper
   start time: 0.0
   end time: 1.0
-  time step: 0.001
+  time step: 0.005
   
 linear solvers:
   cg:
-    type: IterativeSolversJL_CG
-    # preconditioner: Diagonal
+    type: default
+    preconditioner: default
+    # preconditioner: DiagonalOperator
     AD: false
 
 # not general right now
@@ -52,7 +53,11 @@ nonlinear solvers:
   newton:
     type: NewtonSolver
     linear solver: cg
+  trs:
+    type: TrustRegionSolver
+    linear solver: cg
 
 problem:
   type: ForwardProblem
-  solver: newton
+  solver: trs
+  # solver: newton

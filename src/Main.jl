@@ -7,7 +7,7 @@ cli_options = ArgParseSettings()
 end
 
 # main function, eventually add a CLI wrapper
-function cthonios_main()::Cint
+function julia_main()::Cint
   parsed_args = parse_args(ARGS, cli_options)
   input_file = parsed_args["input-file"]
   log_file_name = splitext(input_file)[1] * ".log"

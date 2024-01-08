@@ -1,2 +1,2 @@
 using Cthonios
-Cthonios.cthonios_main()
+Cthonios.julia_main()

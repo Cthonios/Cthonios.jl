@@ -1,5 +1,10 @@
 abstract type Domain <: AbstractCthoniosType end
 
+function energy end
+function energy_gradient_u end
+function energy_gradient_x end
+function energy_hvp_u end
+
 struct QuasiStaticDomain{
   Coords    <: NodalField,
   Dof       <: DofManager,
@@ -97,36 +102,12 @@ function update_unknown_ids!(d::QuasiStaticDomain)
   dof.unknown_indices .= FiniteElementContainers.dof_ids(dof)[dof.is_unknown]
 end
 
-function update_bcs!(U, coords, time, bcs)
+function update_bcs!(U, coords, t, bcs)
   for bc in bcs
     for node in bc.nodes
       # get coords
       X = @views coords[:, node]
-      t = time.current_time
       U[bc.dof, node] = bc.func(X, t)
-    end
-  end
-end
-
-function update_bcs!(U, d::QuasiStaticDomain)
-  for bc in d.bcs
-    for node in bc.nodes
-      # get coords
-      X = @views d.coords[:, node]
-      t = d.time.current_time
-      U[bc.dof, node] = bc.func(X, t)
-    end
-  end
-end
-
-# for structural optimization problems
-function update_bcs!(U, X, d::QuasiStaticDomain)
-  for bc in d.bcs
-    for node in bc.nodes
-      # get coords
-      x = @views X[:, node]
-      t = d.time.current_time
-      U[bc.dof, node] = bc.func(x, t)
     end
   end
 end
@@ -139,64 +120,90 @@ FiniteElementContainers.update_fields!(U, domain.dof, Uu)
 ################################################################
 
 # useful for adjoint calculations and other AD
-function energy(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: Union{Matrix, NodalField}, V2 <: NodalField}
+# function energy(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: Union{Matrix, NodalField}, V2 <: NodalField}
+# TODO wrap for shpa optimization adjoint later
+# TODO also add state var stuff
+function energy(domain::QuasiStaticDomain, U::V1, X::V2) where {V1 <: NodalField, V2}
   W = 0.0 # Unitful error here # TODO 
   for section in domain.sections
-    W = W + energy(section, X, U)
+    W = W + energy(section, U, X)
   end
   W
 end
 
-function energy(domain, X::V1, Uu::V2) where {V1 <: Union{Matrix, NodalField}, V2 <: AbstractVector}
+function energy(domain::QuasiStaticDomain, Uu::V, p, t) where V <: AbstractVector
   U = create_fields(domain, eltype(Uu))
-  update_bcs!(U, domain)
+  update_bcs!(U, domain.coords, t, domain.bcs)
   update_unknowns!(U, domain, Uu)
-  energy(domain, X, U)
+  energy(domain, U, domain.coords)
 end
 
-energy(domain, Uu) = energy(domain, domain.coords, Uu)
+function energy(domain::QuasiStaticDomain, Uu::V1, X::V2) where {V1 <: AbstractVector, V2}
+  U = create_fields(domain, eltype(Uu))
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
+  update_unknowns!(U, domain, Uu)
+  energy(domain, U, X)
+end
 
-function residual(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
+energy(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector =
+energy(domain, Uu, domain.coords)
+
+function energy!(W::V1, domain::QuasiStaticDomain, Uu::V1, U::V2) where {V1, V2}
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
+  update_unknowns!(U, domain, Uu)
+  W[1] = energy(domain, U, domain.coords)
+  nothing
+end
+
+function residual(domain::QuasiStaticDomain, U::V) where V <: AbstractArray
   R = Cthonios.create_fields(domain, eltype(U))
   for section in domain.sections
-    residual!(R, section, X, U)
+    residual!(R, section, U, domain.coords)
   end
   return R[domain.dof.is_unknown]
+end
+
+"""
+This method assumes U comes in with BCs set
+"""
+function residual!(R::V1, domain::QuasiStaticDomain, Uu::V2, U::V1) where {V1 <: NodalField, V2 <: AbstractVector}
+  update_fields!(U, domain, Uu)
+  for section in domain.sections
+    residual!(R, section, U, domain.coords)
+  end
 end
 
 function residual(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
   U = Cthonios.create_fields(domain, eltype(Uu))
   update_fields!(U, domain, Uu)
-  update_bcs!(U, domain.coords, domain.time, domain.bcs)
-  return residual(domain, domain.coords, U)
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
+  return residual(domain, U)
 end
 
-function stiffness(domain::QuasiStaticDomain, X::V, U::V) where V <: NodalField
-  domain.assembler.K .= 0.0 # Unitful issue here
+function stiffness!(K, domain::QuasiStaticDomain, U::V) where V <: NodalField
+  K .= 0.0 # Unitful issue here
   for section in domain.sections
-    stiffness!(domain.assembler.K, section, X, U)
+    stiffness!(K, section, U, domain.coords)
   end
+end
+
+function stiffness(domain::QuasiStaticDomain, U::V) where V <: NodalField
+  stiffness!(domain.assembler.K, domain, U)
   K = domain.assembler.K[domain.dof.is_unknown, domain.dof.is_unknown]
   return 0.5 * (K + K')
-  # return K
+end
+
+function stiffness!(K, domain::QuasiStaticDomain, Uu::V, U) where V <: AbstractVector{<:Number}
+  update_fields!(U, domain, Uu)
+  stiffness!(K, domain, U)
 end
 
 function stiffness(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<:Number}
   U = Cthonios.create_fields(domain, eltype(Uu))
   update_fields!(U, domain, Uu)
-  update_bcs!(U, domain.coords, domain.time, domain.bcs)
-  return stiffness(domain, domain.coords, U)
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
+  return stiffness(domain, U)
 end
-
-# AD methods
-grad_energy_x(backend, domain::QuasiStaticDomain, x, u) = AD.gradient(backend, z -> energy(domain, z, u), x)[1]
-grad_energy_u(backend, domain::QuasiStaticDomain, x, u) = AD.gradient(backend, z -> energy(domain, x, z), u)[1]
-
-# note these return a method that takes in a direction v
-hvp_energy_x(backend, domain::QuasiStaticDomain, x, u) = 
-AD.pushforward_function(backend, z -> grad_energy_x(backend, domain, z, u), x)
-hvp_energy_u(backend, domain::QuasiStaticDomain, x, u) = 
-AD.pushforward_function(backend, z -> grad_energy_u(backend, domain, x, z), u)
 
 ##########################################################################
 # Parsing and setup helpers
@@ -225,4 +232,3 @@ function read_coordinates(mesh)
   @info "Read coordinates into field of type $(typeof(coords))"
   return coords
 end
-

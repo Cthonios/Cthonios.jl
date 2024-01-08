@@ -46,7 +46,7 @@ function interpolants(ref_fe::ReferenceFE, formulation, X_el, q::Int)
   J     = X_el * ∇N_ξ
   J_inv = inv(J)
   ∇N_X  = (J_inv * ∇N_ξ')'
-  JxW   = det(J) * ReferenceFiniteElements.quadrature_weight(ref_fe, q)
+  JxW   = det(J) * ReferenceFiniteElements.quadrature_weights(ref_fe, q)
   G     = FiniteElementContainers.discrete_gradient(formulation, ∇N_X)
   return ∇N_X, JxW, G
 end
@@ -84,7 +84,7 @@ end
 
 I = one(Tensor{2, 3, Float64, 9})
 
-function residual!(R, section::Section, X::NodalField, U::NodalField)
+function residual!(R, section::Section, U::NodalField, X::NodalField)
   ND, NN       = num_dimensions(section), num_nodes_per_element(section)
   model, props = section.model, section.props
   state        = SVector{0, Float64}()
@@ -101,7 +101,7 @@ function residual!(R, section::Section, X::NodalField, U::NodalField)
       J    = X_el * ∇N_ξ
       J_inv = inv(J)
       ∇N_X = (J_inv * ∇N_ξ')'
-      JxW  = det(J) * ReferenceFiniteElements.quadrature_weight(section.fspace.ref_fe, q)
+      JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
       ∇u_q = FiniteElementContainers.modify_field_gradients(section.formulation, U_el * ∇N_X)
       F_q  = ∇u_q + one(∇u_q)
       P_q  = ConstitutiveModels.pk1_stress(model, props, F_q, state)
@@ -114,7 +114,7 @@ function residual!(R, section::Section, X::NodalField, U::NodalField)
   end
 end
 
-function stiffness!(K, section::Section, X::NodalField, U::NodalField)
+function stiffness!(K, section::Section, U::NodalField, X::NodalField)
   ND, NN       = num_dimensions(section), num_nodes_per_element(section)
   model, props = section.model, section.props
   state        = SVector{0, Float64}()
@@ -129,7 +129,7 @@ function stiffness!(K, section::Section, X::NodalField, U::NodalField)
       J    = X_el * ∇N_ξ
       J_inv = inv(J)
       ∇N_X = (J_inv * ∇N_ξ')'
-      JxW  = det(J) * ReferenceFiniteElements.quadrature_weight(section.fspace.ref_fe, q)
+      JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
       ∇u_q = FiniteElementContainers.modify_field_gradients(section.formulation, U_el * ∇N_X)
       F_q  = ∇u_q + one(∇u_q)
       A_q  = Tensors.hessian(z -> ConstitutiveModels.energy(model, props, z, state), F_q)
@@ -143,7 +143,7 @@ end
 
 #####################################################################
 
-function energy(section::Section, X_el, U_el, q)
+function energy(section::Section, U_el, X_el, q)
   # unpack some stuff, TODO state vars need to not be Hardcoded
   model, props = section.model, section.props
   state        = SVector{0, Float64}()
@@ -170,16 +170,16 @@ function energy(section::Section, X_el, U_el, q)
 end
 
 # function energy(section::Section, X::NodalField, U::NodalField)
-function energy(section::Section, X::V1, U::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
+function energy(section::Section, U::V1, X::V2) where {V1 <: AbstractArray, V2 <: AbstractArray}
 
   ND, NN = num_dimensions(section), num_nodes_per_element(section)
   W      = 0.0
   for e in 1:num_elements(section)
     conn = connectivity(section, e)
-    X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views vec(X[:, conn]))
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views vec(U[:, conn]))
+    X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views vec(X[:, conn]))
     for q in 1:num_q_points(section)
-      W = W + energy(section, X_el, U_el, q)
+      W = W + energy(section, U_el, X_el, q)
     end
   end
   W

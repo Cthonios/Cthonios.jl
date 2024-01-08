@@ -62,7 +62,8 @@ function solve!(problem::ForwardProblem)
 end
 
 function post_process_load_step!(domain::QuasiStaticDomain, solver::NonlinearSolver)
-  update_bcs!(domain.post_processor.scratch_U, domain)
+  # update_bcs!(domain.post_processor.scratch_U, domain)
+  update_bcs!(domain.post_processor.scratch_U, domain.coords, domain.time.current_time, domain.bcs)
   update_fields!(domain.post_processor.scratch_U, domain, solver.Uu)
 
   # write displacements

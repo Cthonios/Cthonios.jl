@@ -8,8 +8,15 @@ function Base.resize!(solver::NonlinearSolver, domain::QuasiStaticDomain)
   resize!(solver.Uu, length(domain.dof.unknown_indices))
   resize!(solver.ΔUu, length(domain.dof.unknown_indices))
 end
+function update_increment!(solver::NonlinearSolver, ΔUu::V) where V <: AbstractVector
+  solver.ΔUu .= ΔUu
+end
 function logger end # TO be defined for each solver
 function solve! end # TO be defined for each solver
+
+############
+# Trust region solver
+include("TrustRegionSolver.jl")
 
 ########################################################
 # Newton solver
@@ -40,6 +47,8 @@ function NewtonSolver(input_settings::D, domain::QuasiStaticDomain) where D <: D
   return NewtonSolver(settings, linear_solver, Uu, ΔUu)
 end
 
+# function NewtonSolver()
+
 function Base.show(io::IO, solver::NewtonSolver)
   print(io, "NewtonSolver\n", 
         "  Settings      = $(solver.settings)\n",
@@ -53,31 +62,25 @@ end
 function solve!(solver::NewtonSolver, domain::QuasiStaticDomain)
   # unpack cached arrays from solver
   Uu, ΔUu = solver.Uu, solver.ΔUu
-  
-  # update linear solver
-  update!(solver.linear_solver, domain, Uu)
+  U = create_fields(domain)
+  R = create_fields(domain)
+  # R = domain.assembler.R
+  K = domain.assembler.K
+  # update linear solver stiffness
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
+  # update_stiffness!(solver.linear_solver, domain, Uu)
+  update_stiffness!(K, solver.linear_solver, domain, Uu, U)
 
   for n in 1:solver.settings.max_steps
-    # R = residual(domain, Uu)
-    # K = stiffness(domain, Uu)
-    # ΔUu .= K \ R
-    # @show size(Uu)
-    # @show size(solver.linear_solver.solver.b)
-    # @show size(solver.linear_solver.solver.A)
-    update_residual!(solver.linear_solver, domain, Uu)
-    sol = solve(solver.linear_solver.solver)
-    # LinearSolve.solve!(solver.linear_solver.solver)
-    # return solver.linear_solver.solver
-    ΔUu .= sol.u
-    # ΔUu .= solver.linear_solver.solver.u
-    # # @show ΔUu
-    # # @show sol
-    # # return sol
+    # update_residual!(solver.linear_solver, domain, Uu)
+    update_residual!(R, solver.linear_solver, domain, Uu, U)
+    sol = solve(solver.linear_solver)
+    update_increment!(solver, sol.u)
 
     # # # TODO above should use linear solver in solver
     @. Uu    = Uu - ΔUu
     # norm_R   = norm(R)
-    norm_R   = norm(solver.linear_solver.solver.b)
+    norm_R   = norm(solver.linear_solver.solver_cache.b)
     norm_ΔUu = norm(ΔUu)
     
     logger(solver, n, norm_R, norm_ΔUu)
@@ -108,50 +111,3 @@ function read_nonlinear_solvers(input_settings::D) where D <: Dict
   end 
   return solvers
 end
-
-
-
-# function solve!(domain::Domain, solver::NewtonSolver)
-#   # op = QuasiStaticDomainOperator{Float64}(domain)
-#   dof       = domain.dof
-#   assembler = domain.assembler
-
-#   # extra assembly for now since it check pos def at beginning
-#   # update_fields!(domain)
-#   # assemble!(domain)
-
-#   for n in 1:solver.settings.max_steps
-#     update_fields!(domain)
-#     assemble!(domain)
-
-#     K = assembler.K[dof.is_unknown, dof.is_unknown]
-#     R = assembler.R[dof.is_unknown]
-#     # UpdatePreconditioner!(P, K, 2)
-
-#     # P = CholeskyPreconditioner(K, 2)
-#     # P = AMGPreconditioner{RugeStuben}(K)
-#     # P = AMGPreconditioner{SmoothedAggregation}(K)
-#     # TODO genrealize solver
-#     # cg!(solver.ΔUu, K, R; Pl=P)
-#     # gmres!(solver.ΔUu, K, R; Pl=P)
-#     # update unknowns
-
-#     solver.ΔUu .= K \ R
-
-#     domain.Uu .= domain.Uu .- solver.ΔUu
-
-#     norm_R = norm(domain.assembler.R[domain.dof.is_unknown])
-#     norm_U = norm(solver.ΔUu)
-
-#     # TODO redo
-#     @info @sprintf "Iteration %5i: ||R|| = %1.6e    ||ΔUu|| = %1.6e" n norm_R norm_U
-
-#     # TODO make solver tolerance a setting
-#     if norm_R < 1e-12 || norm_U < 1e-12
-#       break
-#     end
-#   end
-
-# end
-
-# include("TrustRegionSolver.jl")

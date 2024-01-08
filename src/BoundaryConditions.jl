@@ -75,7 +75,6 @@ function read_bcs(input_settings::D, mesh_file) where D <: Dict
     end
     dof        = bc["dof"]
     nset_nodes = convert.(Int64, nodeset(mesh_file, nset_id))
-    @show size(nset_nodes)
     nset_nodes = NodalField{1, length(nset_nodes), Vector}(nset_nodes)
 
     @info "  Displacement BC $n"
