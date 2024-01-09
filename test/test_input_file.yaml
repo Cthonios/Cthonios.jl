@@ -1,5 +1,6 @@
 mesh:
-  file name: test/mesh_1089.g
+  file name: test/window_pain.g
+  # file name: test/mesh_1089.g
   # file name: test/mesh_tri3_732.g
 
 boundary conditions:
@@ -12,7 +13,7 @@ boundary conditions:
     dof: 1
   - nodeset id: 1
     dof: 2
-    function: (x, t) -> 1.0 * t
+    function: (x, t) -> -0.25 * t
 
 materials:
   soft rubber:
@@ -24,7 +25,7 @@ materials:
   hard rubber:
     model: NeoHookean
     properties:
-      bulk modulus: 100.0
+      bulk modulus: 50.0
       shear modulus: 1.0
 
 sections:
@@ -44,7 +45,8 @@ time stepper:
 linear solvers:
   cg:
     type: default
-    preconditioner: default
+    # preconditioner: default
+    preconditioner: cholesky
     # preconditioner: DiagonalOperator
     AD: false
 

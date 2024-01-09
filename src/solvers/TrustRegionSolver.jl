@@ -110,8 +110,8 @@ function minimize_trust_region_sub_problem(
 
   # unpack preonditioner # TODO I think it needs to be cholesky right now
   P = solver.linear_solver.solver_cache.Pl
-  # Pr = P \ r
-  Pr = P * r
+  Pr = P \ r
+  # Pr = P * r
   d = -Pr
   cauchy_point = zeros(eltype(d), length(d))
   rPr = dot(r, Pr)
@@ -150,16 +150,12 @@ function minimize_trust_region_sub_problem(
     z = zNp1
 
     r = r + α * K * d
-    # Pr = P \ r
-    Pr = P * r
+    Pr = P \ r
+    # Pr = P * r
     rPrNp1 = dot(r, Pr)
     
     if dot(r, r) < cg_tol_squared
-      # @show "here"
-      # project_to_boundary_with_coeffs(z, d, trsize, zz, zd, dd)
-      τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-      z_out = z + τ * d
-      return z_out, cauchy_point, :interior, i
+      return z, cauchy_point, :interior, i
     end
 
     β = rPrNp1 / rPr
@@ -173,9 +169,11 @@ function minimize_trust_region_sub_problem(
   return z, cauchy_point, :interior, solver.settings.max_cg_iters
 end
 
-function dog_leg_step(cauchy_point, q_newton_point, tr_size, K)
-  cc = dot(cauchy_point, K * cauchy_point)
-  nn = dot(q_newton_point, K * q_newton_point)
+function dog_leg_step(cauchy_point, q_newton_point, tr_size, P)
+  # cc = dot(cauchy_point, K * cauchy_point)
+  # nn = dot(q_newton_point, K * q_newton_point)
+  cc = dot(cauchy_point, P \ cauchy_point)
+  nn = dot(q_newton_point, P \ q_newton_point)
   tt = tr_size * tr_size
 
   # return cauchy point if it extends outside the tr
@@ -193,7 +191,8 @@ function dog_leg_step(cauchy_point, q_newton_point, tr_size, K)
   if nn > tt
     # return preconditioner_project_to_boundary(cauchy_point, q_newton_point - cauchy_point, tr_size, cc, K)
     # project to boundary
-    Pd = K * (q_newton_point - cauchy_point)
+    # Pd = K * (q_newton_point - cauchy_point)
+    Pd = P \ (q_newton_point - cauchy_point)
     dd = dot(q_newton_point - cauchy_point, Pd)
     zd = dot(cauchy_point, Pd)
     τ  = (sqrt((tr_size^2 - cc) * dd + zd^2) - zd) / dd
@@ -205,12 +204,9 @@ end
 
 function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
   # unpack cached arrays from solver
-  Uu_in, ΔUu = solver.Uu, solver.ΔUu
-  Uu = copy(Uu_in)
+  Uu = solver.Uu
   K = stiffness(domain, Uu)
-  # K_all = domain.assembler.K
-  # P = solver.linear_solver.solver_cache.Pl
-  P = IdentityOperator(size(K, 1))
+  P = solver.linear_solver.solver_cache.Pl
   # unpack some solver settings
   tr_size = solver.settings.tr_size
 
@@ -222,8 +218,6 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
   g_norm = g_norm_init
   @info @sprintf "Initial objective = %1.6e" o_init
   @info @sprintf "Initial residual  = %1.6e" g_norm_init
-
-  
 
   # begin loop over tr iters
   cumulative_cg_iters = 0
@@ -242,9 +236,9 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
     if gKg > 0
       α = -dot(g, g) / gKg
       cauchy_point = α * g
-      cauchy_point_norm_squared = dot(cauchy_point, P * cauchy_point) # should eventually multiply by approx hessian TODO
+      cauchy_point_norm_squared = dot(cauchy_point, K * cauchy_point) # should eventually multiply by approx hessian TODO
     else
-      cauchy_point = -g * (tr_size / sqrt(dot(g, P * g))) # TODO another place to mult_by_approx_hessian
+      cauchy_point = -g * (tr_size / sqrt(dot(g, K * g))) # TODO another place to mult_by_approx_hessian
       cauchy_point_norm_squared = tr_size * tr_size
       @info "negative curavture unpreconditioned cauchy point direction found."
     end
@@ -258,10 +252,10 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
       step_type = :boundary
       n_cg_iters = 1
     else
-      # q_newton_point, _, step_type, n_cg_iters = 
-      # minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size)
-      q_newton_point = IterativeSolvers.cg(K, -g)
-      n_cg_iters = 1
+      q_newton_point, _, step_type, n_cg_iters = 
+      minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size)
+      # q_newton_point = IterativeSolvers.cg(K, -g)
+      # n_cg_iters = 1
       step_type = :cg
     end
 
@@ -272,20 +266,18 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
     while !happy
       # take a dogleg step
       d = dog_leg_step(cauchy_point, q_newton_point, tr_size, P)
-      # @show d
+
       Jd = K * d
       dJd = dot(d, Jd)
       model_objective = dot(g, d) + 0.5 * dJd
 
       y = Uu + d
-      # real_objective = energy(domain, Uu_in + d) - o_init
       real_objective = objective(d)
         
       gy = residual(domain, y)
 
       if is_converged(solver, y, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size_used)
         @show "converged!"
-        # return y
         solver.ΔUu .= solver.Uu - y
         solver.Uu .= y
         return
@@ -297,6 +289,7 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
 
       if model_objective > 0
         @warn "found a positive model objective increase. Debug if you see this."
+        ρ = real_improve / -model_improve
       end
 
       if !(ρ >= solver.settings.η_2)
@@ -337,17 +330,24 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
 
       # TODO not sure what to do here
       if n_cg_iters >= solver.settings.max_cg_iters ||
-         cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
-        @info "Updating preconditioner"
-        P = cholesky(K, )
-        # @assert false "TODO update preconditioner"
+        cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
+        attempt = 1 # TODO make this a global
+        
+        while attempt < 10
+          @info "Updating preconditioner, attempt = $attempt"
+          try
+            P = cholesky(K; shift=10.0^(-5 + attempt))
+          catch e
+            @info "Failed to factor preconditioner. Attempting again"
+            attempt += 1
+          else
+            break
+          end
+        end
       end
     end
-
-    # if n > 5
-    #   @assert false
-    # end
   end
 
-  @assert false
+  # @assert false "Reached maximum number of trust region iterations"
+  @warn "Reached maximum number of trust region iterations. Accepting but be careful!"
 end
