@@ -1,12 +1,22 @@
 
 
 struct PostProcessor{Out <: ExodusDatabase, V <: NodalField}
+  # out_file_name::
   out_file::Out
   scratch_U::V
 end
 
-function PostProcessor(f::FileMesh, out_file::String, dof::DofManager, dims::Int)
+# function PostProcessor(f::FileMesh, out_file::String, dof::DofManager, dims::Int)
+"""
+Constructor for post processor
+
+closes exodus db by default, needs to be re-opend downstream
+this is mainly for debuggin purposes
+"""
+function PostProcessor(mesh_file::String, out_file::String, dof::DofManager, dims::Int)
+  f = FileMesh(ExodusDatabase, mesh_file)
   copy_mesh(f.file_name, out_file)
+  Exodus.close(f.mesh_obj)
   # out = FileMesh(ExodusDatabase, out_file)
   out = ExodusDatabase(out_file, "rw")
   if dims == 2
@@ -14,6 +24,7 @@ function PostProcessor(f::FileMesh, out_file::String, dof::DofManager, dims::Int
   else
     @assert false "only dim 2 is supported right now"
   end
+  # Exodus.close(out)
   U = FiniteElementContainers.create_fields(dof)
   return PostProcessor(out, U)
 end

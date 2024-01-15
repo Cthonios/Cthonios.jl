@@ -2,34 +2,19 @@ struct LinearSolver{Solver, Preconditioner, Cache}
   solver::Solver
   precond::Preconditioner
   solver_cache::Cache
-  use_ad::Bool
 end
 
 # TODO problably need some init methods
 
 # TODO might need some constructors or something
-function LinearSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict
+function LinearSolver(
+  input_settings::D, domain::QuasiStaticDomain
+) where D <: Dict
   # make an initial dummy A and b
   Uu = create_unknowns(domain)
-  use_ad = input_settings["AD"]
   # TODO need to set up custom solvers
-  if use_ad
-    @info "Using AD to set up linear solver"
-    @assert false "This should really happen in an extension"
-    # backend = AD.ForwardDiffBackend() # TODO customize AD backend
-    # R = grad_energy_u(backend, domain, Uu, [], domain.time.current_time)
-    # # hvp = hvp_energy_u(backend, domain, domain.coords, Uu)
-    # # hvp = hvp_energy_u(backend, domain, Uu)
-    # hvp = hvp_energy_u(backend, domain, Uu, [], domain.time.current_time)
-    # f = (u, p, t) -> hvp(u)[1]
-    # # f = FunctionWrapper{Vector{Float64}, Tuple{Vector{Float64}, Vector{Float64}, Float64}}((u, p, t) -> hvp(u)[1])
-    # K = FunctionOperator(f, zeros(length(Uu)), zeros(length(Uu)))
-    # # Set up preconditioner here TODO
-  else
-    @info "Not using AD to set up linear solver, falling back to assembling K"
-    R = residual(domain, Uu)
-    K = stiffness(domain, Uu)
-  end
+  R = residual(domain, Uu)
+  K = stiffness(domain, Uu)
 
   # setup solver
   if "type" in keys(input_settings)
@@ -58,7 +43,7 @@ function LinearSolver(input_settings::D, domain::QuasiStaticDomain) where D <: D
   prob   = LinearProblem(K, R)
   solver_cache = init(prob, solver; Pl=Pl) # TODO maybe we want a right preconditioner in some cases?
 
-  return LinearSolver(solver, Pl, solver_cache, use_ad)
+  return LinearSolver(solver, Pl, solver_cache)
 end
 
 function Base.show(io::IO, solver::LinearSolver)
@@ -68,39 +53,47 @@ end
 
 LinearSolve.solve(solver::LinearSolver) = solve(solver.solver_cache)
 
-function update_residual!(solver::LinearSolver, domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
-  R = residual(domain, Uu)
-  solver.solver_cache.b = R
-end
+# function update_residual!(
+#   solver::LinearSolver, domain::QuasiStaticDomain, Uu::V
+# ) where V <: AbstractVector
+#   R = residual(domain, Uu)
+#   solver.solver_cache.b = R
+# end
 
-function update_stiffness!(solver::LinearSolver, domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
-  K = stiffness(domain, Uu)
-  solver.solver_cache.A = K
-end
+# function update_stiffness!(
+#   solver::LinearSolver, domain::QuasiStaticDomain, Uu::V
+# ) where V <: AbstractVector
+#   K = stiffness(domain, Uu)
+#   solver.solver_cache.A = K
+# end
 
-function update_residual_and_stiffness!(solver::LinearSolver, domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
-  update_residual!(solver, domain, Uu)
-  update_stiffness!(solver, domain, Uu)
-end
+# function update_residual_and_stiffness!(
+#   solver::LinearSolver, domain::QuasiStaticDomain, Uu::V
+# ) where V <: AbstractVector
+#   update_residual!(solver, domain, Uu)
+#   update_stiffness!(solver, domain, Uu)
+# end
 
 function update_residual!(
-  R::V1,
+  # R::V1,
   solver::LinearSolver, domain::QuasiStaticDomain, 
   Uu::V2, U::V1
 ) where {V1 <: NodalField, V2 <: AbstractVector}
-  R .= zero(eltype(R))
-  residual!(R, domain, Uu, U)
-  solver.solver_cache.b = R[domain.dof.is_unknown]
+  # R .= zero(eltype(R))
+  residual!(domain, Uu, domain.coords, U)
+  # solver.solver_cache.b = R[domain.dof.unknown_dofs]
+  solver.solver_cache.b = domain.assembler.residuals[domain.dof.unknown_dofs]
 end
 
 function update_stiffness!(
-  K,
+  # K,
   solver::LinearSolver, domain::QuasiStaticDomain, 
   Uu::V2, U::V1
 ) where {V1 <: NodalField, V2 <: AbstractVector}
-  K .= zero(eltype(K))
-  stiffness!(K, domain, Uu, U)
-  solver.solver_cache.A = K[domain.dof.is_unknown, domain.dof.is_unknown]
+  # K .= zero(eltype(K))
+  stiffness!(domain, Uu, domain.coords, U)
+  # solver.solver_cache.A = K[domain.dof.is_unknown, domain.dof.is_unknown]
+  solver.solver_cache.A = sparse(domain.assembler)
 end
 
 

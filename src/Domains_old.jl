@@ -82,6 +82,17 @@ create_fields(d::QuasiStaticDomain, type)   = FiniteElementContainers.create_fie
 create_unknowns(d::QuasiStaticDomain)       = FiniteElementContainers.create_unknowns(d.dof)
 create_unknowns(d::QuasiStaticDomain, type) = FiniteElementContainers.create_unknowns(d.dof, type)
 
+
+create_fields(d::QuasiStaticDomain, ::KernelAbstractionsBackend{Nothing}) = 
+FiniteElementContainers.create_fields(d.dof)
+create_fields(d::QuasiStaticDomain, type, ::KernelAbstractionsBackend{Nothing}) = 
+FiniteElementContainers.create_fields(d.dof, type)
+create_unknowns(d::QuasiStaticDomain, ::KernelAbstractionsBackend{Nothing}) = 
+FiniteElementContainers.create_unknowns(d.dof)
+create_unknowns(d::QuasiStaticDomain, type, ::KernelAbstractionsBackend{Nothing}) = 
+FiniteElementContainers.create_unknowns(d.dof, type)
+
+
 # TODO place where units won't work
 function update_unknown_ids!(dof::DofManager, bcs)
   for bc in bcs
@@ -98,11 +109,13 @@ function update_unknown_ids!(d::QuasiStaticDomain)
     FiniteElementContainers.update_unknown_ids!(dof_manager(d), bc.nodes, bc.dof)
   end
   
+  # TODO add update_unknown_ids! for assembler here
+
   resize!(dof.unknown_indices, sum(dof.is_unknown))
   dof.unknown_indices .= FiniteElementContainers.dof_ids(dof)[dof.is_unknown]
 end
 
-function update_bcs!(U, coords, t, bcs)
+function update_bcs!(U, coords, t, bcs, ::KernelAbstractionsBackend{Nothing})
   for bc in bcs
     for node in bc.nodes
       # get coords
@@ -113,9 +126,9 @@ function update_bcs!(U, coords, t, bcs)
 end
 
 # update_fields!(domain::QuasiStaticDomain) = FiniteElementContainers.update_fields!(domain.U, domain.dof, domain.Uu)
-update_fields!(U::V1, domain::QuasiStaticDomain, Uu::V2) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
+update_fields!(U::V1, domain::QuasiStaticDomain, Uu::V2, ::KernelAbstractionsBackend{Nothing}) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
 FiniteElementContainers.update_fields!(U, domain.dof, Uu)
-update_unknowns!(U::V1, domain::QuasiStaticDomain, Uu::V2) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
+update_unknowns!(U::V1, domain::QuasiStaticDomain, Uu::V2, ::KernelAbstractionsBackend{Nothing}) where {V1 <: NodalField, V2 <: AbstractArray{<:Number, 1}} =
 FiniteElementContainers.update_fields!(U, domain.dof, Uu)
 ################################################################
 
@@ -123,42 +136,45 @@ FiniteElementContainers.update_fields!(U, domain.dof, Uu)
 # function energy(domain::QuasiStaticDomain, X::V1, U::V2) where {V1 <: Union{Matrix, NodalField}, V2 <: NodalField}
 # TODO wrap for shpa optimization adjoint later
 # TODO also add state var stuff
-function energy(domain::QuasiStaticDomain, U::V1, X::V2) where {V1 <: NodalField, V2}
+function energy(domain::QuasiStaticDomain, U::V1, X::V2, ka_backend::KernelAbstractionsBackend) where {V1 <: NodalField, V2}
   W = 0.0 # Unitful error here # TODO 
   for section in domain.sections
-    W = W + energy(section, U, X)
+    W = W + energy(section, U, X, ka_backend)
   end
   W
 end
 
-function energy(domain::QuasiStaticDomain, Uu::V, p, t) where V <: AbstractVector
+function energy(domain::QuasiStaticDomain, Uu::V, p, t, ka_backend::KernelAbstractionsBackend) where V <: AbstractVector
   U = create_fields(domain, eltype(Uu))
-  update_bcs!(U, domain.coords, t, domain.bcs)
-  update_unknowns!(U, domain, Uu)
-  energy(domain, U, domain.coords)
+  update_bcs!(U, domain.coords, t, domain.bcs, ka_backend)
+  update_unknowns!(U, domain, Uu, ka_backend)
+  energy(domain, U, domain.coords, ka_backend)
 end
 
-function energy(domain::QuasiStaticDomain, Uu::V1, X::V2) where {V1 <: AbstractVector, V2}
-  U = create_fields(domain, eltype(Uu))
-  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
-  update_unknowns!(U, domain, Uu)
-  energy(domain, U, X)
+function energy(domain::QuasiStaticDomain, Uu::V1, X::V2, ka_backend::KernelAbstractionsBackend) where {V1 <: AbstractVector, V2}
+  U = create_fields(domain, eltype(Uu), ka_backend)
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs, ka_backend)
+  update_unknowns!(U, domain, Uu, ka_backend)
+  energy(domain, U, X, ka_backend)
 end
 
-energy(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector =
-energy(domain, Uu, domain.coords)
+energy(domain::QuasiStaticDomain, Uu::V, ka_backend::KernelAbstractionsBackend) where V <: AbstractVector =
+energy(domain, Uu, domain.coords, ka_backend)
 
-function energy!(W::V1, domain::QuasiStaticDomain, Uu::V1, U::V2) where {V1, V2}
-  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
-  update_unknowns!(U, domain, Uu)
-  W[1] = energy(domain, U, domain.coords)
+function energy!(W::V1, domain::QuasiStaticDomain, Uu::V1, U::V2, ka_backend::KernelAbstractionsBackend) where {V1, V2}
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs, ka_backend)
+  update_unknowns!(U, domain, Uu, ka_backend)
+  W[1] = energy(domain, U, domain.coords, ka_backend)
   nothing
 end
 
-function residual(domain::QuasiStaticDomain, U::V) where V <: AbstractArray
-  R = Cthonios.create_fields(domain, eltype(U))
+function residual(
+  domain::QuasiStaticDomain, U::V,
+  ka_backend::KernelAbstractionsBackend
+) where V <: AbstractArray
+  # R = Cthonios.create_fields(domain, eltype(U))
   for section in domain.sections
-    residual!(R, section, U, domain.coords)
+    residual!(domain.assembler, section, U, domain.coords, ka_backend)
   end
   return R[domain.dof.is_unknown]
 end
@@ -166,43 +182,46 @@ end
 """
 This method assumes U comes in with BCs set
 """
-function residual!(R::V1, domain::QuasiStaticDomain, Uu::V2, U::V1) where {V1 <: NodalField, V2 <: AbstractVector}
-  update_fields!(U, domain, Uu)
+function residual!(R::V1, domain::QuasiStaticDomain, Uu::V2, U::V1, ka_backend::KernelAbstractionsBackend) where {V1 <: NodalField, V2 <: AbstractVector}
+  update_fields!(U, domain, Uu, ka_backend)
   for section in domain.sections
-    residual!(R, section, U, domain.coords)
+    residual!(R, section, U, domain.coords, ka_backend)
   end
 end
 
-function residual(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector
+function residual(
+  domain::QuasiStaticDomain, Uu::V,
+  ka_backend::KernelAbstractionsBackend
+) where V <: AbstractVector
   U = Cthonios.create_fields(domain, eltype(Uu))
-  update_fields!(U, domain, Uu)
-  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
-  return residual(domain, U)
+  update_fields!(U, domain, Uu, ka_backend)
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs, ka_backend)
+  return residual(domain, U, ka_backend)
 end
 
-function stiffness!(K, domain::QuasiStaticDomain, U::V) where V <: NodalField
+function stiffness!(K, domain::QuasiStaticDomain, U::V, ka_backend::KernelAbstractionsBackend) where V <: NodalField
   K .= 0.0 # Unitful issue here
   for section in domain.sections
-    stiffness!(K, section, U, domain.coords)
+    stiffness!(K, section, U, domain.coords, ka_backend)
   end
 end
 
-function stiffness(domain::QuasiStaticDomain, U::V) where V <: NodalField
-  stiffness!(domain.assembler.K, domain, U)
+function stiffness(domain::QuasiStaticDomain, U::V, ka_backend::KernelAbstractionsBackend) where V <: NodalField
+  stiffness!(domain.assembler.K, domain, U, ka_backend)
   K = domain.assembler.K[domain.dof.is_unknown, domain.dof.is_unknown]
   return 0.5 * (K + K')
 end
 
-function stiffness!(K, domain::QuasiStaticDomain, Uu::V, U) where V <: AbstractVector{<:Number}
-  update_fields!(U, domain, Uu)
-  stiffness!(K, domain, U)
+function stiffness!(K, domain::QuasiStaticDomain, Uu::V, U, ka_backend::KernelAbstractionsBackend) where V <: AbstractVector{<:Number}
+  update_fields!(U, domain, Uu, ka_backend)
+  stiffness!(K, domain, U, ka_backend)
 end
 
-function stiffness(domain::QuasiStaticDomain, Uu::V) where V <: AbstractVector{<:Number}
-  U = Cthonios.create_fields(domain, eltype(Uu))
-  update_fields!(U, domain, Uu)
-  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs)
-  return stiffness(domain, U)
+function stiffness(domain::QuasiStaticDomain, Uu::V, ka_backend::KernelAbstractionsBackend) where V <: AbstractVector{<:Number}
+  U = Cthonios.create_fields(domain, eltype(Uu), ka_backend)
+  update_fields!(U, domain, Uu, ka_backend)
+  update_bcs!(U, domain.coords, domain.time.current_time, domain.bcs, ka_backend)
+  return stiffness(domain, U, ka_backend)
 end
 
 ##########################################################################

@@ -38,11 +38,11 @@ struct TrustRegionSolver{
   ΔUu::V
 end
 
-function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict
+function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, ka_backend::KernelAbstractionsBackend) where D <: Dict
   settings      = TrustRegionSolverSettings() # TODO add non-defaults
-  linear_solver = LinearSolver(input_settings["linear solver"], domain)
-  Uu            = create_unknowns(domain)
-  ΔUu           = create_unknowns(domain)
+  linear_solver = LinearSolver(input_settings["linear solver"], domain, ka_backend)
+  Uu            = create_unknowns(domain, ka_backend)
+  ΔUu           = create_unknowns(domain, ka_backend)
   return TrustRegionSolver(settings, linear_solver, Uu, ΔUu)
 end
 
@@ -202,17 +202,20 @@ function dog_leg_step(cauchy_point, q_newton_point, tr_size, P)
   return q_newton_point
 end
 
-function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
+function solve!(
+  solver::TrustRegionSolver, domain::QuasiStaticDomain,
+  ka_backend::KernelAbstractionsBackend{Nothing}
+)
   # unpack cached arrays from solver
   Uu = solver.Uu
-  K = stiffness(domain, Uu)
+  K = stiffness(domain, Uu, ka_backend)
   P = solver.linear_solver.solver_cache.Pl
   # unpack some solver settings
   tr_size = solver.settings.tr_size
 
   # calculate initial objective and residual
-  o = energy(domain, Uu)
-  g = residual(domain, Uu)
+  o = energy(domain, Uu, ka_backend)
+  g = residual(domain, Uu, ka_backend)
   o_init = o
   g_norm_init = norm(g)
   g_norm = g_norm_init
@@ -228,8 +231,8 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
       solver.Uu .= Uu
     end
 
-    objective = d -> energy(domain, Uu + d) - o
-    K = stiffness(domain, Uu)
+    objective = d -> energy(domain, Uu + d, ka_backend) - o
+    K = stiffness(domain, Uu, ka_backend)
 
     # check for negative curvature
     gKg = dot(g, K * g)
@@ -274,7 +277,7 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
       y = Uu + d
       real_objective = objective(d)
         
-      gy = residual(domain, y)
+      gy = residual(domain, y, ka_backend)
 
       if is_converged(solver, y, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size_used)
         @show "converged!"
@@ -319,7 +322,7 @@ function solve!(solver::TrustRegionSolver, domain::QuasiStaticDomain)
         Uu = y
         # update_fields!(U, domain, Uu)
         g = gy
-        o = energy(domain, Uu)
+        o = energy(domain, Uu, ka_backend)
         g_norm = real_res_norm
         # TODO try new preconditioner upate
         happy = true
