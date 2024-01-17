@@ -38,11 +38,11 @@ struct TrustRegionSolver{
   ΔUu::V
 end
 
-function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, ka_backend::KernelAbstractionsBackend) where D <: Dict
+function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict{Symbol, Any}
   settings      = TrustRegionSolverSettings() # TODO add non-defaults
-  linear_solver = LinearSolver(input_settings["linear solver"], domain, ka_backend)
-  Uu            = create_unknowns(domain, ka_backend)
-  ΔUu           = create_unknowns(domain, ka_backend)
+  linear_solver = LinearSolver(input_settings[Symbol("linear solver")], domain)
+  Uu            = create_unknowns(domain)
+  ΔUu           = create_unknowns(domain)
   return TrustRegionSolver(settings, linear_solver, Uu, ΔUu)
 end
 
@@ -204,18 +204,18 @@ end
 
 function solve!(
   solver::TrustRegionSolver, domain::QuasiStaticDomain,
-  ka_backend::KernelAbstractionsBackend{Nothing}
+  common::CthoniosCommon
 )
   # unpack cached arrays from solver
   Uu = solver.Uu
-  K = stiffness(domain, Uu, ka_backend)
+  @timeit timer(common) "Stiffness" K = stiffness(domain, Uu)
   P = solver.linear_solver.solver_cache.Pl
   # unpack some solver settings
   tr_size = solver.settings.tr_size
 
   # calculate initial objective and residual
-  o = energy(domain, Uu, ka_backend)
-  g = residual(domain, Uu, ka_backend)
+  @timeit timer(common) "Energy" o = energy(domain, Uu)
+  @timeit timer(common) "Residual" g = residual(domain, Uu)
   o_init = o
   g_norm_init = norm(g)
   g_norm = g_norm_init
@@ -231,8 +231,8 @@ function solve!(
       solver.Uu .= Uu
     end
 
-    objective = d -> energy(domain, Uu + d, ka_backend) - o
-    K = stiffness(domain, Uu, ka_backend)
+    objective = d -> energy(domain, Uu + d) - o
+    @timeit timer(common) "Stiffness" K = stiffness(domain, Uu)
 
     # check for negative curvature
     gKg = dot(g, K * g)
@@ -256,7 +256,7 @@ function solve!(
       n_cg_iters = 1
     else
       q_newton_point, _, step_type, n_cg_iters = 
-      minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size)
+      @timeit timer(common) "CG" minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size)
       # q_newton_point = IterativeSolvers.cg(K, -g)
       # n_cg_iters = 1
       step_type = :cg
@@ -268,19 +268,18 @@ function solve!(
     happy = false
     while !happy
       # take a dogleg step
-      d = dog_leg_step(cauchy_point, q_newton_point, tr_size, P)
+      @timeit timer(common) "Dog leg" d = dog_leg_step(cauchy_point, q_newton_point, tr_size, P)
 
       Jd = K * d
       dJd = dot(d, Jd)
       model_objective = dot(g, d) + 0.5 * dJd
 
       y = Uu + d
-      real_objective = objective(d)
+      @timeit timer(common) "Energy" real_objective = objective(d)
         
-      gy = residual(domain, y, ka_backend)
+      @timeit timer(common) "Residual" gy = residual(domain, y)
 
       if is_converged(solver, y, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size_used)
-        @show "converged!"
         solver.ΔUu .= solver.Uu - y
         solver.Uu .= y
         return
@@ -322,7 +321,7 @@ function solve!(
         Uu = y
         # update_fields!(U, domain, Uu)
         g = gy
-        o = energy(domain, Uu, ka_backend)
+        @timeit timer(common) "Energy" o = energy(domain, Uu)
         g_norm = real_res_norm
         # TODO try new preconditioner upate
         happy = true
@@ -339,8 +338,9 @@ function solve!(
         while attempt < 10
           @info "Updating preconditioner, attempt = $attempt"
           try
-            P = cholesky(K; shift=10.0^(-5 + attempt))
+            @timeit timer(common) "Preconditioner" P = cholesky(K; shift=10.0^(-5 + attempt))
           catch e
+            @info e
             @info "Failed to factor preconditioner. Attempting again"
             attempt += 1
           else

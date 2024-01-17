@@ -38,24 +38,36 @@ function logger(::NewtonSolver, n, norm_R, norm_U)
 end
 
 function solve!(
-  solver::NewtonSolver, domain::QuasiStaticDomain
+  solver::NewtonSolver, domain::QuasiStaticDomain,
+  common::CthoniosCommon
 )
   # unpack cached arrays from solver
   Uu, ΔUu = solver.Uu, solver.ΔUu
   U = create_fields(domain)
-  update_bcs!(U, domain, domain.coords)
-  update_stiffness!(solver.linear_solver, domain, Uu, U)
+
+  @timeit timer(common) "Update BCs" update_bcs!(U, domain, domain.coords)
+  # @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
 
   for n in 1:solver.settings.max_steps
     # update_residual!(solver.linear_solver, domain, Uu)
-    update_residual!(solver.linear_solver, domain, Uu, U)
-    sol = solve(solver.linear_solver)
-    update_increment!(solver, sol.u)
+    @timeit timer(common) "Residual" update_residual!(solver.linear_solver, domain, Uu, U)
+    @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
+
+    # @timeit timer(common) "Linear solve" sol = solve(solver.linear_solver)
+    # update_increment!(solver, sol.u)
+
+
+    # @timeit timer(common) "Linear solve" solve!(solver.linear_solver)
+    # update_increment!(solver, solver.linear_solver.solver_cache.u)
+    @timeit timer(common) "Linear solve" solve!(solver.linear_solver)
+    update_increment!(solver, solver.linear_solver.unknowns)
+
 
     # # # TODO above should use linear solver in solver
     @. Uu    = Uu - ΔUu
     # norm_R   = norm(R)
-    norm_R   = norm(solver.linear_solver.solver_cache.b)
+    # norm_R   = norm(solver.linear_solver.solver_cache.b)
+    norm_R   = norm(solver.linear_solver.residual)
     norm_ΔUu = norm(ΔUu)
     
     logger(solver, n, norm_R, norm_ΔUu)

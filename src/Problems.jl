@@ -23,21 +23,23 @@ function get_solver_input_settings(inputs::D)::Dict{Symbol, Any} where D <: Dict
   return inputs[:solver]
 end
 
-function ForwardProblem(input_settings::D) where D <: Dict
+function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Dict
 
-  domain = QuasiStaticDomain(get_domain_input_settings(input_settings))
-  # update bcs once here, TODO this will fail when we start disabling bcs
-  # we need to do this for the solver, and also need to probably reinit
-  # thie linear solver when we change bcs
-  update_unknown_dofs!(domain)
+  @timeit timer(common) "Setup" begin
+    @timeit timer(common) "Domain" domain = QuasiStaticDomain(get_domain_input_settings(input_settings))
+    # update bcs once here, TODO this will fail when we start disabling bcs
+    # we need to do this for the solver, and also need to probably reinit
+    # thie linear solver when we change bcs
+    @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(domain)
 
-  # set up solver
-  solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain)
+    # set up solver
+    @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain)
 
-  post_processor = PostProcessor(
-    get_mesh_file_name(input_settings), get_output_file_name(input_settings),
-    domain.dof, size(domain.coords, 1)
-  )
+    @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
+      get_mesh_file_name(input_settings), get_output_file_name(input_settings),
+      domain.dof, size(domain.coords, 1)
+    )
+  end
   return ForwardProblem(domain, solver, post_processor)
 end
 
@@ -49,7 +51,7 @@ function Base.show(io::IO, problem::ForwardProblem)
   println(io, "  Solver", problem.solver)
 end
 
-function solve!(problem::ForwardProblem)
+function solve!(problem::ForwardProblem, common::CthoniosCommon)
   domain, solver = problem.domain, problem.solver
   reset!(domain.time)
 
@@ -57,7 +59,7 @@ function solve!(problem::ForwardProblem)
   # update_unknown_ids!(domain)
   # resize!(solver, domain)
 
-  post_process_load_step!(problem)
+  @timeit timer(common) "Results output" post_process_load_step!(problem)
 
   while domain.time.current_time <= domain.time.end_time
     step!(domain.time)
@@ -71,10 +73,11 @@ function solve!(problem::ForwardProblem)
     @info "= Time      $(domain.time.current_time)"
     @info "$(repeat('=', 64))"
 
-    solve!(solver, domain)
+    @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)
 
     # post-processing
-    post_process_load_step!(problem) 
+    @timeit timer(common) "Results output" post_process_load_step!(problem) 
+
   end
 
   close(problem.post_processor)

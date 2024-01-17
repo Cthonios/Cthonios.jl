@@ -12,7 +12,7 @@ using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
 using LinearAlgebra
-using LinearSolve
+# using LinearSolve
 using Logging
 using LoggingExtras
 using Parameters
@@ -54,24 +54,12 @@ include("boundary_conditions/BoundaryConditions.jl")
 include("sections/Sections.jl")
 include("TimeSteppers.jl")
 
-# low level containers
-# include("Backends.jl")
-# include("BoundaryConditions.jl")
-# include("PostProcessors.jl")
-# include("Sections.jl")
-# include("TimeSteppers.jl")
-# include("Domains.jl")
-
+# Level 3 stuff
 include("domains/Domains.jl")
-
-# solver
 include("solvers/NonlinearSolvers.jl")
 
-
+# Finally problems
 include("Problems.jl")
-
-# Parsing last thing before main files
-
 
 # CLI
 include("Main.jl")

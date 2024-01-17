@@ -72,13 +72,14 @@ domains:
       type: ConstantTimeStepper
       start time: 0.0
       end time: 1.0
-      time step: 0.005
+      time step: 0.01
 
 problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
     solver: newton
+    # solver: trs
     results:
       output file name: output.e
 

@@ -39,7 +39,6 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
   n = 1
 
   for section in input_settings
-    @show section
     @info "Reading Section $n"
     @info "  type = $(section[:type])"
     @info "  formulation = $(section[:formulation])"

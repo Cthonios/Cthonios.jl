@@ -260,7 +260,9 @@ function stiffness(domain::QuasiStaticDomain, Uu::V1, X::V2) where {V1 <: Abstra
   U = create_fields(domain)
   update_fields!(U, domain, X, Uu)
   stiffness!(domain, Uu, X, U)
-  return sparse(domain.assembler)
+  # return sparse(domain.assembler) |> symmetric
+  K = sparse(domain.assembler)
+  return 0.5 * (K + K')
 end
 
 # helper methods when we don't care about shape optimization
