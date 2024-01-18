@@ -34,14 +34,10 @@ function ConstantTimeStepper(start_time::T, end_time::T, Δt::T) where T <: Numb
   return ConstantTimeStepper(start_time, end_time, start_time, 1, Δt)
 end
 
-function ConstantTimeStepper(input_settings::D) where D <: Dict
-  @assert "start time" in keys(input_settings)
-  @assert "end time"   in keys(input_settings)
-  @assert "time step"  in keys(input_settings)
-  
-  start_time = input_settings["start time"]
-  end_time   = input_settings["end time"]
-  Δt         = input_settings["time step"]
+function ConstantTimeStepper(input_settings::D) where D <: Dict  
+  start_time = input_settings[Symbol("start time")]
+  end_time   = input_settings[Symbol("end time")]
+  Δt         = input_settings[Symbol("time step")]
 
   return ConstantTimeStepper(start_time, end_time, Δt)
 end

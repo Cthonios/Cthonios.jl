@@ -17,21 +17,18 @@ function julia_main()::Cint
   cthonios_header(common)
   dump_input_file(common, input_file)
 
-  input_settings = YAML.load_file(input_file)
-  # domain = Domain(common, input_file)
-
-  # domain = setup(QuasiStaticDomain, common, input_settings)
-  @assert "problem" in keys(input_settings)
-  @assert "type" in keys(input_settings["problem"])
-  problem_type = Meta.parse(input_settings["problem"]["type"])
   with_logger(common) do
-    new_section("Problem setup")
-    problem = eval(problem_type)(input_settings)
-    new_section("Problem solution")
-    solve!(problem)
+    input_settings = parse_input_file(input_file)
+    for (key, prob_settings) in input_settings[:problems]
+      new_section("Problem $key")
+      @timeit timer(common) "Problem $key" begin
+        type = eval(Meta.parse(prob_settings[:type]))
+        prob = type(prob_settings, common)
+        solve!(prob, common)
+      end
+    end
   end
 
-  # new_section(common, "Timings")
   with_logger(common) do
     new_section("Timings")
     @info timer(common)

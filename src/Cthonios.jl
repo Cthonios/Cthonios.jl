@@ -1,14 +1,6 @@
 module Cthonios
 
-# edpxort
-export CthoniosCommon
-
-# export create_field
-
-# dev stuff
-
-# export TotalLagrangeSection
-
+# TODO add exports
 
 # dependencies
 using ArgParse
@@ -16,16 +8,18 @@ using ConstitutiveModels
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
+using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
 using LinearAlgebra
-using LinearSolve
+# using LinearSolve
 using Logging
 using LoggingExtras
 using Parameters
 using Preconditioners
 using Printf
 using ReferenceFiniteElements
+using SparseArrays
 using StaticArrays
 using StructArrays
 using Tensors
@@ -49,21 +43,22 @@ $(TYPEDFIELDS)
 $(DOCSTRING)
 """
 
-# high level stuff
+# Level 1 stuff
 include("Common.jl")
-
-# low level containers
-include("BoundaryConditions.jl")
+include("Functions.jl")
+include("Parsers.jl")
 include("PostProcessors.jl")
-include("Sections.jl")
-include("TimeSteppers.jl")
-include("Domains.jl")
 
-# solver
+# Level 2 stuff
+include("boundary_conditions/BoundaryConditions.jl")
+include("sections/Sections.jl")
+include("TimeSteppers.jl")
+
+# Level 3 stuff
+include("domains/Domains.jl")
 include("solvers/NonlinearSolvers.jl")
 
-# include("Objective.jl")
-
+# Finally problems
 include("Problems.jl")
 
 # CLI

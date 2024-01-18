@@ -19,27 +19,27 @@ end
 
 function Base.show(io::IO, section::Section)
   print(io, "          Section\n",
-        "            Function space            = $(section.fspace)\n",
+        "            Function space            = $(typeof(section.fspace).name.name)\n",
         "            Formulation               = $(section.formulation)\n",
         "            Material model            = $(section.model)\n",
-        "            Material model properties = $(section.model)\n")
+        "            Material model properties = $(section.props)\n")
 end
 
-num_dimensions(sec::Section)           = FiniteElementContainers.num_dimensions(sec.fspace)
-num_elements(sec::Section)             = FiniteElementContainers.num_elements(sec.fspace)
-num_nodes_per_element(sec::Section)    = FiniteElementContainers.num_nodes_per_element(sec.fspace)
-num_q_points(sec::Section)             = FiniteElementContainers.num_q_points(sec.fspace)
+FiniteElementContainers.num_dimensions(sec::Section)           = FiniteElementContainers.num_dimensions(sec.fspace)
+FiniteElementContainers.num_elements(sec::Section)             = FiniteElementContainers.num_elements(sec.fspace)
+FiniteElementContainers.num_nodes_per_element(sec::Section)    = FiniteElementContainers.num_nodes_per_element(sec.fspace)
+FiniteElementContainers.num_q_points(sec::Section)             = FiniteElementContainers.num_q_points(sec.fspace)
 
-connectivity(sec::Section)             = FiniteElementContainers.connectivity(sec.fspace)
-connectivity(sec::Section, e::Int)     = FiniteElementContainers.connectivity(sec.fspace, e)
-dof_connectivity(sec::Section)         = FiniteElementContainers.dof_connectivity(sec.fspace)
-dof_connectivity(sec::Section, e::Int) = FiniteElementContainers.dof_connectivity(sec.fspace, e)
+FiniteElementContainers.connectivity(sec::Section)             = connectivity(sec.fspace)
+FiniteElementContainers.connectivity(sec::Section, e::Int)     = connectivity(sec.fspace, e)
+FiniteElementContainers.dof_connectivity(sec::Section)         = dof_connectivity(sec.fspace)
+FiniteElementContainers.dof_connectivity(sec::Section, e::Int) = dof_connectivity(sec.fspace, e)
 
-element_level_fields(sec::Section, U) = 
-FiniteElementContainers.element_level_fields(sec.fspace, U)
+FiniteElementContainers.element_level_fields(sec::Section, U) = 
+element_level_fields(sec.fspace, U)
 
-element_level_fields(sec::Section, U, e::Int) =
-FiniteElementContainers.element_level_fields(sec.fspace, U, e)
+FiniteElementContainers.element_level_fields(sec::Section, U, e::Int) =
+element_level_fields(sec.fspace, U, e)
 
 function interpolants(ref_fe::ReferenceFE, formulation, X_el, q::Int)
   ∇N_ξ  = ReferenceFiniteElements.shape_function_gradients(ref_fe, q)
@@ -84,14 +84,14 @@ end
 
 I = one(Tensor{2, 3, Float64, 9})
 
-function residual!(R, section::Section, U::NodalField, X::NodalField)
+function residual!(asm, section::Section, U::NodalField, X::NodalField)
   ND, NN       = num_dimensions(section), num_nodes_per_element(section)
   model, props = section.model, section.props
   state        = SVector{0, Float64}()
   # FiniteElementContainers.update_fields!(domain.U, domain.dof, Uu)
   for e in 1:num_elements(section)
     conn = connectivity(section, e)
-    dof_conn = dof_connectivity(section, e)
+    # dof_conn = dof_connectivity(section, e)
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views vec(X[:, conn]))
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views vec(U[:, conn]))
     # R_el = zero(SMatrix{ND, NN, Float64, ND * NN})
@@ -110,17 +110,18 @@ function residual!(R, section::Section, U::NodalField, X::NodalField)
       R_el   = R_el + JxW * G * P_v
       # R_el = R_el + JxW * vec(P_q[1:2, 1:2] * ∇N_X') # Hardcoded to 2D problems right now
     end
-    FiniteElementContainers.assemble_residual!(R, R_el, dof_conn)
+    # FiniteElementContainers.assemble_residual!(R, R_el, dof_conn)
+    FiniteElementContainers.assemble!(asm, R_el, conn)
   end
 end
 
-function stiffness!(K, section::Section, U::NodalField, X::NodalField)
+function stiffness!(asm, section::Section, U::NodalField, X::NodalField)
   ND, NN       = num_dimensions(section), num_nodes_per_element(section)
   model, props = section.model, section.props
   state        = SVector{0, Float64}()
   for e in 1:num_elements(section)
     conn = connectivity(section, e)
-    dof_conn = dof_connectivity(section, e)
+    # dof_conn = dof_connectivity(section, e)
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views vec(X[:, conn]))
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views vec(U[:, conn]))
     K_el = zero(SMatrix{ND * NN, ND * NN, Float64, ND * NN * ND * NN})
@@ -137,7 +138,8 @@ function stiffness!(K, section::Section, U::NodalField, X::NodalField)
       G    = FiniteElementContainers.discrete_gradient(section.formulation, ∇N_X)
       K_el = K_el + JxW * G * A_m * G'
     end
-    FiniteElementContainers.assemble!(K, K_el, dof_conn)
+    # FiniteElementContainers.assemble!(K, K_el, dof_conn)
+    FiniteElementContainers.assemble!(asm, K_el, section.block_id, e)
   end
 end
 
@@ -185,20 +187,28 @@ function energy(section::Section, U::V1, X::V2) where {V1 <: AbstractArray, V2 <
   W
 end
 
+#####################################################################
 # Parsing
-function read_materials(input_settings::D) where D <: Dict
+#####################################################################
+
+function setup_materials(input_settings::D) where D <: Vector{Dict{Symbol, Any}}
   new_section("Material Models")
+  @show input_settings
   models = Dict{String, ConstitutiveModels.ConstitutiveModel}()
   props  = Dict{String, Vector{Float64}}()
   states = Dict{String, Any}()
-  for mat_name in keys(input_settings)
-    @assert "model" in keys(input_settings[mat_name])
-    @assert "properties" in keys(input_settings[mat_name])
+  # for (n, material) in enumerate(input_settings)
+  for (key, material) in input_settings
+    # @show material
+    # @assert "model" in keys(input_settings[material])
+    # @assert "properties" in keys(input_settings[material])
 
-    model_name = input_settings[mat_name]["model"]
-    props_in   = input_settings[mat_name]["properties"]
-
-    @info "Reading material $mat_name"
+    # model_name = input_settings[mat_name][:model]
+    # props_in   = input_settings[mat_name][:properties]
+    model_name = material[:model]
+    props_in = material[:properties]
+    @show props_in
+    @info "Reading material"
     @info "  Model      = $model_name"
     @info "  Properties = "
     for (key, val) in props_in
@@ -208,9 +218,9 @@ function read_materials(input_settings::D) where D <: Dict
 
     model, prop, state = eval(Meta.parse(model_name))(props_in)
 
-    models[mat_name] = model
-    props[mat_name]  = prop
-    states[mat_name] = state
+    models[key] = model
+    props[key]  = prop
+    states[key] = state
   end
   return models, props, states
 end

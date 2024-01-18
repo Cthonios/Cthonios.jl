@@ -1,19 +1,14 @@
-mesh:
-  file name: test/window_pain.g
-  # file name: test/mesh_1089.g
-  # file name: test/mesh_tri3_732.g
-
-boundary conditions:
-  displacement: 
-  - nodeset id: 3
-    dof: 1
-  - nodeset id: 3
-    dof : 2
-  - nodeset id: 1
-    dof: 1
-  - nodeset id: 1
-    dof: 2
-    function: (x, t) -> -0.25 * t
+# Global scope
+functions:
+  displacement_ramp: 
+    type: ScalarFunction{2, Float64, Float64, Float64}
+    expression: (x, t) -> -0.25 * t
+  displacement_ramp_2: 
+    type: ScalarFunction{2, Float64, Float64, Float64}
+    expression: (x, t) -> -0.25 * t
+  zero_func:
+    type: ScalarFunction{2, Float64, Float64, Float64}
+    expression: (x, t) -> 0.0
 
 materials:
   soft rubber:
@@ -28,38 +23,72 @@ materials:
       bulk modulus: 50.0
       shear modulus: 1.0
 
-sections:
-- block id: 1
-  formulation: plane strain
-  Fbar: true
-  material: soft rubber
-  # material: hard rubber
-
-# below is TODO
-time stepper:
-  type: ConstantTimeStepper
-  start time: 0.0
-  end time: 1.0
-  time step: 0.005
-  
 linear solvers:
   cg:
     type: default
-    # preconditioner: default
     preconditioner: cholesky
-    # preconditioner: DiagonalOperator
-    AD: false
 
-# not general right now
 nonlinear solvers:
   newton:
     type: NewtonSolver
     linear solver: cg
+    relative tolerance: 1.0e-8
+    absolute tolerance: 1.0e-8
+    update stiffness each iteration: true 
   trs:
     type: TrustRegionSolver
     linear solver: cg
 
-problem:
-  type: ForwardProblem
-  solver: trs
-  # solver: newton
+
+# Domains scope
+
+domains:
+  domain_1:
+    mesh:
+      type: ExodusDatabase{Int32, Int32, Int32, Float64}
+      file name: test/window_pain.g
+      # file name: test/mesh_10000.g
+
+    boundary conditions:
+      displacement: 
+      - nodeset id: 3
+        dof: 1
+        function: zero_func
+      - nodeset id: 3
+        dof : 2
+        function: zero_func
+      - nodeset id: 1
+        dof: 1
+        function: zero_func
+      - nodeset id: 1
+        dof: 2
+        function: displacement_ramp
+
+    sections:
+    - type: TotalLagrangeSection
+      block id: 1
+      formulation: plane strain
+      material: soft rubber
+
+    # below is TODO
+    time stepper:
+      type: ConstantTimeStepper
+      start time: 0.0
+      end time: 1.0
+      time step: 0.01
+
+problems:
+  forward_1:
+    type: ForwardProblem
+    domain: domain_1
+    # solver: newton
+    solver: trs
+    results:
+      output file name: output.e
+
+# # not general right now
+
+# problem:
+#   type: ForwardProblem
+#   solver: trs
+#   # solver: newton
