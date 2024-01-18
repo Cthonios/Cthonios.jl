@@ -32,6 +32,9 @@ nonlinear solvers:
   newton:
     type: NewtonSolver
     linear solver: cg
+    relative tolerance: 1.0e-8
+    absolute tolerance: 1.0e-8
+    update stiffness each iteration: true 
   trs:
     type: TrustRegionSolver
     linear solver: cg
@@ -43,8 +46,8 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      # file name: test/window_pain.g
-      file name: test/mesh_10000.g
+      file name: test/window_pain.g
+      # file name: test/mesh_10000.g
 
     boundary conditions:
       displacement: 
@@ -78,8 +81,8 @@ problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
-    solver: newton
-    # solver: trs
+    # solver: newton
+    solver: trs
     results:
       output file name: output.e
 

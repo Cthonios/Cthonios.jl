@@ -17,7 +17,7 @@ function logger end # TO be defined for each solver
 function solve! end # TO be defined for each solver
 
 include("NewtonSolver.jl")
-# include("TrustRegionSolver.jl")
+include("TrustRegionSolver.jl")
 
 function setup_nonlinear_solver(
   inputs::D, domain::QuasiStaticDomain

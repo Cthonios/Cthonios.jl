@@ -21,15 +21,15 @@ function LinearSolver(
   K = stiffness(domain, Uu)
 
   # setup solver
-  if :type in keys(input_settings)
-    if input_settings[:type] == "default"
-      solver = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.UMFPACKFactorization)
-    else
-      solver = eval(Meta.parse(input_settings[:type]))()
-    end
-  else
-    solver = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.UMFPACKFactorization)
-  end
+  # if :type in keys(input_settings)
+  #   if input_settings[:type] == "default"
+  #     solver = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.UMFPACKFactorization)
+  #   else
+  #     solver = eval(Meta.parse(input_settings[:type]))()
+  #   end
+  # else
+  #   solver = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.UMFPACKFactorization)
+  # end
 
   # set up preconditioner
   if :preconditioner in keys(input_settings)
@@ -56,6 +56,7 @@ function update_residual!(
   solver::LinearSolver, domain::QuasiStaticDomain, 
   Uu::V2, U::V1
 ) where {V1 <: NodalField, V2 <: AbstractVector}
+
   residual!(domain, Uu, domain.coords, U)
   solver.residual .= @views domain.assembler.residuals[domain.dof.unknown_dofs]
 end
@@ -64,8 +65,9 @@ function update_stiffness!(
   solver::LinearSolver, domain::QuasiStaticDomain, 
   Uu::V2, U::V1
 ) where {V1 <: NodalField, V2 <: AbstractVector}
+
   stiffness!(domain, Uu, domain.coords, U)
-  solver.stiffness = sparse(domain.assembler)
+  solver.stiffness = SparseArrays.sparse!(domain.assembler)
 end
 
 function solve!(solver::LinearSolver)

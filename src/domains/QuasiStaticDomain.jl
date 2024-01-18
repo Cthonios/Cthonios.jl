@@ -151,7 +151,7 @@ properly set in the domain coming in
 """
 function FiniteElementContainers.update_unknown_dofs!(d::QuasiStaticDomain)
   update_unknown_dofs!(d.dof, d.bc_dofs)
-  update_unknown_dofs!(d.assembler, map(x -> x.fspace, d.sections), d.bc_dofs)
+  update_unknown_dofs!(d.assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
 end
 
 step!(domain::QuasiStaticDomain) = step!(domain.time)
@@ -261,7 +261,8 @@ function stiffness(domain::QuasiStaticDomain, Uu::V1, X::V2) where {V1 <: Abstra
   update_fields!(U, domain, X, Uu)
   stiffness!(domain, Uu, X, U)
   # return sparse(domain.assembler) |> symmetric
-  K = sparse(domain.assembler)
+  # K = sparse(domain.assembler)
+  K = SparseArrays.sparse!(domain.assembler)
   return 0.5 * (K + K')
 end
 

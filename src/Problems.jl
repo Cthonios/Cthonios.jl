@@ -68,10 +68,12 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
     # update_unknown_ids!(domain)
     # resize!(solver, domain)
 
-    @info "$(repeat('=', 64))"
+    # @info "$(repeat('=', 64))"
+    @info "$(repeat('=', 96))"
     @info "= Load step $(domain.time.current_time_step - 1)"
     @info "= Time      $(domain.time.current_time)"
-    @info "$(repeat('=', 64))"
+    # @info "$(repeat('=', 64))"
+    @info "$(repeat('=', 96))"
 
     @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)
 

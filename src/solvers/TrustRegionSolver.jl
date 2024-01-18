@@ -98,7 +98,8 @@ minimize r * z + 0.5 * z * J * z
 function minimize_trust_region_sub_problem(
   solver::TrustRegionSolver,
   x::V, r::V, K, 
-  tr_size::Float64
+  tr_size::Float64,
+  common::CthoniosCommon
 ) where V <: AbstractVector
 
   z = zeros(eltype(x), length(x))
@@ -109,8 +110,9 @@ function minimize_trust_region_sub_problem(
   )
 
   # unpack preonditioner # TODO I think it needs to be cholesky right now
-  P = solver.linear_solver.solver_cache.Pl
-  Pr = P \ r
+  # P = solver.linear_solver.solver_cache.Pl
+  P = solver.linear_solver.precond
+  @timeit timer(common) "Preconditioner factor" Pr = P \ r
   # Pr = P * r
   d = -Pr
   cauchy_point = zeros(eltype(d), length(d))
@@ -150,7 +152,7 @@ function minimize_trust_region_sub_problem(
     z = zNp1
 
     r = r + α * K * d
-    Pr = P \ r
+    @timeit timer(common) "Preconditioner factor" Pr = P \ r
     # Pr = P * r
     rPrNp1 = dot(r, Pr)
     
@@ -209,12 +211,13 @@ function solve!(
   # unpack cached arrays from solver
   Uu = solver.Uu
   @timeit timer(common) "Stiffness" K = stiffness(domain, Uu)
-  P = solver.linear_solver.solver_cache.Pl
+  # P = solver.linear_solver.solver_cache.Pl
+  P = solver.linear_solver.precond
   # unpack some solver settings
   tr_size = solver.settings.tr_size
 
   # calculate initial objective and residual
-  @timeit timer(common) "Energy" o = energy(domain, Uu)
+  @timeit timer(common) "Energy"   o = energy(domain, Uu)
   @timeit timer(common) "Residual" g = residual(domain, Uu)
   o_init = o
   g_norm_init = norm(g)
@@ -256,7 +259,7 @@ function solve!(
       n_cg_iters = 1
     else
       q_newton_point, _, step_type, n_cg_iters = 
-      @timeit timer(common) "CG" minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size)
+      @timeit timer(common) "CG" minimize_trust_region_sub_problem(solver, Uu, g, K, tr_size, common)
       # q_newton_point = IterativeSolvers.cg(K, -g)
       # n_cg_iters = 1
       step_type = :cg
