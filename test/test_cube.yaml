@@ -1,13 +1,10 @@
 # Global scope
 functions:
   displacement_ramp: 
-    type: ScalarFunction{2, Float64, Float64, Float64}
+    type: ScalarFunction{3, Float64, Float64, Float64}
     expression: (x, t) -> 1.0 * t
-  displacement_ramp_2: 
-    type: ScalarFunction{2, Float64, Float64, Float64}
-    expression: (x, t) -> -0.25 * t
   zero_func:
-    type: ScalarFunction{2, Float64, Float64, Float64}
+    type: ScalarFunction{3, Float64, Float64, Float64}
     expression: (x, t) -> 0.0
 
 materials:
@@ -39,37 +36,37 @@ nonlinear solvers:
     type: TrustRegionSolver
     linear solver: cg
 
-
-# Domains scope
-
 domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: test/mesh_tri3_732.g
-      # file name: test/mesh_tri3_732.g
-      # file name: test/window_pain.g
-      # file name: test/mesh_10000.g
-
+      file name: test/cube_hex8.g
+  
     boundary conditions:
       displacement: 
-      - nodeset id: 3
+      - nodeset id: 1
         dof: 1
         function: zero_func
-      - nodeset id: 3
+      - nodeset id: 1
         dof : 2
         function: zero_func
       - nodeset id: 1
+        dof : 3
+        function: zero_func
+      - nodeset id: 2
         dof: 1
         function: zero_func
-      - nodeset id: 1
+      - nodeset id: 2
         dof: 2
         function: displacement_ramp
+      - nodeset id: 2
+        dof: 3
+        function: zero_func
 
     sections:
     - type: TotalLagrangeSection
       block id: 1
-      formulation: plane strain
+      formulation: default
       material: soft rubber
 
     # below is TODO
@@ -84,7 +81,5 @@ problems:
     type: ForwardProblem
     domain: domain_1
     solver: newton
-    # solver: trs
     results:
       output file name: output.e
-

@@ -99,5 +99,9 @@ function post_process_load_step!(problem::ForwardProblem)
   write_values(pp, NodalVariable, domain.time.current_time_step, "displ_x", pp.scratch_U[1, :])
   write_values(pp, NodalVariable, domain.time.current_time_step, "displ_y", pp.scratch_U[2, :])
 
+  if size(problem.domain.coords, 1) == 3
+    write_values(pp, NodalVariable, domain.time.current_time_step, "displ_z", pp.scratch_U[3, :])
+  end
+
   # TODO fill out more output
 end

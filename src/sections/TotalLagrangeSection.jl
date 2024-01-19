@@ -59,11 +59,13 @@ function residual(section::Section, U_el, X_el, q)
   state        = SVector{0, Float64}()
   # ∇N_X, JxW, _ = interpolants(section.fspace.ref_fe, section.formulation, X_el, q)
 
-  ∇N_ξ = ReferenceFiniteElements.shape_function_gradients(section.fspace.ref_fe, q)
-  J    = X_el * ∇N_ξ
-  J_inv = inv(J)
-  ∇N_X = (J_inv * ∇N_ξ')'
-  JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
+  # ∇N_ξ = ReferenceFiniteElements.shape_function_gradients(section.fspace.ref_fe, q)
+  # J    = X_el * ∇N_ξ
+  # J_inv = inv(J)
+  # ∇N_X = (J_inv * ∇N_ξ')'
+  # JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
+
+  ∇N_X, JxW = FiniteElementContainers.shape_function_gradient_and_volume(section.fspace.ref_fe, X_el, q)
 
   ∇u_q = FiniteElementContainers.modify_field_gradients(section.formulation, U_el * ∇N_X)
   F_q = ∇u_q + one(∇u_q)
@@ -128,11 +130,12 @@ function stiffness(section::Section, U_el, X_el, q)
   state        = SVector{0, Float64}()
   # ∇N_X, JxW, _ = interpolants(section.fspace.ref_fe, section.formulation, X_el, q)
 
-  ∇N_ξ = ReferenceFiniteElements.shape_function_gradients(section.fspace.ref_fe, q)
-  J    = X_el * ∇N_ξ
-  J_inv = inv(J)
-  ∇N_X = (J_inv * ∇N_ξ')'
-  JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
+  # ∇N_ξ = ReferenceFiniteElements.shape_function_gradients(section.fspace.ref_fe, q)
+  # J    = X_el * ∇N_ξ
+  # J_inv = inv(J)
+  # ∇N_X = (J_inv * ∇N_ξ')'
+  # JxW  = det(J) * ReferenceFiniteElements.quadrature_weights(section.fspace.ref_fe, q)
+  ∇N_X, JxW = FiniteElementContainers.shape_function_gradient_and_volume(section.fspace.ref_fe, X_el, q)
 
   ∇u_q = FiniteElementContainers.modify_field_gradients(section.formulation, U_el * ∇N_X)
   F_q = ∇u_q + one(∇u_q)

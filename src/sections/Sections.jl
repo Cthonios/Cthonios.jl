@@ -49,6 +49,9 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
       @info "      $(rpad(key, 20)) = $val"
     end
     @warn "Defaulting to fully integrated element, e.g. q_degree = 2"
+    # q_degree = 1
+
+
     block_id = section[Symbol("block id")]
     @assert block_id in block_ids
     formulation = section[:formulation]
@@ -62,12 +65,18 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     fspace  = NonAllocatedFunctionSpace(dof, conns, q_degree, elem_type)
 
     # setup formulation for seeding/extracting material point stuff
-    if formulation == "plane strain"
+    if formulation == "default"
+      if FiniteElementContainers.num_dimensions(mesh) == 3
+        form = FiniteElementContainers.ThreeDimensional()
+      else
+        @assert false "Unsupported formulation"
+      end
+    elseif formulation == "plane strain"
       form = FiniteElementContainers.PlaneStrain()
-    elseif formulation == "three dimensional" 
-      form = FiniteElementContainers.ThreeDimensional()
+    # elseif formulation == "three dimensional" 
+    #   form = FiniteElementContainers.ThreeDimensional()
     else
-      @assert false "Unsupported type"
+      @assert false "Unsupported formulaiton type"
     end
 
     # setup material
