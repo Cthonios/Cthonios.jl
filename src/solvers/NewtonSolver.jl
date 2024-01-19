@@ -87,7 +87,7 @@ function solve!(
   U = create_fields(domain)
 
   @timeit timer(common) "Update BCs" update_bcs!(U, domain, domain.coords)
-  @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U, common)
+  @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
 
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
@@ -95,7 +95,7 @@ function solve!(
     @timeit timer(common) "Residual" update_residual!(solver.linear_solver, domain, Uu, U)
 
     if solver.settings.update_stiffness_each_iteration && n > 2
-      @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U, common)
+      @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
     end
 
     # @timeit timer(common) "Linear solve" sol = solve(solver.linear_solver)
