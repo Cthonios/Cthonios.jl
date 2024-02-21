@@ -5,95 +5,188 @@ using Enzyme
 using EnzymeCore
 using LinearAlgebra
 
-function Cthonios.residual!(
-  W::V1, dW::V1,
-  domain::Cthonios.QuasiStaticDomain, 
-  Uu::V1, dUu::V1, 
-  U::V2, dU::V2,
-  ::EnzymeCore.ReverseMode
-) where {V1, V2}
-  # autodiff_deferred(Reverse, energy!, Duplicated(W, dW), domain, Duplicated(Uu, dUu))
 
-  autodiff_deferred(
-    Reverse, Cthonios.energy!,
-    Duplicated(W, dW),
-    domain,
-    Duplicated(Uu, dUu),
-    Duplicated(U, dU)
-    # U
+# method for full gradients of everything
+function Cthonios.gradient(domain::Cthonios.QuasiStaticDomain, backend)
+  # primals
+  Uu = domain.domain_cache.Uu
+  U = domain.domain_cache.U
+  state = domain.domain_cache.state
+  props = domain.domain_cache.props
+  X = domain.coords
+  Π = zeros(eltype(U), 1)
+
+  # gradients
+  dUu = similar(Uu)
+  dU = similar(U)
+  dstate = similar(state)
+  dprops = similar(props)
+  dX = similar(X)
+  dΠ = similar(Π)
+
+  # seeding
+  dUu .= zero(eltype(dUu))
+  dU .= zero(eltype(dU))
+  dstate .= zero(eltype(dstate))
+  dprops .= zero(eltype(dprops))
+  dX .= zero(eltype(dX))
+  dΠ .= one(eltype(dΠ))
+
+  # calculate gradient
+  Cthonios.gradient!(
+    dΠ, dU, dUu, dstate, dprops, dX,
+    Π, U, domain, Uu, state, props, X,
+    backend
   )
 end
 
-function residual_dot_v!(
-  r_dot_v::V,
-  W::V, dW::V,
-  domain::Cthonios.QuasiStaticDomain, 
-  Uu::V, dUu::V,
-  v::V,
-  mode::EnzymeCore.ReverseMode
-) where V <: AbstractVector
-
-  Cthonios.residual!(W, dW, domain, Uu, dUu, mode)
-  r_dot_v[1] = dot(dUu, v)
-  nothing
+function Cthonios.gradient!(
+  dΠ, dU, dUu, dstate, dprops, dX,
+  Π, U, domain, Uu, state, props, X,
+  backend
+)
+  autodiff_deferred(
+    Reverse, Cthonios.energy!,
+    Duplicated(Π, dΠ),
+    Duplicated(U, dU),
+    Const(domain),
+    Duplicated(Uu, dUu),
+    Duplicated(state, dstate),
+    Duplicated(props, dprops),
+    Duplicated(X, dX),
+    Const(backend)
+  )
+  return nothing
 end
 
-# function Cthonios.residual(domain::Cthonios.QuasiStaticDomain, Uu::V, mode::EnzymeCore.ReverseMode) where V <: AbstractVector
-#   dUu = zeros(eltype(Uu), length(Uu))
-#   W = [0.0]
-#   dW = [1.0]
-#   Cthonios.residual!(W, dW, domain, Uu, dUu, mode)
-#   return dUu
-# end
+function Cthonios.residual(domain::Cthonios.QuasiStaticDomain)
+  # primals
+  Uu = domain.domain_cache.Uu
+  U = domain.domain_cache.U
+  state = domain.domain_cache.state
+  props = domain.domain_cache.props
+  X = domain.coords
+  Π = zeros(eltype(U), 1)
 
-function Cthonios.residual(
-  domain::Cthonios.QuasiStaticDomain, 
-  Uu::V1, U::V2, 
-  mode::EnzymeCore.ReverseMode
-) where {V1, V2}
+  # gradients
+  dUu = similar(Uu)
   dU = similar(U)
-  dU .= 0.0
-  dUu = zeros(eltype(Uu), length(Uu))
-  W = [0.0]
-  dW = [1.0]
-  Cthonios.residual!(W, dW, domain, Uu, dUu, U, dU, mode)
+  dΠ = similar(Π)
+
+  # seeding
+  dUu .= zero(eltype(dUu))
+  dU .= zero(eltype(dU))
+  dΠ .= one(eltype(dΠ))
+
+  # use in place method
+  Cthonios.residual!(dΠ, dU, dUu, Π, U, domain, Uu, state, props, X)
+
   return dUu
 end
 
-function Cthonios.hvp_energy_u(
-  domain::Cthonios.QuasiStaticDomain, 
-  Uu::V1, U::V2
-) where {V1, V2}
+function Cthonios.residual!(
+  dΠ, dU, dUu,
+  Π, U, domain, Uu, state, props, X
+)
+  autodiff(
+    Reverse, Cthonios.energy!,
+    Duplicated(Π, dΠ),
+    Duplicated(U, dU),
+    Const(domain),
+    Duplicated(Uu, dUu),
+    Const(state),
+    Const(props),
+    Const(X)
+  )
+  return nothing
+end
 
+function Cthonios.residual_dot_v!(
+  Rv, dΠ, dU, dUu,
+  Π, U, domain, Uu, state, props, X, v
+)
+  Cthonios.residual!(dΠ, dU, dUu, Π, U, domain, Uu, state, props, X)
+  Rv[1] = dot(dUu, v)
+  return nothing
+end
+
+function Cthonios.hvp(domain::Cthonios.QuasiStaticDomain, v)
   # primals
-  W = [0.0]
+  Uu = domain.domain_cache.Uu
+  U = domain.domain_cache.U
+  state = domain.domain_cache.state
+  props = domain.domain_cache.props
+  X = domain.coords
+  Π = zeros(eltype(U), 1)
+  Rv = zeros(eltype(U), 1)
 
-  # Reverse
-  bW = [1.0]
+  # gradients
+  bUu = similar(Uu)
   bU = similar(U)
-  bU .= 0.0
-  bUu = zeros(eltype(Uu), length(Uu))
-  
-  # Forward
-  dW = [0.0]
-  dUu = zeros(eltype(Uu), length(Uu))
-  dUu[1] = 1.0
-  dU = similar(U)
-  dU .= 0.0
+  bΠ = similar(Π)
+  bRv = similar(Rv)
 
-  # Forward over Reverse
-  dbW = [0.0]
-  dbUu = zeros(eltype(Uu), length(Uu))
+  dUu = similar(Uu)
+  dU = similar(U)
+  dΠ = similar(Π)
+  dRv = similar(Rv)
+
+  dbUu = similar(Uu)
   dbU = similar(U)
-  U .= 0.0
+  dbΠ = similar(Π)
+  dbRv = similar(Rv)
+
+  # seeding
+  bUu .= zero(eltype(bUu))
+  bU .= zero(eltype(bU))
+  bΠ .= one(eltype(bΠ))
+  bRv .= one(eltype(bRv))
+
+  dUu .= one(eltype(dUu))
+  dU  .= zero(eltype(dU))
+  dΠ .= zero(eltype(dΠ))
+  dRv .= zero(eltype(dRv))
+
+  dbUu .= zero(eltype(dbUu))
+  dbU .= zero(eltype(dbU))
+  dbΠ .= zero(eltype(dbΠ))
+  dbRv .= zero(eltype(dbRv))
+
+  # use in place method
+  # Cthonios.residual_dot_v!(Rv, bΠ, bU, bUu, Π, U, domain, Uu, state, props, X, v)
+  # Rv
+
+  # autodiff(
+  #   Forward,
+  #   Cthonios.residual_dot_v!,
+  #   Duplicated(Duplicated(Rv, bRv), Duplicated(dRv, dbRv)),
+  #   Duplicated(Duplicated(Π, bΠ), Duplicated(dΠ, dbΠ)),
+  # )
+
+  # autodiff(
+  #   Forward,
+  #   (a, b, c, d, e, f, g) -> autodiff_deferred(Reverse, Cthonios.energy!, a, b, c, d, e, f, g),
+  #   Duplicated(Duplicated(Π, bΠ), Duplicated(dΠ, dbΠ)),
+  #   Duplicated(Duplicated(U, bU), Duplicated(dU, dbU)),
+  #   Const(domain),
+  #   Duplicated(Duplicated(Uu, bUu), Duplicated(dUu, dbUu)),
+  #   Const(state),
+  #   Const(props),
+  #   Const(X)  
+  # )
 
   autodiff(
     Forward,
-    (x, y, z) -> autodiff_deferred(Reverse, Cthonios.energy!, x, domain, y, z),
-    Duplicated(Duplicated(W, bW), Duplicated(dW, dbW)),
-    Duplicated(Duplicated(Uu, bUu), Duplicated(dUu, dbUu)),
-    Duplicated(Duplicated(U, bU), Duplicated(dU, dbU)) 
+    Cthonios.energy!,
+    Duplicated(Π, dΠ),
+    Duplicated(U, dU),
+    Const(domain),
+    Duplicated(Uu, dUu),
+    Const(state),
+    Const(props),
+    Const(X)  
   )
+  dU
 end
 
 end # module

@@ -87,15 +87,19 @@ function solve!(
   U = create_fields(domain)
 
   @timeit timer(common) "Update BCs" update_bcs!(U, domain, domain.coords)
-  @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
+  # @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
 
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     # update_residual!(solver.linear_solver, domain, Uu)
-    @timeit timer(common) "Residual" update_residual!(solver.linear_solver, domain, Uu, U)
+    # @timeit timer(common) "Residual" update_residual!(solver.linear_solver, domain, Uu, U)
 
-    if solver.settings.update_stiffness_each_iteration && n > 2
-      @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
+    # if solver.settings.update_stiffness_each_iteration && n > 2
+    #   @timeit timer(common) "Stiffness" update_stiffness!(solver.linear_solver, domain, Uu, U)
+    # end
+
+    @timeit timer(common) "Residual and stiffness" begin 
+      update_residual_and_stiffness!(solver.linear_solver, domain, Uu, U)
     end
 
     # @timeit timer(common) "Linear solve" sol = solve(solver.linear_solver)
@@ -124,11 +128,26 @@ function solve!(
     # if norm_R <= 1e-12 || norm_ΔUu <= 1e-12
     if norm_R   <= solver.settings.absolute_tolerance ||
        norm_ΔUu <= solver.settings.absolute_tolerance
-      break
+      # break
+      return nothing
     end
 
     if (norm_R / norm_R0) <= solver.settings.relative_tolerance
-      break
+      # break
+      return nothing
     end
   end
+
+  max_newton_steps_exception()
+end
+
+struct MaxNewtonStepsException <: Exception
+end
+
+function Base.show(io::IO, ::MaxNewtonStepsException)
+  println(io, "Maximum number of newton steps reached!")
+end
+
+function max_newton_steps_exception()
+  throw(MaxNewtonStepsException())
 end

@@ -4,6 +4,8 @@ module Cthonios
 
 # dependencies
 using ArgParse
+using Atomix
+using ComponentArrays
 using ConstitutiveModels
 using DocStringExtensions
 using Exodus
@@ -11,8 +13,8 @@ using FiniteElementContainers
 using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
+using KernelAbstractions
 using LinearAlgebra
-# using LinearSolve
 using Logging
 using LoggingExtras
 using Parameters
@@ -56,6 +58,7 @@ include("TimeSteppers.jl")
 
 # Level 3 stuff
 include("domains/Domains.jl")
+include("Mechanics.jl")
 include("solvers/NonlinearSolvers.jl")
 
 # Finally problems
