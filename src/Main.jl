@@ -6,10 +6,7 @@ cli_options = ArgParseSettings()
     required = true
 end
 
-# main function, eventually add a CLI wrapper
-function julia_main()::Cint
-  parsed_args = parse_args(ARGS, cli_options)
-  input_file = parsed_args["input-file"]
+function cthonios_main(input_file::String)
   log_file_name = splitext(input_file)[1] * ".log"
 
   common = CthoniosCommon(log_file_name)
@@ -33,7 +30,18 @@ function julia_main()::Cint
     new_section("Timings")
     @info timer(common)
   end
+end
 
+# main function, eventually add a CLI wrapper
+function julia_main()::Cint
+  parsed_args = parse_args(ARGS, cli_options)
+
+  # unpack args
+  input_file = parsed_args["input-file"]
+
+  # run Cthonios
+  cthonios_main(input_file)
+  
   return 0
 end
 

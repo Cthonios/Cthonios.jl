@@ -10,7 +10,6 @@ using ConstitutiveModels
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
-using ForwardDiff
 using FunctionWrappers
 using IterativeSolvers
 using KernelAbstractions

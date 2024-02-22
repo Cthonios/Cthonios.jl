@@ -130,7 +130,6 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     props[name] = props_temp
     state[name] = state_temp
 
-    @show typeof(props_temp)
     n = n + 1
   end
   return NamedTuple(sections), ComponentArray(props), ComponentArray(state)

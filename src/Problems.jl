@@ -43,8 +43,6 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
   return ForwardProblem(domain, solver, post_processor)
 end
 
-ForwardProblem(f::String) = ForwardProblem(parse_input_file(f))
-
 function Base.show(io::IO, problem::ForwardProblem)
   println(io, "ForwardProblem")
   println(io, "  Domain", problem.domain)
