@@ -1,13 +1,13 @@
 # Global scope
 functions:
   displacement_ramp: 
-    type: ScalarFunction{3, Float64, Float64, Float64}
+    type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 1.0 * t
   displacement_ramp_2: 
-    type: ScalarFunction{3, Float64, Float64, Float64}
+    type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> -0.25 * t
   zero_func:
-    type: ScalarFunction{3, Float64, Float64, Float64}
+    type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 0.0
 
 materials:
@@ -24,14 +24,14 @@ materials:
       shear modulus: 1.0
 
 linear solvers:
-  cg:
-    type: default
-    # preconditioner: cholesky
+  direct:
+    type: DirectLinearSolver
+    factorization method: cholesky
 
 nonlinear solvers:
   newton:
     type: NewtonSolver
-    linear solver: cg
+    linear solver: direct
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
     max steps: 100
@@ -47,34 +47,36 @@ domains:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
       # file name: test/cube_hex8.g
-      file name: test/cube_tet4_8151.g
+      # file name: test/cube_tet4_8151.g
+      file name: test/mesh_10000.g
 
     boundary conditions:
       displacement: 
-      - nodeset id: 1
+      - nodeset id: 3
         dof: 1
         function: zero_func
-      - nodeset id: 1
+      - nodeset id: 3
         dof : 2
         function: zero_func
-      - nodeset id: 1
-        dof: 3
-        function: zero_func
+      # - nodeset id: 1
+      #   dof: 3
+      #   function: zero_func
       #
-      - nodeset id: 2
+      - nodeset id: 1
         dof: 1
         function: zero_func
-      - nodeset id: 2
+      - nodeset id: 1
         dof: 2
         function: displacement_ramp
-      - nodeset id: 2
-        dof: 3
-        function: zero_func
+      # - nodeset id: 2
+      #   dof: 3
+      #   function: zero_func
 
     sections:
     - type: TotalLagrangeSection
       block id: 1
-      formulation: default
+      # formulation: default
+      formulation: plane strain
       material: soft rubber
 
     # below is TODO

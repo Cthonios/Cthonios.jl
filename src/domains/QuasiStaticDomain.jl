@@ -1,8 +1,7 @@
-struct QuasiStaticDomainCache{V1, V2, V3, V4} <: AbstractDomainCache
-  Uu::V1
-  U::V2
-  state::V3
-  props::V4
+struct QuasiStaticDomainCache{V1, V2, V3} <: AbstractDomainCache
+  U::V1
+  state::V2
+  props::V3
 end
 
 struct QuasiStaticDomain{
@@ -13,10 +12,9 @@ struct QuasiStaticDomain{
   BCDofs,
   BCFuncIDs,
   Sections,
-  Assembler,
   Time,
   DomainCache
-} <: AbstractDomain{Coords, Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections, Assembler, Time, DomainCache}
+} <: AbstractDomain{Coords, Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections, Time, DomainCache}
   coords::Coords
   dof::Dof
   funcs::Funcs
@@ -24,7 +22,6 @@ struct QuasiStaticDomain{
   bc_dofs::BCDofs
   bc_func_ids::BCFuncIDs
   sections::Sections
-  assembler::Assembler
   time::Time
   domain_cache::DomainCache
 end
@@ -52,21 +49,17 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   # section setup
   sections, props, state = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
 
-  # assembler setup
-  assembler = StaticAssembler(dof, map(x -> x.fspace, values(sections)))
-
   # time stepper setup
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
 
   # cache setup
-  Uu = FiniteElementContainers.create_unknowns(dof)
   U = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(Uu, U, state, props)
+  domain_cache = QuasiStaticDomainCache(U, state, props)
 
   return QuasiStaticDomain(
     coords, dof, funcs, 
     disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
-    sections, assembler, time, domain_cache
+    sections, time, domain_cache
   )
 end
 
@@ -102,11 +95,6 @@ properly set in the domain coming in
 function update_unknown_dofs!(d::QuasiStaticDomain)
   # update the dofs
   FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
-  FiniteElementContainers.update_unknown_dofs!(d.assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
-
-  # now resize the caches
-  resize!(d.domain_cache.Uu, length(d.dof.unknown_dofs))
-  # FiniteElementContainers.update_unknown_dofs!(d.assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
 end
 
 function update_bcs!(U, domain::QuasiStaticDomain, Xs)

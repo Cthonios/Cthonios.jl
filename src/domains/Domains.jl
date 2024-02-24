@@ -8,7 +8,6 @@ abstract type AbstractDomain{
   BCDofs,
   BCFuncIDs,
   Sections,
-  Assembler,
   Time,
   DomainCache
 } end

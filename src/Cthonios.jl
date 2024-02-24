@@ -4,7 +4,6 @@ module Cthonios
 
 # dependencies
 using ArgParse
-using Atomix
 using ComponentArrays
 using ConstitutiveModels
 using DocStringExtensions
@@ -57,7 +56,7 @@ include("TimeSteppers.jl")
 
 # Level 3 stuff
 include("domains/Domains.jl")
-include("Mechanics.jl")
+include("mechanics/Mechanics.jl")
 include("solvers/NonlinearSolvers.jl")
 
 # Finally problems

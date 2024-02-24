@@ -30,11 +30,11 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
     # update bcs once here, TODO this will fail when we start disabling bcs
     # we need to do this for the solver, and also need to probably reinit
     # thie linear solver when we change bcs
-    @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(domain)
+    # @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(domain)
 
     # set up solver
     @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain)
-
+    @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(solver, domain)
     @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
       get_mesh_file_name(input_settings), get_output_file_name(input_settings),
       domain.dof, size(domain.coords, 1)

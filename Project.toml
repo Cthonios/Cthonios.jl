@@ -5,7 +5,7 @@ version = "0.1.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
-Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -42,7 +42,6 @@ CthoniosEnzymeExt = ["Enzyme"]
 AbstractDifferentiation = "0.6"
 Aqua = "0.8"
 ArgParse = "1"
-Atomix = "0.1.0"
 ComponentArrays = "0.15"
 ConstitutiveModels = "0.1"
 DocStringExtensions = "0.9"
