@@ -27,6 +27,11 @@ linear solvers:
   direct:
     type: DirectLinearSolver
     factorization method: cholesky
+  cg:
+    type: IterativeSolversCG
+    absolute tolerance: 1.0e-8
+    max iterations: 100
+    # preconditioner
 
 nonlinear solvers:
   newton:
@@ -35,10 +40,6 @@ nonlinear solvers:
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
     max steps: 100
-  trs:
-    type: TrustRegionSolver
-    linear solver: cg
-
 
 # Domains scope
 
@@ -46,36 +47,23 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      # file name: test/cube_hex8.g
-      # file name: test/cube_tet4_8151.g
       file name: test/mesh_10000.g
 
     boundary conditions:
       displacement: 
-      - nodeset id: 3
-        dof: 1
+      - nodeset ids: [3]
+        dofs: [1, 2]
         function: zero_func
-      - nodeset id: 3
-        dof : 2
+      - nodeset ids: [1]
+        dofs: [1]
         function: zero_func
-      # - nodeset id: 1
-      #   dof: 3
-      #   function: zero_func
-      #
-      - nodeset id: 1
-        dof: 1
-        function: zero_func
-      - nodeset id: 1
-        dof: 2
+      - nodeset ids: [1]
+        dofs: [2]
         function: displacement_ramp
-      # - nodeset id: 2
-      #   dof: 3
-      #   function: zero_func
 
     sections:
     - type: TotalLagrangeSection
       block id: 1
-      # formulation: default
       formulation: plane strain
       material: soft rubber
 
