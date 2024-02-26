@@ -1,9 +1,10 @@
-struct QuasiStaticDomainCache{V1, V2, V3, V4, V5} <: AbstractDomainCache
-  U::V1
-  state::V2
-  props::V3
-  Π::V4
-  V::V5 # for working with krylov methods
+struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6} <: AbstractDomainCache
+  X::V1
+  U::V2
+  state::V3
+  props::V4
+  Π::V5
+  V::V6 # for working with krylov methods
 end
 
 struct QuasiStaticDomain{
@@ -17,7 +18,7 @@ struct QuasiStaticDomain{
   Time,
   DomainCache
 } <: AbstractDomain{Coords, Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections, Time, DomainCache}
-  coords::Coords
+  reference_coords::Coords
   dof::Dof
   funcs::Funcs
   bc_nodes::BCNodes
@@ -55,9 +56,10 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
 
   # cache setup
+  X = copy(coords)
   U = FiniteElementContainers.create_fields(dof)
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(U, state, props, zeros(Float64, 1), V)
+  domain_cache = QuasiStaticDomainCache(X, U, state, props, zeros(Float64, 1), V)
 
   return QuasiStaticDomain(
     coords, dof, funcs, 

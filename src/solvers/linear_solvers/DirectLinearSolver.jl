@@ -35,7 +35,7 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   # also need to assemble once
   U = domain.domain_cache.U
   Uu = FiniteElementContainers.create_unknowns(domain.dof) # TODO remove this allocation
-  X = domain.coords
+  X = domain.domain_cache.X
   update_fields!(U, domain, X, Uu)
   
   sections = domain.sections

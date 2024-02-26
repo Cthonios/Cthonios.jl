@@ -82,9 +82,10 @@ function solve!(
 )
   # unpack cached arrays from solver and domain
   Uu, ΔUu = solver.Uu, solver.ΔUu
+  X = domain.domain_cache.X
   U = domain.domain_cache.U
 
-  @timeit timer(common) "Update BCs" update_bcs!(U, domain, domain.coords)
+  @timeit timer(common) "Update BCs" update_bcs!(U, domain, X)
 
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
