@@ -32,14 +32,20 @@ linear solvers:
     absolute tolerance: 1.0e-8
     max iterations: 100
     # preconditioner
+  matrix_free_iterative_solver:
+    type: IterativeLinearSolver
 
 nonlinear solvers:
   newton:
     type: NewtonSolver
     linear solver: direct
+    # linear solver: matrix_free_iterative_solver
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
     max steps: 100
+  trs:
+    type: TrustRegionSolver
+    linear solver: direct
 
 # Domains scope
 
@@ -47,7 +53,7 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: test/mesh_10000.g
+      file name: test/mesh_tri3_732.g
 
     boundary conditions:
       displacement: 
@@ -71,15 +77,15 @@ domains:
     time stepper:
       type: ConstantTimeStepper
       start time: 0.0
-      end time: 1.0
+      end time: 0.5
       time step: 0.01
 
 problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
-    solver: newton
-    # solver: trs
+    # solver: newton
+    solver: trs
     results:
       output file name: output.e
 

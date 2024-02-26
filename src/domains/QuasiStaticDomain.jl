@@ -1,7 +1,9 @@
-struct QuasiStaticDomainCache{V1, V2, V3} <: AbstractDomainCache
+struct QuasiStaticDomainCache{V1, V2, V3, V4, V5} <: AbstractDomainCache
   U::V1
   state::V2
   props::V3
+  Π::V4
+  V::V5 # for working with krylov methods
 end
 
 struct QuasiStaticDomain{
@@ -54,7 +56,8 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
 
   # cache setup
   U = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(U, state, props)
+  V = FiniteElementContainers.create_fields(dof)
+  domain_cache = QuasiStaticDomainCache(U, state, props, zeros(Float64, 1), V)
 
   return QuasiStaticDomain(
     coords, dof, funcs, 

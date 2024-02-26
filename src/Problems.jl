@@ -46,7 +46,7 @@ end
 function Base.show(io::IO, problem::ForwardProblem)
   println(io, "ForwardProblem")
   println(io, "  Domain", problem.domain)
-  println(io, "  Solver", problem.solver)
+  println(io, "\n  Solver\n", problem.solver)
 end
 
 function solve!(problem::ForwardProblem, common::CthoniosCommon)

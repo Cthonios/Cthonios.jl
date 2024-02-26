@@ -76,16 +76,6 @@ function logger(::NewtonSolver, n, norm_R, norm_R0, norm_U)
   @info @sprintf "Iteration %5i: ||R|| = %1.6e    ||R/R0|| = %1.6e    ||ΔUu|| = %1.6e" n norm_R (norm_R / norm_R0) norm_U
 end
 
-function update_unknown_dofs!(solver::NewtonSolver, d::QuasiStaticDomain)
-  # update the dofs
-  FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
-  FiniteElementContainers.update_unknown_dofs!(solver.linear_solver.assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
-
-  # now resize the caches
-  resize!(solver.Uu, length(d.dof.unknown_dofs))
-  resize!(solver.ΔUu, length(d.dof.unknown_dofs))
-end
-
 function solve!(
   solver::NewtonSolver, domain::QuasiStaticDomain,
   common::CthoniosCommon
@@ -99,7 +89,7 @@ function solve!(
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     @timeit timer(common) "Residual and stiffness" begin 
-      update_residual_and_stiffness!(solver.linear_solver, domain, Uu, U)
+      internal_force_and_stiffness!(solver.linear_solver, domain, Uu)
     end
 
     @timeit timer(common) "Linear solve" solve!(ΔUu, solver.linear_solver, domain, common)

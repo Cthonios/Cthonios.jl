@@ -13,6 +13,7 @@ using FunctionWrappers
 using IterativeSolvers
 using KernelAbstractions
 using LinearAlgebra
+using LinearOperators
 using Logging
 using LoggingExtras
 using Parameters
