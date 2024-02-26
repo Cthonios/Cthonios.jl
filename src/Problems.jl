@@ -37,7 +37,7 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
     @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(solver, domain)
     @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
       get_mesh_file_name(input_settings), get_output_file_name(input_settings),
-      domain.dof, size(domain.reference_coords, 1)
+      domain.dof, size(domain.domain_cache.X, 1)
     )
   end
   return ForwardProblem(domain, solver, post_processor)
@@ -95,7 +95,7 @@ function post_process_load_step!(problem::ForwardProblem)
   write_values(pp, NodalVariable, domain.time.current_time_step, "displ_x", pp.scratch_U[1, :])
   write_values(pp, NodalVariable, domain.time.current_time_step, "displ_y", pp.scratch_U[2, :])
 
-  if size(problem.domain.reference_coords, 1) == 3
+  if size(problem.domain.domain_cache.X, 1) == 3
     write_values(pp, NodalVariable, domain.time.current_time_step, "displ_z", pp.scratch_U[3, :])
   end
 

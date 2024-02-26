@@ -1,7 +1,6 @@
 abstract type AbstractDomainCache end
 
 abstract type AbstractDomain{
-  Coords,
   Dof,
   Funcs,
   BCNodes,
