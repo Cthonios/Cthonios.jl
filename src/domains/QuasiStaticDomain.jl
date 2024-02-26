@@ -1,10 +1,24 @@
-struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6} <: AbstractDomainCache
+struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7} <: AbstractDomainCache
   X::V1
   U::V2
   state::V3
   props::V4
   Π::V5
-  V::V6 # for working with krylov methods
+  Πs::V6 # for energy kernels
+  V::V7 # for working with krylov methods
+end
+
+function Base.similar(cache::QuasiStaticDomainCache)
+  @unpack X, U, state, props, Π, Πs, V = cache
+  return QuasiStaticDomainCache(
+    similar(X), similar(U), similar(state),
+    similar(props), similar(Π), similar(Πs), similar(V)
+  )
+end
+
+function unpack(cache::QuasiStaticDomainCache)
+  @unpack X, U, state, props, Π, Πs, V = cache
+  return X, U, state, props, Π, Πs, V
 end
 
 struct QuasiStaticDomain{
@@ -48,7 +62,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   )
   
   # section setup
-  sections, props, state = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
+  sections, props, state, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
 
   # time stepper setup
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
@@ -57,7 +71,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   # X = copy(coords)
   U = FiniteElementContainers.create_fields(dof)
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), V)
+  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, V)
 
   return QuasiStaticDomain(
     dof, funcs, 

@@ -40,6 +40,9 @@ function setup(section::Section, inputs::Dict)
   #   state_init = SVector{1, eltype(state_init)}(zero(eltype(state_init)))
   # end
   
+  # scratch array for energy kernels
+  Πs = ElementField{NQ, NE, Vector, Float64}(undef)
+  Πs .= 0.0
   props = ElementField{length(props_init), NE, Matrix, eltype(props_init)}(undef)
   # state = QuadratureField{length(state_init), NQ, NE, StructVector, typeof(state_init)}(undef)
 
@@ -53,7 +56,7 @@ function setup(section::Section, inputs::Dict)
     end
   end
 
-  return props, state
+  return props, state, Πs
 end
 
 include("TotalLagrangeSection.jl")
@@ -73,6 +76,7 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
   sections = Dict{Symbol, Any}()
   state = Dict{Symbol, Any}()
   props = Dict{Symbol, Any}()
+  Πs = Dict{Symbol, Any}()
 
   n = 1
 
@@ -98,6 +102,7 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     # setup up conn for fspace
     conns = convert.(Int64, element_connectivity(mesh, block_id))
     conns = Connectivity{size(conns), Vector}(conns)
+    # conns = Connectivity{size(conns, 1), size(conns, 2), Vector, SVector}(conns)
     elem_type = FiniteElementContainers.element_type(mesh, block_id)
     fspace  = NonAllocatedFunctionSpace(dof, conns, q_degree, elem_type)
 
@@ -122,15 +127,16 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     section_temp = section_type(fspace, form, model)
 
     # TODO more to do here
-    props_temp, state_temp = setup(section_temp, section[:material][:properties])
+    props_temp, state_temp, Πs_temp = setup(section_temp, section[:material][:properties])
 
     # store section
     name = Symbol("section_$n")
     sections[name] = section_temp
     props[name] = props_temp
     state[name] = state_temp
+    Πs[name] = Πs_temp
 
     n = n + 1
   end
-  return NamedTuple(sections), ComponentArray(props), ComponentArray(state)
+  return NamedTuple(sections), ComponentArray(props), ComponentArray(state), ComponentArray(Πs)
 end

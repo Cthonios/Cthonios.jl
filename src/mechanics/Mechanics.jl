@@ -146,7 +146,11 @@ function energy_internal_force_and_stiffness(
   return w * det(J) * ψ_q, w * det(J) * G * P_v, w * det(J) * G * A_v * G'
 end
 
+function energy_gradient end
+
 include("Kernels.jl")
+include("KAKernels.jl")
 include("SectionIterators.jl")
 # include("Utils.jl")
 include("DomainWrappers.jl")
+include("Sensitivities.jl")

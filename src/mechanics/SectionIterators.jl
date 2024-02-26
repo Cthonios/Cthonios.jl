@@ -13,6 +13,49 @@ function energy!(Π, U, sections, state, props, X)
   return nothing
 end 
 
+function energy!(Π, Πs, sections, U, state, props, X, backend)
+
+  # kernel setup
+  kernel! = energy_kernel!(backend)
+
+  for (name, section) in pairs(sections)
+    NQ = FiniteElementContainers.num_q_points(section)
+    NE = num_elements(section)
+    Πs_temp    = @views Πs[name]
+    state_temp = @views state[name]
+    props_temp = @views props[name]
+    kernel!(
+      Πs_temp, 
+      section,
+      U, state_temp, props_temp, X,
+      ndrange=(NQ, NE)
+    )
+  end 
+  Π[1] = sum(Πs)
+  # Π[1] = 0.0
+  return nothing
+end 
+
+function kernel_iterator!(
+  assembler::StaticAssembler,  # outputs
+  kernel!,                     # kernel to dispatch on
+  sections, U, state, props, X # inputs to kernel
+)
+  block_count = 1 # needed for the in place assembler from FiniteElementContainers
+  for (name, section) in pairs(sections)
+    NQ = FiniteElementContainers.num_q_points(section)
+    NE = num_elements(section)
+    state_temp = @views state[name]
+    props_temp = @views props[name]
+    kernel!(
+      assembler, # outputs of kernel 
+      section, U, state_temp, props_temp, X, block_count, # inputs of kernel
+      ndrange=(NQ, NE)
+    )
+    block_count = block_count + 1
+  end
+end
+
 function internal_force!(R, U, sections, state, props, X)
   R .= zero(eltype(R))
   for (name, section) in pairs(sections)

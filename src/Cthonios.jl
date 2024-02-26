@@ -7,6 +7,8 @@ using ArgParse
 using ComponentArrays
 using ConstitutiveModels
 using DocStringExtensions
+using Enzyme
+using EnzymeCore
 using Exodus
 using FiniteElementContainers
 using FunctionWrappers

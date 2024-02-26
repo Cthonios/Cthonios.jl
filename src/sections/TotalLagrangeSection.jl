@@ -25,15 +25,3 @@ function Base.show(io::IO, section::TotalLagrangeSection)
         "            Formulation               = $(section.formulation)\n",
         "            Material model            = $(section.model)\n")
 end
-
-# function energy(section::Section, U_el, state, props, X_el)
-#   ψ_e = mapreduce(
-#     energy, +, 
-#     (U_el,), state, (props,), (X_el,), 
-#     shape_function_values(section),
-#     shape_function_gradients(section),
-#     quadrature_weights(section)
-#   )
-#   return ψ_e
-# end
-
