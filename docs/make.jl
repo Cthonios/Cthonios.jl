@@ -5,12 +5,12 @@ DocMeta.setdocmeta!(Cthonios, :DocTestSetup, :(using Cthonios); recursive=true)
 
 makedocs(;
     modules=[Cthonios],
-    authors="Craig M. Hamel <cmhamel32@gmail.com> and contributors",
-    repo="https://github.com/cmhamel/Cthonios.jl/blob/{commit}{path}#{line}",
+    authors="Craig M. Hamel <cthonios32@gmail.com> and contributors",
+    repo="https://github.com/Cthonios/Cthonios.jl/blob/{commit}{path}#{line}",
     sitename="Cthonios.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://cmhamel.github.io/Cthonios.jl",
+        canonical="https://cthonios.github.io/Cthonios.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -20,6 +20,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/cmhamel/Cthonios.jl",
+    repo="github.com/Cthonios/Cthonios.jl",
     devbranch="main",
 )
