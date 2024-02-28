@@ -2,7 +2,6 @@
   max_steps::Int = 20
   relative_tolerance::Float64 = 1.0e-8
   absolute_tolerance::Float64 = 1.0e-8
-  update_stiffness_each_iteration::Bool = false
 end
 
 function NewtonSolverSettings(input_settings::D) where D <: Dict
@@ -24,16 +23,9 @@ function NewtonSolverSettings(input_settings::D) where D <: Dict
     relative_tolerance = 1.0e-8
   end
 
-  if Symbol("update stiffness each iteration") in keys(input_settings)
-    update_stiffness_each_iteration = input_settings[Symbol("update stiffness each iteration")]
-  else
-    update_stiffness_each_iteration = false
-  end
-
   return NewtonSolverSettings(
     max_steps, 
-    relative_tolerance, absolute_tolerance, 
-    update_stiffness_each_iteration
+    relative_tolerance, absolute_tolerance
   )
 end
 
@@ -41,8 +33,7 @@ function Base.show(io::IO, settings::NewtonSolverSettings)
   print(io, "NewtonSolverSettings\n", 
             "        Max iterations                  = $(settings.max_steps)\n",
             "        Relative tolerance              = $(settings.relative_tolerance)\n",
-            "        Absolute tolerance              = $(settings.absolute_tolerance)\n",
-            "        Update stiffness each iteration = $(settings.update_stiffness_each_iteration)\n"
+            "        Absolute tolerance              = $(settings.absolute_tolerance)\n"
   )
 end
 
