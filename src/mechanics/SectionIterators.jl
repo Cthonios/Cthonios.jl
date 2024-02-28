@@ -56,12 +56,12 @@ function kernel_iterator!(
   end
 end
 
-function internal_force!(R, U, sections, state, props, X)
-  R .= zero(eltype(R))
+function internal_force!(f, U, sections, state, props, X)
+  f .= zero(eltype(f))
   for (name, section) in pairs(sections)
     state_temp = @views state[name]
     props_temp = @views props[name]
-    internal_force!(R, section, U, state_temp, props_temp, X)
+    internal_force!(f, section, U, state_temp, props_temp, X)
   end 
   return nothing
 end 
@@ -90,56 +90,57 @@ function stiffness_action!(Kv, U, sections, state, props, X, V)
 end
 
 # multi return outputs
-function internal_force_and_stiffness!(assembler, U, sections, state, props, X)
+function internal_force_and_stiffness!(f, assembler, U, sections, state, props, X)
   # kernel setup, TODO add backend as argument
-  backend = CPU()
-  kernel! = internal_force_and_stiffness_kernel!(backend)
+  # backend = CPU()
+  # kernel! = internal_force_and_stiffness_kernel!(backend)
 
-  assembler.residuals .= zero(eltype(assembler.residuals))
+  f .= zero(eltype(f))
   assembler.stiffnesses .= zero(eltype(assembler.stiffnesses))
   block_count = 1 # needed for the in place assembler from FiniteElementContainers
   for (name, section) in pairs(sections)
     state_temp = @views state[name]
     props_temp = @views props[name]
-    kernel!(assembler, section, U, state_temp, props_temp, X, block_count, ndrange=(FiniteElementContainers.num_q_points(section), num_elements(section)))
+    # kernel!(f, assembler, section, U, state_temp, props_temp, X, block_count, ndrange=(FiniteElementContainers.num_q_points(section), num_elements(section)))
+    internal_force_and_stiffness!(f, assembler, section, U, state_temp, props_temp, X, block_count)
     block_count = block_count + 1
   end 
   return nothing
 end 
 
-function energy_and_internal_force!(Π, assembler, U, sections, state, props, X)
+function energy_and_internal_force!(Π, f, U, sections, state, props, X)
   Π .= zero(eltype(Π))
-  assembler.residuals .= zero(eltype(assembler.residuals))
+  f .= zero(eltype(f))
   for (name, section) in pairs(sections)
     state_temp = @views state[name]
     props_temp = @views props[name]
-    energy_and_internal_force!(Π, assembler, section, U, state_temp, props_temp, X)
+    energy_and_internal_force!(Π, f, section, U, state_temp, props_temp, X)
   end
   return nothing
 end
 
-function energy_internal_force_and_stiffness!(Π, assembler, U, sections, state, props, X)
+function energy_internal_force_and_stiffness!(Π, f, assembler, U, sections, state, props, X)
   Π .= zero(eltype(Π))
-  assembler.residuals .= zero(eltype(assembler.residuals))
+  f .= zero(eltype(f))
   assembler.stiffnesses .= zero(eltype(assembler.stiffnesses))
   block_count = 1 # needed for the in place assembler from FiniteElementContainers
   for (name, section) in pairs(sections)
     state_temp = @views state[name]
     props_temp = @views props[name]
-    energy_internal_force_and_stiffness!(Π, assembler, section, U, state_temp, props_temp, X, block_count)
+    energy_internal_force_and_stiffness!(Π, f, assembler, section, U, state_temp, props_temp, X, block_count)
     block_count = block_count + 1
   end
   return nothing
 end
 
-function energy_internal_force_and_stiffness_action!(Π, R, Hv, U, sections, state, props, X, V)
+function energy_internal_force_and_stiffness_action!(Π, f, Hv, U, sections, state, props, X, V)
   Π .= zero(eltype(Π))
-  R .= zero(eltype(R))
+  f .= zero(eltype(f))
   Hv .= zero(eltype(Hv))
   for (name, section) in pairs(sections)
     state_temp = @views state[name]
     props_temp = @views props[name]
-    energy_internal_force_and_stiffness_action!(Π, R, Hv, section, U, state_temp, props_temp, X, V)
+    energy_internal_force_and_stiffness_action!(Π, f, Hv, section, U, state_temp, props_temp, X, V)
   end
   return nothing
 end

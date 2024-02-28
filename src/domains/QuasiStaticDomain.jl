@@ -1,24 +1,25 @@
-struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7} <: AbstractDomainCache
+struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainCache
   X::V1
   U::V2
   state::V3
   props::V4
   Π::V5
   Πs::V6 # for energy kernels
-  V::V7 # for working with krylov methods
+  f::V7  # for internal force
+  V::V8 # for working with krylov methods
 end
 
 function Base.similar(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, V = cache
+  @unpack X, U, state, props, Π, Πs, f, V = cache
   return QuasiStaticDomainCache(
     similar(X), similar(U), similar(state),
-    similar(props), similar(Π), similar(Πs), similar(V)
+    similar(props), similar(Π), similar(Πs), similar(f), similar(V)
   )
 end
 
 function unpack(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, V = cache
-  return X, U, state, props, Π, Πs, V
+  @unpack X, U, state, props, Π, Πs, f, V = cache
+  return X, U, state, props, Π, Πs, f, V
 end
 
 struct QuasiStaticDomain{
@@ -53,7 +54,6 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   ND        = FiniteElementContainers.num_dimensions(mesh_file) |> Int64
   NNodes    = FiniteElementContainers.num_nodes(mesh_file) |> Int64
   coords    = read_coordinates(mesh_file)
-  @info "Setting up vectorized DofManager"
   dof       = DofManager{ND, NNodes, Vector{Float64}}()
   
   # bc setup
@@ -70,8 +70,9 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   # cache setup
   # X = copy(coords)
   U = FiniteElementContainers.create_fields(dof)
+  f = FiniteElementContainers.create_fields(dof)
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, V)
+  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, f, V)
 
   return QuasiStaticDomain(
     dof, funcs, 

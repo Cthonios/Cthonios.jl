@@ -76,7 +76,7 @@ end
 end
 
 @kernel function internal_force_kernel!(
-  assembler::StaticAssembler, 
+  f, 
   section::TotalLagrangeSection,
   U, state, props, X, block_id
 )
@@ -90,14 +90,14 @@ end
   N, ∇N_ξ, w = interpolants(section, q)
 
   # run routine
-  R_q = internal_force(
+  f_q = internal_force(
     section.model, section.formulation,
     U_el, state_q, props_el, X_el,
     N, ∇N_ξ, w
   )
 
   # update arrays
-  FiniteElementContainers.assemble_atomic!(assembler, R_q, conn)
+  FiniteElementContainers.assemble_atomic!(f, f_q, conn)
 end
 
 @kernel function stiffness_kernel!(
@@ -126,6 +126,7 @@ end
 end
 
 @kernel function internal_force_and_stiffness_kernel!(
+  f,
   assembler::StaticAssembler, 
   section::TotalLagrangeSection,
   U, state, props, X, block_id
@@ -140,14 +141,14 @@ end
   N, ∇N_ξ, w = interpolants(section, q)
 
   # run routine
-  R_q, K_q = internal_force_and_stiffness(
+  f_q, K_q = internal_force_and_stiffness(
     section.model, section.formulation,
     U_el, state_q, props_el, X_el,
     N, ∇N_ξ, w
   )
 
   # update arrays
-  FiniteElementContainers.assemble_atomic!(assembler, R_q, conn)
+  FiniteElementContainers.assemble_atomic!(f, f_q, conn)
   FiniteElementContainers.assemble_atomic!(assembler, K_q, block_id, e)
 end
 

@@ -107,7 +107,7 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     fspace  = NonAllocatedFunctionSpace(dof, conns, q_degree, elem_type)
 
     # setup formulation for seeding/extracting material point stuff
-    if formulation == "default"
+    if formulation == "three dimensional"
       if FiniteElementContainers.num_dimensions(mesh) == 3
         form = FiniteElementContainers.ThreeDimensional()
       else
@@ -116,7 +116,7 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     elseif formulation == "plane strain"
       form = FiniteElementContainers.PlaneStrain()
     else
-      @assert false "Unsupported formulaiton type"
+      @assert false "Unsupported formulation type"
     end
 
     # setup material

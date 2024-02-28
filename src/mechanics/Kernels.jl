@@ -30,7 +30,7 @@ function energy(section::TotalLagrangeSection, U, state, props, X)
   return W
 end
 
-function internal_force!(R, section::TotalLagrangeSection, U, state, props, X)
+function internal_force!(f, section::TotalLagrangeSection, U, state, props, X)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NS = ConstitutiveModels.num_state_vars(section.model)
@@ -42,26 +42,22 @@ function internal_force!(R, section::TotalLagrangeSection, U, state, props, X)
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
     props_el = SVector{NP, eltype(props)}(@views props[:, e])
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-    R_el = zeros(SVector{ND * NN, eltype(R)})
+    f_el = zeros(SVector{ND * NN, eltype(f)})
     
     for q in 1:FiniteElementContainers.num_q_points(section)
       state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
-      R_q = internal_force(
+      f_q = internal_force(
         section.model, section.formulation,
         U_el, state_q, props_el, X_el,
         shape_function_values(section, q),
         shape_function_gradients(section, q),
         quadrature_weights(section, q)
       )
-      # @show size(temp)
-      # @assert false
-      R_el = R_el + R_q
+      f_el = f_el + f_q
     end
 
-    # TODO make a general method in FiniteElementContainers.jl
-    for n in 1:ND * NN
-      R[conn[n]] += R_el[n]
-    end
+    # assemble into global field
+    assemble!(f, f_el, conn)
   end
 end
 
@@ -134,7 +130,7 @@ function stiffness_action!(Kv, section::TotalLagrangeSection, U, state, props, X
   end
 end
 
-function energy_and_internal_force!(Π, assembler, section::TotalLagrangeSection, U, state, props, X)
+function energy_and_internal_force!(Π, f, section::TotalLagrangeSection, U, state, props, X)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NS = ConstitutiveModels.num_state_vars(section.model)
@@ -147,12 +143,11 @@ function energy_and_internal_force!(Π, assembler, section::TotalLagrangeSection
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
     props_el = SVector{NP, eltype(props)}(@views props[:, e])
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-
-    R_el = zeros(SVector{NDOF, eltype(U)})
+    f_el = zeros(SVector{NDOF, eltype(U)})
 
     for q in 1:FiniteElementContainers.num_q_points(section)
       state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
-      Π_q, R_q = energy_and_internal_force(
+      Π_q, f_q = energy_and_internal_force(
         section.model, section.formulation,
         U_el, state_q, props_el, X_el,
         shape_function_values(section, q),
@@ -160,15 +155,15 @@ function energy_and_internal_force!(Π, assembler, section::TotalLagrangeSection
         quadrature_weights(section, q)
       )
       Π[1] = Π[1] + Π_q
-      R_el = R_el + R_q
+      f_el = f_el + f_q
     end
 
     # assemble into global matrix
-    assemble!(assembler, R_el, conn)
+    assemble!(f, f_el, conn)
   end
 end
 
-function energy_internal_force_and_stiffness!(Π, assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
+function internal_force_and_stiffness!(f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NS = ConstitutiveModels.num_state_vars(section.model)
@@ -181,13 +176,47 @@ function energy_internal_force_and_stiffness!(Π, assembler, section::TotalLagra
     U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
     props_el = SVector{NP, eltype(props)}(@views props[:, e])
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-
-    R_el = zeros(SVector{NDOF, eltype(U)})
+    f_el = zeros(SVector{NDOF, eltype(f)})
     K_el = zeros(SMatrix{NDOF, NDOF, eltype(U), NDOF * NDOF})
 
     for q in 1:FiniteElementContainers.num_q_points(section)
       state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
-      Π_q, R_q, K_q = energy_internal_force_and_stiffness(
+      f_q, K_q = internal_force_and_stiffness(
+        section.model, section.formulation,
+        U_el, state_q, props_el, X_el,
+        shape_function_values(section, q),
+        shape_function_gradients(section, q),
+        quadrature_weights(section, q)
+      )
+      f_el = f_el + f_q
+      K_el = K_el + K_q
+    end
+
+    # assemble into global fields
+    assemble!(f, f_el, conn)
+    assemble!(assembler, K_el, block_id, e)
+  end
+end
+
+function energy_internal_force_and_stiffness!(Π, f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
+  ND = FiniteElementContainers.num_dimensions(section)
+  NN = FiniteElementContainers.num_nodes_per_element(section)
+  NS = ConstitutiveModels.num_state_vars(section.model)
+  NP = ConstitutiveModels.num_properties(section.model)
+  NDOF = ND * NN
+
+  for e in 1:num_elements(section)
+    conn = dof_connectivity(section, e)
+
+    U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
+    props_el = SVector{NP, eltype(props)}(@views props[:, e])
+    X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
+    f_el = zeros(SVector{NDOF, eltype(f)})
+    K_el = zeros(SMatrix{NDOF, NDOF, eltype(U), NDOF * NDOF})
+
+    for q in 1:FiniteElementContainers.num_q_points(section)
+      state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
+      Π_q, f_q, K_q = energy_internal_force_and_stiffness(
         section.model, section.formulation,
         U_el, state_q, props_el, X_el,
         shape_function_values(section, q),
@@ -195,17 +224,17 @@ function energy_internal_force_and_stiffness!(Π, assembler, section::TotalLagra
         quadrature_weights(section, q)
       )
       Π[1] = Π[1] + Π_q
-      R_el = R_el + R_q
+      f_el = f_el + f_q
       K_el = K_el + K_q
     end
 
-    # assemble into global matrix
-    assemble!(assembler, R_el, conn)
+    # assemble into global fields
+    assemble!(f, f_el, conn)
     assemble!(assembler, K_el, block_id, e)
   end
 end
 
-function energy_internal_force_and_stiffness_action!(Π, R, Hv, section::TotalLagrangeSection, U, state, props, X, V)
+function energy_internal_force_and_stiffness_action!(Π, f, Hv, section::TotalLagrangeSection, U, state, props, X, V)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NS = ConstitutiveModels.num_state_vars(section.model)
@@ -219,13 +248,12 @@ function energy_internal_force_and_stiffness_action!(Π, R, Hv, section::TotalLa
     props_el = SVector{NP, eltype(props)}(@views props[:, e])
     X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
     V_el = SVector{ND * NN, eltype(V)}(@views V[conn])
-
-    R_el = zeros(SVector{NDOF, eltype(U)})
+    f_el = zeros(SVector{NDOF, eltype(U)})
     Hv_el = zeros(SVector{NDOF, eltype(U)})
 
     for q in 1:FiniteElementContainers.num_q_points(section)
       state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
-      Π_q, R_q, H_q = energy_internal_force_and_stiffness(
+      Π_q, f_q, H_q = energy_internal_force_and_stiffness(
         section.model, section.formulation,
         U_el, state_q, props_el, X_el,
         shape_function_values(section, q),
@@ -233,11 +261,11 @@ function energy_internal_force_and_stiffness_action!(Π, R, Hv, section::TotalLa
         quadrature_weights(section, q)
       )
       Π[1] = Π[1] + Π_q
-      R_el = R_el + R_q
+      f_el = f_el + f_q
       Hv_el = Hv_el + H_q * V_el
     end
 
-    # assemble into global matrix
-    assemble!(R, Hv, R_el, Hv_el, conn)
+    # assemble into global fields
+    assemble!(f, Hv, f_el, Hv_el, conn)
   end
 end

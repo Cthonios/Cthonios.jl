@@ -121,7 +121,8 @@ function objective_and_grad(solver, domain, common, u)
   @timeit timer(common) "Energy and internal force" begin
     energy_and_internal_force!(solver.linear_solver, domain, u)
     o = domain.domain_cache.Π[1]
-    g = @views solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
+    # g = @views solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
+    g = @views domain.domain_cache.f[domain.dof.unknown_dofs]
   end
   return o, g
 end
@@ -180,7 +181,7 @@ function preconditioner(solver, domain, common, Uu)
   end
 end
 
-function calculate_cauchy_point(solver, domain, common, Uu, g, Hg, P, y_scratch)
+function calculate_cauchy_point(solver, domain, common, Uu, g, Hg, P, tr_size, y_scratch)
   @timeit timer(common) "Cauchy point" begin
     gHg = dot(g, Hg)
     if gHg > 0
@@ -201,12 +202,12 @@ function calculate_cauchy_point(solver, domain, common, Uu, g, Hg, P, y_scratch)
   return cauchy_point, cauchy_point_norm_squared
 end
 
-function update_tr_size(solver, model_objective, real_objective, step_type, tr_size)
+function update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
   ρ = -model_objective / -real_objective
 
   if model_objective > 0
     @warn "found a positive model objective increase. Debug if you see this."
-    ρ = real_improve / -model_improve
+    ρ = -real_objective / model_objective
   end
 
   if !(ρ >= solver.settings.η_2)
@@ -368,14 +369,15 @@ function solve!(
 
   # saving initial objective and gradient
   o = domain.domain_cache.Π[1]
-  g = solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
+  g = domain.domain_cache.f[domain.dof.unknown_dofs]
+  g_norm = norm(g)
   y_scratch = create_unknowns(domain)
 
   # preconditioner
   P = preconditioner(solver, domain, common, Uu)
 
   @info @sprintf "Initial objective = %1.6e" o
-  @info @sprintf "Initial residual  = %1.6e" norm(g)
+  @info @sprintf "Initial residual  = %1.6e" g_norm
 
   # begin loop over tr iters
   cumulative_cg_iters = 0
@@ -390,7 +392,7 @@ function solve!(
     Hg = hvp(solver, domain, common, Uu, g)
 
     # check for negative curvature
-    cauchy_point, cauchy_point_norm_squared = calculate_cauchy_point(solver, domain, common, Uu, g, Hg, P, y_scratch)
+    cauchy_point, cauchy_point_norm_squared = calculate_cauchy_point(solver, domain, common, Uu, g, Hg, P, tr_size, y_scratch)
 
     # check if outside trust region
     if cauchy_point_norm_squared >= tr_size * tr_size
@@ -434,7 +436,7 @@ function solve!(
       model_res_norm = norm(model_res)
       real_res_norm = norm(gy)
 
-      tr_size, will_accept = update_tr_size(solver, model_objective, real_objective, step_type, tr_size)
+      tr_size, will_accept = update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
 
       logger(
         solver, 
@@ -447,6 +449,7 @@ function solve!(
         Uu .= y
         g .= gy
         o = objective(solver, domain, common, Uu)
+        g_norm = norm(g)
         happy = true
       else
         step_type = :boundary

@@ -3,9 +3,6 @@ functions:
   displacement_ramp: 
     type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 1.0 * t
-  displacement_ramp_2: 
-    type: ScalarFunction{2, Float64, Float64, Float64}
-    expression: (x, t) -> -0.25 * t
   zero_func:
     type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 0.0
@@ -17,35 +14,18 @@ materials:
       bulk modulus: 0.833
       shear modulus: 0.3846
 
-  hard rubber:
-    model: NeoHookean
-    properties:
-      bulk modulus: 50.0
-      shear modulus: 1.0
-
 linear solvers:
   direct:
     type: DirectLinearSolver
     factorization method: cholesky
-  cg:
-    type: IterativeSolversCG
-    absolute tolerance: 1.0e-8
-    max iterations: 100
-    # preconditioner
-  matrix_free_iterative_solver:
-    type: IterativeLinearSolver
 
 nonlinear solvers:
   newton:
     type: NewtonSolver
     linear solver: direct
-    # linear solver: matrix_free_iterative_solver
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
     max steps: 100
-  trs:
-    type: TrustRegionSolver
-    linear solver: direct
 
 # Domains scope
 
@@ -53,7 +33,7 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: test/mesh_tri3_732.g
+      file name: regression_tests/newton_tri3_uniaxial_tension/test.g
 
     boundary conditions:
       displacement: 
@@ -77,16 +57,15 @@ domains:
     time stepper:
       type: ConstantTimeStepper
       start time: 0.0
-      end time: 0.5
+      end time: 1.0
       time step: 0.01
 
 problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
-    # solver: newton
-    solver: trs
+    solver: newton
     results:
-      output file name: output.e
+      output file name: regression_tests/newton_tri3_uniaxial_tension/test.e
 
   

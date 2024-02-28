@@ -54,7 +54,8 @@ end
 
 function solve!(Uu, solver::DirectLinearSolver, domain::QuasiStaticDomain, common::CthoniosCommon)
   K = SparseArrays.sparse!(solver.assembler) |> Symmetric
-  R = solver.assembler.residuals[domain.dof.unknown_dofs]
+  # R = solver.assembler.residuals[domain.dof.unknown_dofs]
+  R = domain.domain_cache.f[domain.dof.unknown_dofs]
   @timeit timer(common) "Factorization" begin
     solver.settings.factorization_method!(solver.factorization, K)
   end

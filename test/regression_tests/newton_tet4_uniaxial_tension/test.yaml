@@ -14,59 +14,46 @@ materials:
       bulk modulus: 0.833
       shear modulus: 0.3846
 
-  hard rubber:
-    model: NeoHookean
-    properties:
-      bulk modulus: 50.0
-      shear modulus: 1.0
-
 linear solvers:
-  cg:
-    type: default
-    preconditioner: cholesky
+  direct:
+    type: DirectLinearSolver
+    factorization method: cholesky
 
 nonlinear solvers:
   newton:
     type: NewtonSolver
-    linear solver: cg
+    linear solver: direct
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
-    update stiffness each iteration: true 
-  trs:
-    type: TrustRegionSolver
-    linear solver: cg
+    max steps: 100
+
+# Domains scope
 
 domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: test/cube_hex8.g
-  
+      file name: regression_tests/newton_tet4_uniaxial_tension/test.g
+
     boundary conditions:
       displacement: 
-      - nodeset id: 1
-        dof: 1
+      - nodeset ids: [1]
+        dofs: [1, 2, 3]
         function: zero_func
-      - nodeset id: 1
-        dof : 2
+      - nodeset ids: [2]
+        dofs: [1]
         function: zero_func
-      - nodeset id: 1
-        dof : 3
-        function: zero_func
-      - nodeset id: 2
-        dof: 1
-        function: zero_func
-      - nodeset id: 2
-        dof: 2
+      - nodeset ids: [2]
+        dofs: [2]
         function: displacement_ramp
-      - nodeset id: 2
-        dof: 3
+      - nodeset ids: [2]
+        dofs: [3]
         function: zero_func
 
     sections:
     - type: TotalLagrangeSection
       block id: 1
-      formulation: default
+      formulation: three dimensional
       material: soft rubber
 
     # below is TODO
@@ -82,4 +69,6 @@ problems:
     domain: domain_1
     solver: newton
     results:
-      output file name: output.e
+      output file name: regression_tests/newton_tet4_uniaxial_tension/test.e
+
+  

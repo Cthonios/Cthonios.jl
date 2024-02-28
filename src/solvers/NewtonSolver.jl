@@ -97,7 +97,8 @@ function solve!(
 
     # TODO above should use linear solver in solver
     @. Uu    = Uu - ΔUu
-    norm_R   = @views norm(solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs])
+    # norm_R   = @views norm(solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs])
+    norm_R   = @views norm(domain.domain_cache.f[domain.dof.unknown_dofs])
     norm_ΔUu = norm(ΔUu)
     
     # save first residual norm for calculating relative residual
