@@ -2,10 +2,7 @@
 functions:
   displacement_ramp: 
     type: ScalarFunction{2, Float64, Float64, Float64}
-    expression: (x, t) -> -0.25 * t
-  displacement_ramp_2: 
-    type: ScalarFunction{2, Float64, Float64, Float64}
-    expression: (x, t) -> -0.25 * t
+    expression: (x, t) -> 1.0 * t
   zero_func:
     type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 0.0
@@ -17,28 +14,18 @@ materials:
       bulk modulus: 0.833
       shear modulus: 0.3846
 
-  hard rubber:
-    model: NeoHookean
-    properties:
-      bulk modulus: 50.0
-      shear modulus: 1.0
-
 linear solvers:
-  cg:
-    type: default
-    preconditioner: cholesky
+  direct:
+    type: DirectLinearSolver
+    factorization method: cholesky
 
 nonlinear solvers:
   newton:
     type: NewtonSolver
-    linear solver: cg
+    linear solver: direct
     relative tolerance: 1.0e-8
     absolute tolerance: 1.0e-8
-    update stiffness each iteration: true 
-  trs:
-    type: TrustRegionSolver
-    linear solver: cg
-
+    max steps: 100
 
 # Domains scope
 
@@ -46,22 +33,18 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: test/window_pain.g
-      # file name: test/mesh_10000.g
+      file name: regression_tests/newton_tri3_uniaxial_tension/test.g
 
     boundary conditions:
       displacement: 
-      - nodeset id: 3
-        dof: 1
+      - nodeset ids: [3]
+        dofs: [1, 2]
         function: zero_func
-      - nodeset id: 3
-        dof : 2
+      - nodeset ids: [1]
+        dofs: [1]
         function: zero_func
-      - nodeset id: 1
-        dof: 1
-        function: zero_func
-      - nodeset id: 1
-        dof: 2
+      - nodeset ids: [1]
+        dofs: [2]
         function: displacement_ramp
 
     sections:
@@ -81,14 +64,8 @@ problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
-    # solver: newton
-    solver: trs
+    solver: newton
     results:
-      output file name: output.e
+      output file name: regression_tests/newton_tri3_uniaxial_tension/test.e
 
-# # not general right now
-
-# problem:
-#   type: ForwardProblem
-#   solver: trs
-#   # solver: newton
+  

@@ -21,8 +21,10 @@ function PostProcessor(mesh_file::String, out_file::String, dof::DofManager, dim
   out = ExodusDatabase(out_file, "rw")
   if dims == 2
     Exodus.write_names(out, NodalVariable, ["displ_x", "displ_y"])
+  elseif dims == 3
+    Exodus.write_names(out, NodalVariable, ["displ_x", "displ_y", "displ_z"])
   else
-    @assert false "only dim 2 is supported right now"
+    @assert false "only dim 2, 3 is supported right now"
   end
   # Exodus.close(out)
   U = FiniteElementContainers.create_fields(dof)
