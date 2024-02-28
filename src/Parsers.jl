@@ -1,94 +1,166 @@
+"""
+This method is a barrier method for type stability
+"""
+function load_input_file(input_file::String)::Dict{Symbol, Any}
+  YAML.load_file(input_file; dicttype=Dict{Symbol, Any})
+end
 
 """
-Command line interface parser
+Barrier for type stability. Returns input_settings[:boundary_conditions]
+but also replaces function names with function input settings.
 """
-function cli_parser()
-  settings = ArgParseSettings()
+function parse_boundary_conditions(input_settings::D, domain_key::Symbol) where D <: Dict{Symbol, Any}
+  @warn "Only supporting displacement boundary conditions at the moment"
+  bc_settings = Dict{Symbol, Any}()
+  bc_settings[:displacement] = Vector{Dict{Symbol, Any}}(undef, 0)
 
-  @add_arg_table! settings begin
-    "--input-file", "-i"  
-      help = "A path to an input file. Currently supported formats are YAML"
-      arg_type = String
-    "--num-processors", "--np"
-      help = "The number of processors to to run the simulation with."
-      arg_type = Int
-      default = 1
-    "--backend"
-      help = "The backend to use. Options currently supported are cpu"
-      arg_type = String
-      default = "cpu"
+  for (n, bc) in enumerate(input_settings[:domains][domain_key][Symbol("boundary conditions")][Symbol("displacement")])
+    bc[:function] = input_settings[:functions][Symbol(bc[:function])]
+    bc[:function][:func_id] = n
+    push!(bc_settings[:displacement], bc)
   end
-
-  return parse_args(settings)
+  return bc_settings
 end
 
-
-# Exceptions for input deck parsing
-abstract type CthoniosInputFileParserException <: CthoniosException end
-
-struct MeshInputBlockNotFound <: CthoniosInputFileParserException
+"""
+Barrier for type stability. Simply returns input_settings[:functions]
+"""
+function parse_functions(input_settings::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
+  return input_settings[:functions]
 end
 
-Base.show(io::IO, ::MeshInputBlockNotFound) = 
-print(io, "\nInput file has no mesh block!\n",
-      "The syntax for a mesh block is:\n\n",
-      "mesh:\n",
-      "  file name: <string>\n")
+"""
+Barrier for type stability. Simply returns input_settings[Symbol("linear solvers")]
+"""
+function parse_linear_solvers(input_settings::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
+  return input_settings[Symbol("linear solvers")]
+end
 
-function mesh_input_block_not_found()
-  e = MeshInputBlockNotFound()
-  @error e
-  throw(e)
+"""
+Barrier for type stability. Simply returns input_settings[:materials]
+"""
+function parse_materials(input_settings::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
+  return input_settings[:materials]
+end
+
+"""
+Barrier for type stability. Simply returns input_settings[Symbol("nonlinear solvers")]
+"""
+function parse_nonlinear_solvers(input_settings::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
+  return input_settings[Symbol("nonlinear solvers")]
+end
+
+"""
+Barrier for type stability. Simply returns input_settings[:mesh]
+"""
+function parse_mesh(input_settings::D, domain_key::Symbol)::Dict{Symbol, String} where D <: Dict{Symbol, Any}
+  return input_settings[:domains][domain_key][:mesh]
 end 
 
-struct MeshFileNotFound <: CthoniosInputFileParserException
-  file_name::String
-end
-
-Base.show(io::IO, e::MeshFileNotFound) = print(io, "Mesh file $(e.file_name) not found!\n")
-
-function mesh_file_not_found(file_name::String)
-  e = MeshFileNotFound(file_name)
-  @error e
-  throw(e)
-end
-
-struct FunctionSpacesInputBlockNotFound <: CthoniosInputFileParserException
-end
-
-Base.show(io::IO, ::FunctionSpacesInputBlockNotFound) = 
-print(io, "\nInput file has no function spaces input block!\n",
-      "The syntax for a function spaces input block is:\n\n",
-      "function spaces:\n",
-      "- name:                     <string>\n",
-      "  block:                    <string>\n",
-      "  quadarture degree:        <int>\n",
-      "  reference finite element: <Type<ReferenceFE>>\n",
-      "...\n")
-
-function function_spaces_input_block_not_found()
-  e = FunctionSpacesInputBlockNotFound()
-  @error e
-  throw(e)
-end
-
-function input_file_parser(input_file::String)
-  input_settings = YAML.load_file(input_file)
-
-  # input blocks checking
-  if !("mesh" in keys(input_settings))
-    mesh_input_block_not_found()
+"""
+Barrier for type stability. Returns input_settings[:sections] but
+replaces material names with material definitions
+"""
+function parse_sections(input_settings::D, domain_key::Symbol)::Vector{Dict{Symbol, Any}} where D <: Dict{Symbol, Any}
+  section_settings = input_settings[:domains][domain_key][:sections]
+  for section in section_settings
+    section[:material] = input_settings[:materials][Symbol(section[:material])]
   end
 
-  if !("function spaces" in keys(input_settings))
-    function_spaces_input_block_not_found()
-  end
+  return section_settings
+end
 
-  if !isfile(input_settings["mesh"]["file name"])
-    mesh_file_not_found(input_settings["mesh"]["file name"])
-  end
+"""
+Barrier for type stability. Simple returns input_settings[Symbol("time stepper")]
+"""
+function parse_time_stepper(input_settings::D, domain_key::Symbol)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
+  return input_settings[:domains][domain_key][Symbol("time stepper")]
+end
 
-  # TODO much more to do here
+
+#############################
+
+"""
+Helper to parse one domain
+"""
+function parse_domains(input_settings::D, key) where D <: Dict{Symbol, Any}
+  domain_settings = Dict{Symbol, Any}()
+  domain_settings[:mesh] = parse_mesh(input_settings, key)
+  domain_settings[:boundary_conditions] = parse_boundary_conditions(input_settings, key)
+  domain_settings[:sections] = parse_sections(input_settings, key)
+  domain_settings[:time_stepper] = parse_time_stepper(input_settings, key)
+  return domain_settings
+end
+
+"""
+Helper to parse a domain and all settings need to set it up
+"""
+function parse_domains(input_settings::D) where D <: Dict{Symbol, Any}
+  domain_settings = Dict{Symbol, Any}()
+  # for key in keys(input_settings[:domains])
+  #   domain_settings[key] = Dict{Symbol, Any}()
+  #   domain_settings[key][:mesh] = parse_mesh(input_settings, key)
+  #   domain_settings[key][:boundary_conditions] = parse_boundary_conditions(input_settings, key)
+  #   domain_settings[key][:sections] = parse_sections(input_settings, key)
+  #   domain_settings[key][:time_stepper] = parse_time_stepper(input_settings, key)
+  # end
+  for key in keys(input_settings[:domains])
+    domain_settings[key] = parse_domains(input_settings, key)
+  end
+  return domain_settings
+end 
+
+"""
+Helper to parse problems
+"""
+function parse_problems(
+  input_settings::D, domain_settings::D, 
+  linear_solver_settings::D, nonlinear_solver_settings::D
+) where D <: Dict{Symbol, Any}
+  problem_settings = Dict{Symbol, Any}()
+  for key in keys(input_settings[:problems])
+    problem_settings[key] = Dict{Symbol, Any}()
+    problem_settings[key][:type] = input_settings[:problems][key][:type]
+    problem_settings[key][:domain] = domain_settings[Symbol(input_settings[:problems][key][:domain])]
+    problem_settings[key][:solver] = nonlinear_solver_settings[Symbol(input_settings[:problems][key][:solver])]
+    problem_settings[key][:results] = input_settings[:problems][key][:results]
+
+    # now swap out the nonlinear solver linear solver settings
+    problem_settings[key][:solver][Symbol("linear solver")] =
+    linear_solver_settings[Symbol(problem_settings[key][:solver][Symbol("linear solver")])]
+  end
+  return problem_settings
+end
+
+"""
+Main entry point for parsing
+"""
+function parse_input_file(input_file::String)
+  # load file
+  loaded_settings = load_input_file(input_file)
+
+  # Pre-allocate dict to return
+  input_settings = Dict{Symbol, Any}()
+
+  # parse domains scope
+  # input_settings[:domains] = parse_domains(loaded_settings)
+  domain_settings = parse_domains(loaded_settings)
+  linear_solver_settings = parse_linear_solvers(loaded_settings)
+  nonlinear_solver_settings = parse_nonlinear_solvers(loaded_settings)
+
+  problem_settings = parse_problems(
+    loaded_settings, domain_settings, linear_solver_settings, nonlinear_solver_settings
+  )
+
+  input_settings[:domains] = domain_settings
+  input_settings[:problems] = problem_settings
+
   return input_settings
+end
+
+function peak_mesh_dims(input_settings::D, key)::Tuple{Int64, Int64} where D <: Dict{Symbol, Any}
+  mesh = read_mesh(input_settings[:domains][key])
+  return FiniteElementContainers.num_dimensions(mesh) |> Int64,
+         FiniteElementContainers.num_nodes(mesh) |> Int64
 end
 

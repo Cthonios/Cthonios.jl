@@ -1,27 +1,71 @@
 module Cthonios
 
-using Aprepro_jll
+# TODO add exports
+
+# dependencies
 using ArgParse
+using ComponentArrays
+using ConstitutiveModels
+using DocStringExtensions
+using Enzyme
+using EnzymeCore
 using Exodus
 using FiniteElementContainers
+using FunctionWrappers
+using IterativeSolvers
+using KernelAbstractions
 using LinearAlgebra
+using LinearOperators
 using Logging
 using LoggingExtras
+using Parameters
+using Preconditioners
+using Printf
 using ReferenceFiniteElements
 using SparseArrays
-using Suppressor
+using StaticArrays
+using StructArrays
+using Tensors
+using TimerOutputs
 using YAML
 
-# upper level abstract types
-abstract type CthoniosException <: Exception end
+import FunctionWrappers: FunctionWrapper
 
-# lego pieces to build together
-include("Aprepro.jl")
-include("Headers.jl")
+
+# for docs
+@template (FUNCTIONS, METHODS, MACROS) = 
+"""
+$(TYPEDSIGNATURES)
+$(DOCSTRING)
+$(METHODLIST)
+"""
+
+@template (TYPES) = 
+"""
+$(TYPEDFIELDS)
+$(DOCSTRING)
+"""
+
+# Level 1 stuff
+include("Common.jl")
+include("Functions.jl")
 include("Parsers.jl")
-include("Systems.jl")
+include("PostProcessors.jl")
 
-# where the main function is
-include("CLI.jl")
+# Level 2 stuff
+include("boundary_conditions/BoundaryConditions.jl")
+include("sections/Sections.jl")
+include("TimeSteppers.jl")
+
+# Level 3 stuff
+include("domains/Domains.jl")
+include("mechanics/Mechanics.jl")
+include("solvers/NonlinearSolvers.jl")
+
+# Finally problems
+include("Problems.jl")
+
+# CLI
+include("Main.jl")
 
 end # module
