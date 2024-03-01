@@ -16,8 +16,12 @@ using TestSetExtensions
 #   end
 # end
 
-@testset ExtendedTestSet "SimpleTest.jl" begin
+@testset ExtendedTestSet "Newton - Tri3" begin
   Cthonios.cthonios_main("regression_tests/newton_tri3_uniaxial_tension/test.yaml", false)
+end
+
+@testset ExtendedTestSet "Trust region - Tri3" begin
+  Cthonios.cthonios_main("regression_tests/trs_tri3_uniaxial_tension/test.yaml", false)
 end
 
 @testset ExtendedTestSet "Aqua.jl" begin
@@ -25,5 +29,5 @@ end
 end
 
 # @testset ExtendedTestSet "JET.jl" begin
-#   JET.test_package(Cthonios)
+#   JET.test_package(Cthonios; target_defined_modules=true)
 # end

@@ -54,7 +54,3 @@ function julia_main()::Cint
   
   return 0
 end
-
-function temp_main()
-  parsed_args = parse_args(ARGS, cli_options)d
-end
