@@ -17,7 +17,7 @@ materials:
 linear solvers:
   direct:
     type: DirectLinearSolver
-    factorization method: cholesky
+    factorization method: ldl
 
 nonlinear solvers:
   newton:
@@ -58,7 +58,7 @@ domains:
       type: ConstantTimeStepper
       start time: 0.0
       end time: 1.0
-      time step: 0.01
+      time step: 0.001
 
 problems:
   forward_1:

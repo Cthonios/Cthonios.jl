@@ -14,6 +14,7 @@ using FiniteElementContainers
 using FunctionWrappers
 using IterativeSolvers
 using KernelAbstractions
+using LDLFactorizations
 using LinearAlgebra
 using LinearOperators
 using Logging
