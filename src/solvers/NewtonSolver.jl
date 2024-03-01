@@ -76,7 +76,9 @@ function solve!(
   X = domain.domain_cache.X
   U = domain.domain_cache.U
 
-  @timeit timer(common) "Update BCs" update_bcs!(U, domain, X)
+  @timeit timer(common) "Update BCs" begin 
+    update_bcs!(U, domain, X)
+  end
 
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
@@ -84,11 +86,12 @@ function solve!(
       internal_force_and_stiffness!(solver.linear_solver, domain, Uu)
     end
 
-    @timeit timer(common) "Linear solve" solve!(ΔUu, solver.linear_solver, domain, common)
+    @timeit timer(common) "Linear solve" begin 
+      solve!(ΔUu, solver.linear_solver, domain, common)
+    end
 
     # TODO above should use linear solver in solver
     @. Uu    = Uu - ΔUu
-    # norm_R   = @views norm(solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs])
     norm_R   = @views norm(domain.domain_cache.f[domain.dof.unknown_dofs])
     norm_ΔUu = norm(ΔUu)
     

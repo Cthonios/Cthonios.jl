@@ -17,7 +17,7 @@ materials:
 linear solvers:
   direct:
     type: DirectLinearSolver
-    factorization method: cholesky
+    factorization method: ldl
 
 nonlinear solvers:
   trs:

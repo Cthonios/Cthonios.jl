@@ -8,7 +8,7 @@ using TestSetExtensions
 # for regression_test in readdir("regression_tests/")
 #   @testset ExtendedTestSet "$regression_test" begin
 #     dir = joinpath("regression_tests/", regression_test)
-#     Cthonios.cthonios_main(joinpath(dir, "test.yaml"))
+#     Cthonios.cthonios_main(joinpath(dir, "test.yaml"), false)
 #     @test Exodus.exodiff(joinpath(dir, "test.e"), joinpath(dir, "test.gold.e"))
 #     rm(joinpath(dir, "test.e"); force=true)
 #     rm(joinpath(dir, "test.log"); force=true)
@@ -17,7 +17,7 @@ using TestSetExtensions
 # end
 
 @testset ExtendedTestSet "SimpleTest.jl" begin
-  Cthonios.cthonios_main("regression_tests/newton_tri3_uniaxial_tension/test.yaml")
+  Cthonios.cthonios_main("regression_tests/newton_tri3_uniaxial_tension/test.yaml", false)
 end
 
 @testset ExtendedTestSet "Aqua.jl" begin
