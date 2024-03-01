@@ -31,33 +31,41 @@ struct TrustRegionSolver{
   S <: TrustRegionSolverSettings,
   L <: AbstractLinearSolver,
   V <: AbstractVector,
-  F <: NodalField,
-  C1, C2, C3, C4
+  F <: NodalField
 } <: NonlinearSolver{S, L, V}
   settings::S
   linear_solver::L
   Uu::V
   ΔUu::V
-  Hv::V
   Hv_field::F
-  y_scratch_1::C1
-  y_scratch_2::C2
-  y_scratch_3::C3
-  y_scratch_4::C4
+  cauchy_point::V
+  q_newton_point::V
+  d::V
+  y_scratch_1::V
+  y_scratch_2::V
+  y_scratch_3::V
+  y_scratch_4::V
 end
 
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict{Symbol, Any}
-  settings      = TrustRegionSolverSettings() # TODO add non-defaults
-  linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain)
-  Uu            = create_unknowns(domain)
-  ΔUu           = create_unknowns(domain)
-  Hv            = create_unknowns(domain)
-  Hv_field      = create_fields(domain)
-  y_scratch_1   = create_unknowns(domain)
-  y_scratch_2   = create_unknowns(domain)
-  y_scratch_3   = create_unknowns(domain)
-  y_scratch_4   = create_unknowns(domain)
-  return TrustRegionSolver(settings, linear_solver, Uu, ΔUu, Hv, Hv_field, y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4)
+  settings       = TrustRegionSolverSettings() # TODO add non-defaults
+  linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain)
+  Uu             = create_unknowns(domain)
+  ΔUu            = create_unknowns(domain)
+  Hv_field       = create_fields(domain)
+  cauchy_point   = create_unknowns(domain)
+  q_newton_point = create_unknowns(domain)
+  d              = create_unknowns(domain)
+  y_scratch_1    = create_unknowns(domain)
+  y_scratch_2    = create_unknowns(domain)
+  y_scratch_3    = create_unknowns(domain)
+  y_scratch_4    = create_unknowns(domain)
+  return TrustRegionSolver(
+    settings, linear_solver, 
+    Uu, ΔUu, Hv_field, 
+    cauchy_point, q_newton_point, d,
+    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4
+  )
 end
 
 function Base.show(io::IO, solver::TrustRegionSolver)
@@ -74,7 +82,6 @@ function logger(
 )
 
   str = @sprintf "O = %1.4e  O_M = %1.4e  ||R|| = %1.4e  ||R_R|| = %1.4e  CG = %3i  TR = %1.4e accept = %s %s" real_obj model_obj real_res model_res cg_iters tr_size accept step_type
-  # str *= "$accept"
   @info str
 end
 
@@ -101,6 +108,7 @@ function is_converged(
   return false
 end
 
+# TODO should below methods be moved to a top level abstract set of methods?
 function objective(solver, domain, common, u)
   @timeit timer(common) "Energy" begin
     energy!(solver.linear_solver, domain, u)
@@ -127,13 +135,13 @@ function hvp(solver, domain, common, u, v)
   return Hv
 end
 
-function hvp!(Hv, solver, domain, common, u, v)
-  @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(solver.Hv_field, domain, u, v)
-    Hv .= @views solver.Hv_field[domain.dof.unknown_dofs]
-  end
-  return nothing
-end
+# function hvp!(Hv, solver, domain, common, u, v)
+#   @timeit timer(common) "Stiffness action" begin
+#     stiffness_action!(solver.Hv_field, domain, u, v)
+#     Hv .= @views solver.Hv_field[domain.dof.unknown_dofs]
+#   end
+#   return nothing
+# end
 
 function hessian(solver, domain, common, u)
   @timeit timer(common) "Hessian" begin
@@ -142,6 +150,8 @@ function hessian(solver, domain, common, u)
   end
   return K
 end
+# TODO should above methods be moved to a top level abstract set of methods?
+
 
 function preconditioner!(solver, domain, common, Uu)
   @timeit timer(common) "Preconditioner" begin
@@ -358,7 +368,11 @@ function solve!(
 )
 
   # unpack cached arrays from solver and domain
-  Uu, ΔUu = solver.Uu, solver.ΔUu
+  Uu             = solver.Uu
+  ΔUu            = solver.ΔUu
+  cauchy_point   = solver.cauchy_point
+  q_newton_point = solver.q_newton_point
+  d              = solver.d
 
   # unpack some solver settings
   tr_size = solver.settings.tr_size
@@ -372,12 +386,6 @@ function solve!(
   o = domain.domain_cache.Π[1]
   g = domain.domain_cache.f[domain.dof.unknown_dofs]
   g_norm = norm(g)
-
-  # TODO cleanup these cache arrays
-  # TODO these are likely the only leftover allocations left
-  cauchy_point = create_unknowns(domain)
-  d = create_unknowns(domain)
-  q_newton_point = create_unknowns(domain)
 
   # preconditioner
   preconditioner!(solver, domain, common, Uu)
@@ -398,14 +406,12 @@ function solve!(
     # check if outside trust region
     if cauchy_point_norm_squared >= tr_size * tr_size
       @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt(cauchy_point_norm_squared))."
-      cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
+      @. cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
       cauchy_point_norm_squared = tr_size * tr_size
       q_newton_point .= cauchy_point
       step_type = :boundary
       n_cg_iters = 1
     else
-      # q_newton_point, step_type, n_cg_iters = 
-      #   minimize_trust_region_sub_problem(solver, domain, common, Uu, g, tr_size)
       step_type, n_cg_iters = 
         minimize_trust_region_sub_problem!(q_newton_point, solver, domain, common, Uu, g, tr_size)
     end
@@ -415,7 +421,6 @@ function solve!(
     happy = false
 
     while !happy
-      # d = dog_leg_step(solver, common, cauchy_point, q_newton_point, tr_size, y_scratch)
       dog_leg_step!(d, solver, common, cauchy_point, q_newton_point, tr_size)
 
       Jd = hvp(solver, domain, common, Uu, d)
@@ -423,19 +428,22 @@ function solve!(
 
       model_objective = dot(g, d) + 0.5 * dJd
 
-      y = Uu + d
+      # y = Uu + d
+      y = solver.y_scratch_1
+      @. y = Uu + d
 
       real_objective, gy = objective_and_grad(solver, domain, common, y)
       real_objective = real_objective - o
 
       if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
         @info "Converged"
-        ΔUu .= Uu - y
-        Uu .= y
+        @. ΔUu = Uu - solver.y_scratch_1
+        Uu .= solver.y_scratch_1
         return nothing
       end
 
-      model_res = g + Jd
+      model_res = solver.y_scratch_2
+      @. model_res = g + Jd
       model_res_norm = norm(model_res)
       real_res_norm = norm(gy)
 
@@ -464,6 +472,8 @@ function solve!(
         cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
         preconditioner!(solver, domain, common, Uu)
       end
+
+      # TODO still need to do some other stuff with updating preconditioner
     end
   end
 
