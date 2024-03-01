@@ -148,6 +148,7 @@ end
 
 function energy_gradient end
 
+include("Utils.jl")
 include("Kernels.jl")
 include("KAKernels.jl")
 include("SectionIterators.jl")
