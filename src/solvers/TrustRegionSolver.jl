@@ -32,22 +32,18 @@ struct TrustRegionSolver{
   L <: AbstractLinearSolver,
   V <: AbstractVector,
   F <: NodalField,
-  C1, C2, C3, C4, C5
+  C1, C2, C3, C4
 } <: NonlinearSolver{S, L, V}
   settings::S
   linear_solver::L
   Uu::V
   ΔUu::V
-  # o::V
-  # g::V
   Hv::V
   Hv_field::F
-  #
-  cauchy_point::C1
-  y::C2
-  d::C3
-  z::C4
-  r::C5
+  y_scratch_1::C1
+  y_scratch_2::C2
+  y_scratch_3::C3
+  y_scratch_4::C4
 end
 
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict{Symbol, Any}
@@ -55,19 +51,13 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D
   linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain)
   Uu            = create_unknowns(domain)
   ΔUu           = create_unknowns(domain)
-  # o             = zeros(Float64, 1)
-  # g             = create_unknowns(domain)
   Hv            = create_unknowns(domain)
   Hv_field      = create_fields(domain)
-  # 
-  # cache arrays for sub problem
-  #
-  cauchy_point  = create_unknowns(domain)
-  y             = create_unknowns(domain)
-  d             = create_unknowns(domain)
-  z             = create_unknowns(domain)
-  r             = create_unknowns(domain)
-  return TrustRegionSolver(settings, linear_solver, Uu, ΔUu, Hv, Hv_field, cauchy_point, y, d, z, r)
+  y_scratch_1   = create_unknowns(domain)
+  y_scratch_2   = create_unknowns(domain)
+  y_scratch_3   = create_unknowns(domain)
+  y_scratch_4   = create_unknowns(domain)
+  return TrustRegionSolver(settings, linear_solver, Uu, ΔUu, Hv, Hv_field, y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4)
 end
 
 function Base.show(io::IO, solver::TrustRegionSolver)
@@ -80,31 +70,26 @@ function logger(
   ::TrustRegionSolver,
   real_obj, model_obj,
   real_res, model_res,
-  cg_iters, tr_size, accept
+  cg_iters, tr_size, accept, step_type
 )
 
-  str =  @sprintf "O = %1.6e  O_M = %1.6e  ||R|| = %1.6e  ||R_R|| = %1.6e  CG = %3i  TR = %1.6e accept = " real_obj model_obj real_res model_res cg_iters tr_size
-  str *= "$accept"
+  str = @sprintf "O = %1.4e  O_M = %1.4e  ||R|| = %1.4e  ||R_R|| = %1.4e  CG = %3i  TR = %1.4e accept = %s %s" real_obj model_obj real_res model_res cg_iters tr_size accept step_type
+  # str *= "$accept"
   @info str
 end
 
 function is_converged(
   solver::TrustRegionSolver,
-  x, 
   real_obj, model_obj,
   real_res, model_res,
-  cg_iters, tr_size
+  cg_iters, tr_size, step_type
 )
 
   gg = dot(real_res, real_res)
-  # @show gg
-  # @show solver.settings.tol^2
   if gg < solver.settings.tol^2
     model_res_norm = norm(model_res)
     real_res_norm  = sqrt(gg)
-    # banner(real_obj, model_obj, real_res_norm, model_res_norm, cg_iters, tr_size, :interior)
-    logger(solver, real_obj, model_obj, real_res_norm, model_res_norm, cg_iters, tr_size, true)
-    # TODO need logger here
+    logger(solver, real_obj, model_obj, real_res_norm, model_res_norm, cg_iters, tr_size, true, step_type)
 
     if solver.settings.check_stability
       @assert false "not supported yet"
@@ -158,18 +143,17 @@ function hessian(solver, domain, common, u)
   return K
 end
 
-function preconditioner(solver, domain, common, Uu)
+function preconditioner!(solver, domain, common, Uu)
   @timeit timer(common) "Preconditioner" begin
     H = hessian(solver, domain, common, Uu)
     # P = ldl(H)
-    ldl_factorize!(H, solver.linear_solver.factor)
-    return P
+    ldl_factorize!(H, solver.linear_solver.factorization)
+    # TODO add shift stuff to LDL
     # attempt = 1 # TODO make this a global
     # while attempt < 10
     #   @info "Updating preconditioner, attempt = $attempt"
     #   try
-    #     # P = cholesky(H; shift=10.0^(-5 + attempt))
-    #     P = ldl(H)
+    #     P = cholesky(H; shift=10.0^(-5 + attempt))
     #     # P = opCholesky(H)
     #     # P = CholeskyPreconditioner(H)
     #     # P = DiagonalPreconditioner(H)
@@ -190,29 +174,22 @@ function preconditioner(solver, domain, common, Uu)
     # end
     # @assert false "Failed to factorize hessian after 10 attempts"
   end
+  # return P
 end
 
-function preconditioner!(solver, domain, common, Uu)
-  @timeit timer(common) "Preconditioner" begin
-    H = hessian(solver, domain, common, Uu)
-    ldl_factorize!(H, solver.linear_solver.factorization)
-  end
-  return nothing
-end
-
-function calculate_cauchy_point!(solver, common, g, Hg, tr_size)
+function calculate_cauchy_point!(cauchy_point, solver, common, g, Hg, tr_size)
   @timeit timer(common) "Cauchy point" begin
     P = solver.linear_solver.factorization
+    y_scratch_1 = solver.y_scratch_1
     gHg = dot(g, Hg)
     if gHg > 0
       α = -dot(g, g) / gHg
-      mul!(solver.cauchy_point, α, g)
-      ldiv!(solver.y, P, solver.cauchy_point)
-      cauchy_point_norm_squared = dot(solver.cauchy_point, solver.y)
+      @. cauchy_point = α * g
+      ldiv!(y_scratch_1, P, cauchy_point)
+      cauchy_point_norm_squared = dot(cauchy_point, y_scratch_1)
     else
-      ldiv!(solver.y, P, g)
-      mul!(solver.cauchy_point, -(tr_size / sqrt(dot(g, solver.y))), g)
-      cauchy_point_norm_squared = tr_size * tr_size
+      ldiv!(y_scratch_1, P, g)
+      @. cauchy_point = -g * (tr_size / sqrt(dot(g, y_scratch_1)))
       @info "negative curavture unpreconditioned cauchy point direction found."
     end
   end
@@ -243,57 +220,56 @@ end
 """
 minimize r * z + 0.5 * z * J * z
 """
-function minimize_trust_region_sub_problem(
+function minimize_trust_region_sub_problem!(
+  z,
   solver::TrustRegionSolver, domain, common::CthoniosCommon,
-  x::V, r_in::V, P, 
-  # scratch arrays
-  # TODO wrap these in a cache struct
-  # y_scratch, d, z, r, # cauhcy point is really a scratch array to reduce an allocation
+  x::V, r_in::V, #cauchy_point, # cauhcy point is really a scratch array to reduce an allocation
   tr_size::Float64
 ) where V <: AbstractVector
 
   @timeit timer(common) "Subproblem" begin
+    # unpack
+    P    = solver.linear_solver.factorization
+    Pr   = solver.y_scratch_1
+    d    = solver.y_scratch_2
+    r    = solver.y_scratch_3
+    zNp1 = solver.y_scratch_4
 
-    solver.z .= zero(eltype(solver.z))
-    solver.r .= r_in
+    # zero some stuff out and make other scratch vars
+    z .= zero(eltype(z))
+    zz = zero(eltype(x))
+    zd = zero(eltype(x))
+    r .= r_in
 
     cg_tol_squared = max(
-      solver.settings.cg_inexact_solve_ratio^2 * dot(solver.r, solver.r),
+      solver.settings.cg_inexact_solve_ratio^2 * dot(r, r),
       solver.settings.cg_tol^2
     )
 
     @timeit timer(common) "Multiply by approximate hessian" begin
-      ldiv!(solver.y, P, solver.r)
+      ldiv!(Pr, P, r)
     end
 
-    # d = -Pr
-    @. solver.d = -solver.y
-    # cauchy_point = zeros(eltype(d), length(d))
-    # cauchy_point = copy(d)
-    cauchy_point = solver.d
+    @. d = -Pr
 
-    rPr = dot(solver.r, solver.y)
-
-    zz = zero(eltype(x))
-    zd = zero(eltype(x))
+    rPr = dot(r, Pr)
 
     dd = rPr
 
     for i in 1:solver.settings.max_cg_iters
-      Hd = hvp(solver, domain, common, x, solver.d)
+      Hd = hvp(solver, domain, common, x, d)
 
-      # curvature = dot(d, K * d)
-      curvature = dot(solver.d, Hd)
+      curvature = dot(d, Hd)
       α = rPr / curvature
 
-      # @. zNp1 = z + α * d
-      @. solver.y = solver.z + α * solver.d
+      @. zNp1 = z + α * d
       zzNp1 = zz + 2.0 * α * zd + α * α * dd
 
       # TODO
       if curvature <= zero(eltype(x))
         τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-        return solver.z + τ * solver.d, cauchy_point, :negative_curvature, i
+        @. z = z + τ * d
+        return :negative_curvature, i
       end
 
       # TODO
@@ -301,69 +277,79 @@ function minimize_trust_region_sub_problem(
         # @assert false "other edge case not handled"
         # TODO projec to boundary
         τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-        return solver.z + τ * solver.d, cauchy_point, :boundary, i
+        @. z = z + τ * d
+        return :boundary, i
       end
 
-      # z = zNp1
-      @. solver.z = solver.y
+      @. z = zNp1
 
-      @. solver.r = solver.r + α * Hd
+      @. r = r + α * Hd
 
       @timeit timer(common) "Multiply by approximate hessian" begin
-        ldiv!(solver.y, P, solver.r)
+        ldiv!(Pr, P, r)
       end
 
-      rPrNp1 = dot(solver.r, solver.y)
+      rPrNp1 = dot(r, Pr)
       
-      if dot(solver.r, solver.r) < cg_tol_squared
-        return solver.z, cauchy_point, :interior, i
+      if dot(r, r) < cg_tol_squared
+        return :interior, i
       end
 
       β = rPrNp1 / rPr
       rPr = rPrNp1
-      @. solver.d = -solver.y + β * solver.d
+      @. d = -Pr + β * d
 
       zz = zzNp1
       zd = β * (zd + α * dd)
       dd = rPr * β * β * dd
     end
   end
-  return solver.z, cauchy_point, :interior, solver.settings.max_cg_iters
+  return :interior, solver.settings.max_cg_iters
 end
 
-function dog_leg_step(solver, common, q_newton_point, tr_size, P)
+function dog_leg_step!(d, solver, common, cauchy_point, q_newton_point, tr_size)
   @timeit timer(common) "Doglog step" begin
-    # old
-    # cc = dot(cauchy_point, P \ cauchy_point)
-    # nn = dot(q_newton_point, P \ q_newton_point)
-    ldiv!(solver.y, P, solver.cauchy_point)
-    cc = dot(solver.cauchy_point, solver.y)
-    ldiv!(solver.y, P, q_newton_point)
-    nn = dot(q_newton_point, solver.y)
+    P = solver.linear_solver.factorization
+    y_scratch_1 = solver.y_scratch_1
+    y_scratch_2 = solver.y_scratch_2
+
+    ldiv!(y_scratch_1, P, cauchy_point)
+    cc = dot(cauchy_point, y_scratch_1)
+    ldiv!(y_scratch_1, P, q_newton_point)
+    nn = dot(q_newton_point, y_scratch_1)
 
     tt = tr_size * tr_size
 
     # return cauchy point if it extends outside the tr
     if cc >= tt
-      return solver.cauchy_point * sqrt(tt / cc)
+      d .= sqrt(tt / cc) * cauchy_point
+      return nothing
+      # return cauchy_point * sqrt(tt / cc)
     end
 
     # return cauchy point? seems the preconditioner was not accurate
     if cc > nn
       @warn "cp outside newton, preconditioner likely inaccurate"
-      return solver.cauchy_point
+      # return cauchy_point
+      d .= cauchy_point
+      return nothing
     end
 
     # on the dogleg
     if nn > tt
-      mul!(solver.y, P, q_newton_point - solver.cauchy_point)      
-      dd = dot(q_newton_point - solver.cauchy_point, solver.y)
-      zd = dot(solver.cauchy_point, solver.y)
+      @. y_scratch_2 = q_newton_point - cauchy_point
+      ldiv!(y_scratch_1, P, y_scratch_2)
+      dd = dot(y_scratch_2, y_scratch_1)
+      zd = dot(cauchy_point, y_scratch_1)
+
       τ  = (sqrt((tr_size^2 - cc) * dd + zd^2) - zd) / dd
-      return solver.cauchy_point + τ * (q_newton_point - solver.cauchy_point)
+      @. d = cauchy_point + τ * (y_scratch_2)
+      return nothing
     end
   end
-  return q_newton_point
+
+  d .= q_newton_point
+  return nothing
 end
 
 function solve!(
@@ -386,13 +372,15 @@ function solve!(
   o = domain.domain_cache.Π[1]
   g = domain.domain_cache.f[domain.dof.unknown_dofs]
   g_norm = norm(g)
-  y = create_unknowns(domain)
-  model_res = similar(g)
-  model_res .= zero(eltype(g))
+
+  # TODO cleanup these cache arrays
+  # TODO these are likely the only leftover allocations left
+  cauchy_point = create_unknowns(domain)
+  d = create_unknowns(domain)
+  q_newton_point = create_unknowns(domain)
 
   # preconditioner
   preconditioner!(solver, domain, common, Uu)
-  P = solver.linear_solver.factorization
 
   @info @sprintf "Initial objective = %1.6e" o
   @info @sprintf "Initial residual  = %1.6e" g_norm
@@ -401,33 +389,25 @@ function solve!(
   cumulative_cg_iters = 0
   for n in 1:solver.settings.max_trust_iters
 
-    # check for convergence at beginning of iteration
-    if is_converged(solver, Uu, 0.0, 0.0, g, g, 0, tr_size)
-      @info "Converged - figure out what to do here"
-    end
-
     # need hvp
     Hg = hvp(solver, domain, common, Uu, g)
 
     # check for negative curvature
-    cauchy_point_norm_squared = calculate_cauchy_point!(solver, common, g, Hg, tr_size)
+    cauchy_point_norm_squared = calculate_cauchy_point!(cauchy_point, solver, common, g, Hg, tr_size)
 
     # check if outside trust region
     if cauchy_point_norm_squared >= tr_size * tr_size
       @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt(cauchy_point_norm_squared))."
-      cauchy_point .= (tr_size / sqrt(cauchy_point_norm_squared)) * solver.cauchy_point
+      cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
       cauchy_point_norm_squared = tr_size * tr_size
-      q_newton_point = solver.cauchy_point
+      q_newton_point .= cauchy_point
       step_type = :boundary
       n_cg_iters = 1
     else
-      q_newton_point, _, step_type, n_cg_iters = 
-        minimize_trust_region_sub_problem(
-          solver, domain, common, Uu, g, P, 
-          tr_size
-        )
-
-      step_type = :cg
+      # q_newton_point, step_type, n_cg_iters = 
+      #   minimize_trust_region_sub_problem(solver, domain, common, Uu, g, tr_size)
+      step_type, n_cg_iters = 
+        minimize_trust_region_sub_problem!(q_newton_point, solver, domain, common, Uu, g, tr_size)
     end
 
     cumulative_cg_iters += n_cg_iters
@@ -435,28 +415,27 @@ function solve!(
     happy = false
 
     while !happy
-      d = dog_leg_step(solver, common, q_newton_point, tr_size, P)
+      # d = dog_leg_step(solver, common, cauchy_point, q_newton_point, tr_size, y_scratch)
+      dog_leg_step!(d, solver, common, cauchy_point, q_newton_point, tr_size)
 
       Jd = hvp(solver, domain, common, Uu, d)
       dJd = dot(d, Jd)
 
       model_objective = dot(g, d) + 0.5 * dJd
 
-      # y = Uu + d
-      @. y = Uu + d
+      y = Uu + d
 
       real_objective, gy = objective_and_grad(solver, domain, common, y)
       real_objective = real_objective - o
 
-      if is_converged(solver, y, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size)
+      if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
         @info "Converged"
         ΔUu .= Uu - y
         Uu .= y
         return nothing
       end
 
-      # model_res = g + Jd
-      @. model_res = g + Jd
+      model_res = g + Jd
       model_res_norm = norm(model_res)
       real_res_norm = norm(gy)
 
@@ -466,7 +445,7 @@ function solve!(
         solver, 
         real_objective, model_objective,
         real_res_norm, model_res_norm,
-        cumulative_cg_iters, tr_size, will_accept
+        cumulative_cg_iters, tr_size, will_accept, step_type
       )
 
       if will_accept
@@ -483,7 +462,6 @@ function solve!(
       # TODO not sure what to do here
       if n_cg_iters >= solver.settings.max_cg_iters ||
         cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
-        # P = preconditioner(solver, domain, common, Uu)
         preconditioner!(solver, domain, common, Uu)
       end
     end
