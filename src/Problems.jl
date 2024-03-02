@@ -33,7 +33,7 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
     # @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(domain)
 
     # set up solver
-    @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain)
+    @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain, backend(common))
     @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(solver, domain)
     @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
       get_mesh_file_name(input_settings), get_output_file_name(input_settings),
@@ -53,24 +53,14 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
   domain, solver = problem.domain, problem.solver
   reset!(domain.time)
 
-  # TODO need a way to update bcs properly, this will change a lot
-  # update_unknown_ids!(domain)
-  # resize!(solver, domain)
-
   @timeit timer(common) "Results output" post_process_load_step!(problem)
 
   while domain.time.current_time <= domain.time.end_time
     step!(domain.time)
 
-    # TODO need a way to update bcs properly, this will change a lot
-    # update_unknown_ids!(domain)
-    # resize!(solver, domain)
-
-    # @info "$(repeat('=', 64))"
     @info "$(repeat('=', 96))"
     @info "= Load step $(domain.time.current_time_step - 1)"
     @info "= Time      $(domain.time.current_time)"
-    # @info "$(repeat('=', 64))"
     @info "$(repeat('=', 96))"
 
     @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)

@@ -4,6 +4,10 @@ cli_options = ArgParseSettings()
     help = "an absolute path to an input file <input-file>"
     arg_type = String
     required = true
+  "--ka-backend"
+    help = "a backend to use with KernelAbstractions.jl such as CPU, CUDA, etc."
+    arg_type = String
+    default = "NoBackend"
   "--verbose"
     action = :store_true
     help = "a flag to print to console rather than a log file"
@@ -21,11 +25,13 @@ function problems_main(input_file, common)
   end
 end
 
-function cthonios_main(input_file::String, verbose::Bool)
+function cthonios_main(input_file::String, verbose::Bool, ka_backend_str::String)
   log_file_name = splitext(input_file)[1] * ".log"
 
-  common = CthoniosCommon(log_file_name)
+  # backend setup
+  ka_backend = CthoniosBackend(eval(Meta.parse(ka_backend_str))())
 
+  common = CthoniosCommon(log_file_name, ka_backend)
   cthonios_header(common)
   dump_input_file(common, input_file)
 
@@ -48,9 +54,10 @@ function julia_main()::Cint
   # unpack args
   input_file = parsed_args["input-file"]
   verbose = parsed_args["verbose"]
-
+  ka_backend = parsed_args["ka-backend"]
+  
   # run Cthonios
-  cthonios_main(input_file, verbose)
+  cthonios_main(input_file, verbose, ka_backend)
   
   return 0
 end

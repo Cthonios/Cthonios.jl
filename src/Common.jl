@@ -1,6 +1,17 @@
 abstract type AbstractCthoniosType end
 
+struct NoKABackend <: KernelAbstractions.Backend
+end
 
+struct DaggerBackend <: KernelAbstractions.Backend
+end
+
+struct ThreadsBackend <: KernelAbstractions.Backend
+end
+
+struct CthoniosBackend{B} <: AbstractCthoniosType
+  backend::B
+end
 
 ################################################### 
 # Logger below, for writing to log file
@@ -17,7 +28,7 @@ end
 """
 """
 function CthoniosLogger(file_name::String)
-  logger = FormatLogger(file_name) do io, args
+  logger = FormatLogger(abspath(file_name)) do io, args
     if args.level == Error
       println(io, "[", args.level, "] ", args.message)
     elseif args.level == Warn
@@ -67,14 +78,16 @@ Base.show(io::IO, timer::CthoniosTimer) = Base.show(io::IO, timer.timer)
 struct CthoniosCommon <: AbstractCthoniosType
   logger::CthoniosLogger
   timer::CthoniosTimer
+  backend::CthoniosBackend
 end
 
 """
 """
-function CthoniosCommon(file_name::String)
+function CthoniosCommon(file_name::String, backend::CthoniosBackend)
   return CthoniosCommon(
     CthoniosLogger(file_name), 
-    CthoniosTimer()
+    CthoniosTimer(),
+    backend
   )
 end
 
@@ -91,6 +104,7 @@ end
 # end
 
 timer(common::CthoniosCommon) = common.timer.timer
+backend(common::CthoniosCommon) = common.backend.backend
 
 # new_section(common::CthoniosCommon, section_name::String) = 
 # new_section(common.logger, section_name)

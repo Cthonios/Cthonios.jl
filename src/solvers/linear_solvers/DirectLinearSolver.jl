@@ -26,7 +26,7 @@ function Base.show(io::IO, solver::DirectLinearSolver)
 end
 
 # TODO maybe add some settings
-function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStaticDomain)
+function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStaticDomain, backend)
   settings = DirectLinearSolverSettings(input_settings)
   assembler = StaticAssembler(domain.dof, map(x -> x.fspace, values(domain.sections)))
 
@@ -42,7 +42,7 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   sections = domain.sections
   state = domain.domain_cache.state
   props = domain.domain_cache.props
-  stiffness!(assembler, U, sections, state, props, X)
+  stiffness!(assembler, sections, U, state, props, X, backend)
 
   # setup matrix to setup a factorization
   # TODO eventually we might have matrix free stuff

@@ -70,7 +70,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   # cache setup
   # X = copy(coords)
   U = FiniteElementContainers.create_fields(dof)
-  f = FiniteElementContainers.create_fields(dof)
+  f = FiniteElementContainers.create_fields(dof).vals
   V = FiniteElementContainers.create_fields(dof)
   domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, f, V)
 

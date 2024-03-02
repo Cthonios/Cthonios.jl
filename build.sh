@@ -3,4 +3,4 @@
 #   create_app("./", "cthonios")
 # '
 rm -rf cthonios
-julia SimpleCthoniosBuild.jl
+julia --project=@. SimpleCthoniosBuild.jl
