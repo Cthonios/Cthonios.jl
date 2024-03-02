@@ -88,7 +88,7 @@ function energy_internal_force_and_stiffness!(Πs, f, assembler, sections, U, st
 end
 
 function energy_internal_force_and_stiffness_action!(Πs, f, Hv, sections, U, state, props, X, V, backend::Backend)
-  Πs .= zero(eltype(Π))
+  Πs .= zero(eltype(Πs))
   f .= zero(eltype(f))
   Hv .= zero(eltype(Hv))
   for (name, section) in pairs(sections)

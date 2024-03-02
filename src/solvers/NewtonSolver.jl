@@ -49,9 +49,9 @@ struct NewtonSolver{
 end
 
 # TODO maybe add preconditioner below?
-function NewtonSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict
+function NewtonSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict
   settings      = NewtonSolverSettings(input_settings) # TODO add non-defaults
-  linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain)
+  linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
   Uu            = create_unknowns(domain)
   ΔUu           = create_unknowns(domain)
   return NewtonSolver(settings, linear_solver, Uu, ΔUu)
@@ -83,7 +83,7 @@ function solve!(
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     @timeit timer(common) "Residual and stiffness" begin 
-      internal_force_and_stiffness!(solver.linear_solver, domain, Uu)
+      internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
     end
 
     @timeit timer(common) "Linear solve" begin 
