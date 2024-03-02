@@ -4,8 +4,10 @@ module Cthonios
 
 # dependencies
 using ArgParse
+using Atomix
 using ComponentArrays
 using ConstitutiveModels
+using Dagger
 using DocStringExtensions
 using Enzyme
 using EnzymeCore

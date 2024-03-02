@@ -1,6 +1,12 @@
 abstract type AbstractCthoniosType end
 
-struct NoBackend
+struct NoKABackend <: KernelAbstractions.Backend
+end
+
+struct DaggerBackend <: KernelAbstractions.Backend
+end
+
+struct ThreadsBackend <: KernelAbstractions.Backend
 end
 
 struct CthoniosBackend{B} <: AbstractCthoniosType
