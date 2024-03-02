@@ -1,5 +1,5 @@
 # hot loop over quadrature points for a single section
-function energy(section::TotalLagrangeSection, U, state, props, X)
+function energy(section::TotalLagrangeSection, U, state, props, X, ::NoBackend)
   W = 0.0
 
   for e in 1:num_elements(section)
@@ -19,25 +19,16 @@ function energy(section::TotalLagrangeSection, U, state, props, X)
   return W
 end
 
-function internal_force!(f, section::TotalLagrangeSection, U, state, props, X)
+function internal_force!(f, section::TotalLagrangeSection, U, state, props, X, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
-  # NS = ConstitutiveModels.num_state_vars(section.model)
-  # NP = ConstitutiveModels.num_properties(section.model)
 
   for e in 1:num_elements(section)
-    # conn = dof_connectivity(section, e)
-
-    # U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
-    # props_el = SVector{NP, eltype(props)}(@views props[:, e])
-    # X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-
     conn, U_el, props_el, X_el = unpack_element(section, U, props, X, e)
 
     f_el = zeros(SVector{ND * NN, eltype(f)})
     
     for q in 1:FiniteElementContainers.num_q_points(section)
-      # state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
       state_q = unpack_state(section, state, q, e)
       f_q = internal_force(
         section.model, section.formulation,
@@ -52,26 +43,17 @@ function internal_force!(f, section::TotalLagrangeSection, U, state, props, X)
   end
 end
 
-function stiffness!(assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
+function stiffness!(assembler, section::TotalLagrangeSection, U, state, props, X, block_id, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
-  # NS = ConstitutiveModels.num_state_vars(section.model)
-  # NP = ConstitutiveModels.num_properties(section.model)
   NDOF = ND * NN
 
   for e in 1:num_elements(section)
-    # conn = dof_connectivity(section, e)
-
-    # U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
-    # props_el = SVector{NP, eltype(props)}(@views props[:, e])
-    # X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-    # K_el = zeros(SVector{ND * NN, eltype(R)})
     _, U_el, props_el, X_el = unpack_element(section, U, props, X, e)
 
     K_el = zeros(SMatrix{NDOF, NDOF, eltype(U), NDOF * NDOF})
 
     for q in 1:FiniteElementContainers.num_q_points(section)
-      # state_q = SVector{NS, eltype(props)}(@views state[:, q, e])
       state_q = unpack_state(section, state, q, e)
 
       K_el = K_el + stiffness(
@@ -86,7 +68,7 @@ function stiffness!(assembler, section::TotalLagrangeSection, U, state, props, X
   end
 end
 
-function stiffness_action!(Kv, section::TotalLagrangeSection, U, state, props, X, V)
+function stiffness_action!(Kv, section::TotalLagrangeSection, U, state, props, X, V, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NDOF = ND * NN
@@ -113,7 +95,7 @@ function stiffness_action!(Kv, section::TotalLagrangeSection, U, state, props, X
   end
 end
 
-function energy_and_internal_force!(Π, f, section::TotalLagrangeSection, U, state, props, X)
+function energy_and_internal_force!(Π, f, section::TotalLagrangeSection, U, state, props, X, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NDOF = ND * NN
@@ -139,7 +121,7 @@ function energy_and_internal_force!(Π, f, section::TotalLagrangeSection, U, sta
   end
 end
 
-function internal_force_and_stiffness!(f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
+function internal_force_and_stiffness!(f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NDOF = ND * NN
@@ -167,7 +149,7 @@ function internal_force_and_stiffness!(f, assembler, section::TotalLagrangeSecti
   end
 end
 
-function energy_internal_force_and_stiffness!(Π, f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id)
+function energy_internal_force_and_stiffness!(Π, f, assembler, section::TotalLagrangeSection, U, state, props, X, block_id, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NDOF = ND * NN
@@ -196,7 +178,7 @@ function energy_internal_force_and_stiffness!(Π, f, assembler, section::TotalLa
   end
 end
 
-function energy_internal_force_and_stiffness_action!(Π, f, Hv, section::TotalLagrangeSection, U, state, props, X, V)
+function energy_internal_force_and_stiffness_action!(Π, f, Hv, section::TotalLagrangeSection, U, state, props, X, V, ::NoBackend)
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NDOF = ND * NN

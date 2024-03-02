@@ -30,8 +30,8 @@ include("NewtonSolver.jl")
 include("TrustRegionSolver.jl")
 
 function setup_nonlinear_solver(
-  inputs::D, domain::QuasiStaticDomain
+  inputs::D, domain::QuasiStaticDomain, backend
 ) where {D <: Dict{Symbol, Any}}
   type = eval(Meta.parse(inputs[:type]))
-  return type(inputs, domain)
+  return type(inputs, domain, backend)
 end

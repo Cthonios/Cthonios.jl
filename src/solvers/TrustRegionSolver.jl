@@ -47,9 +47,9 @@ struct TrustRegionSolver{
   y_scratch_4::V
 end
 
-function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain) where D <: Dict{Symbol, Any}
+function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
-  linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain)
+  linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
   Uu             = create_unknowns(domain)
   ΔUu            = create_unknowns(domain)
   Hv_field       = create_fields(domain)
@@ -111,7 +111,7 @@ end
 # TODO should below methods be moved to a top level abstract set of methods?
 function objective(solver, domain, common, u)
   @timeit timer(common) "Energy" begin
-    energy!(solver.linear_solver, domain, u)
+    energy!(solver.linear_solver, domain, u, backend(common))
     o = domain.domain_cache.Π[1]
   end
   return o
@@ -119,7 +119,7 @@ end
 
 function objective_and_grad(solver, domain, common, u)
   @timeit timer(common) "Energy and internal force" begin
-    energy_and_internal_force!(solver.linear_solver, domain, u)
+    energy_and_internal_force!(solver.linear_solver, domain, u, backend(common))
     o = domain.domain_cache.Π[1]
     # g = @views solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
     g = @views domain.domain_cache.f[domain.dof.unknown_dofs]
@@ -129,7 +129,7 @@ end
 
 function hvp(solver, domain, common, u, v)
   @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(solver.Hv_field, domain, u, v)
+    stiffness_action!(solver.Hv_field, domain, u, v, backend(common))
     Hv = @views solver.Hv_field[domain.dof.unknown_dofs]
   end
   return Hv
@@ -145,7 +145,7 @@ end
 
 function hessian(solver, domain, common, u)
   @timeit timer(common) "Hessian" begin
-    stiffness!(solver, domain, u)
+    stiffness!(solver, domain, u, backend(common))
     K = SparseArrays.sparse!(solver.linear_solver.assembler) #|> Symmetric
   end
   return K
@@ -379,7 +379,7 @@ function solve!(
 
   # calculate initial residual and objective
   @timeit timer(common) "Energy, internal force, and stiffness" begin
-    energy_internal_force_and_stiffness!(solver.linear_solver, domain, Uu)
+    energy_internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
   end
 
   # saving initial objective and gradient

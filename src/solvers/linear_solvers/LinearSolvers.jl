@@ -20,7 +20,7 @@ include("DirectLinearSolver.jl")
 # include("IterativeLinearSolver.jl")
 
 # general setup
-function setup_linear_solver(input_settings, domain)
+function setup_linear_solver(input_settings, domain, backend)
   type = Meta.parse(input_settings[:type])
-  return eval(type)(input_settings, domain)
+  return eval(type)(input_settings, domain, backend)
 end
