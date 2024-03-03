@@ -178,12 +178,9 @@ function energy_internal_force_and_stiffness(
 end
 
 function energy_gradient end
+function energy_hvp end
 
 include("Utils.jl")
-include("Kernels.jl")
-# include("DaggerKernels.jl")
-# include("KAKernels.jl")
-# include("ThreadsKernels.jl")
 include("SectionIterators.jl")
 include("DomainWrappers.jl")
 # include("Sensitivities.jl")

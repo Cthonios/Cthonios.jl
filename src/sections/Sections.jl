@@ -1,5 +1,13 @@
 abstract type Section{FS, Form, Mod} end
 
+function Base.size(section::Section)
+  ND = FiniteElementContainers.num_dimensions(section)
+  NN = FiniteElementContainers.num_nodes_per_element(section)
+  NP = ConstitutiveModels.num_properties(section.model)
+  NS = ConstitutiveModels.num_state_vars(section.model)
+  return ND, NN, NP, NS
+end
+
 FiniteElementContainers.num_dimensions(sec::Section)           = FiniteElementContainers.num_dimensions(sec.fspace)
 FiniteElementContainers.num_elements(sec::Section)             = FiniteElementContainers.num_elements(sec.fspace)
 FiniteElementContainers.num_nodes_per_element(sec::Section)    = FiniteElementContainers.num_nodes_per_element(sec.fspace)

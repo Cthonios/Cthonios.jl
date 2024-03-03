@@ -30,10 +30,12 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 [weakdeps]
 AbstractDifferentiation = "c29ec348-61ec-40c8-8164-b8c60e9d9f3d"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 
 [extensions]
 CthoniosAbstractDifferentiationExt = ["AbstractDifferentiation"]
 CthoniosAdaptExt = ["Adapt"]
+CthoniosEnzymeExt = ["Enzyme"]
 
 [compat]
 AbstractDifferentiation = "0.6"
@@ -43,6 +45,7 @@ ArgParse = "1"
 ComponentArrays = "0.15"
 ConstitutiveModels = "0.1.1"
 DocStringExtensions = "0.9"
+Enzyme = "0.11"
 Exodus = "0.12"
 FiniteElementContainers = "0.5.0"
 FunctionWrappers = "1"

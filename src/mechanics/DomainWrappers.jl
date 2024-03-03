@@ -15,12 +15,26 @@ function energy!(solver, domain::QuasiStaticDomain, Uu, backend)
   return nothing
 end
 
+function energy_new!(solver, domain, Uu, cache, backend)
+  # unpack stuff
+  Δt = domain.time.Δt
+  sections = domain.sections
+  @unpack X, U, props, state_old, state_new, Π, Πs = cache
+
+  # update fields here
+  update_fields!(U, domain, X, Uu)
+  energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend)
+  Π[1] = sum(Πs)
+
+  return nothing
+end
+
 function internal_force!(solver, domain::QuasiStaticDomain, Uu, backend)
 
   # unpack stuff
   Δt = domain.time.Δt
   sections = domain.sections
-  @unpack X, U, props, state_old, state_new, Π = domain.domain_cache
+  @unpack X, U, props, state_old, state_new, Π, f = domain.domain_cache
 
   # update fields here
   update_fields!(U, domain, X, Uu)
@@ -114,7 +128,7 @@ function energy_internal_force_and_stiffness_action!(solver, domain::QuasiStatic
   Δt = domain.time.Δt
   Hv = solver.assembler.stiffness_actions
   sections = domain.sections
-  @unpack X, U, props, state_old, state_new, Π, Πs, V = domain.domain_cache
+  @unpack X, U, props, state_old, state_new, Π, Πs, f, V = domain.domain_cache
 
   # update fields here
   update_fields!(U, domain, X, Uu)
