@@ -18,6 +18,7 @@ using LinearOperators
 using Logging
 using LoggingExtras
 using Parameters
+using Pkg
 using Printf
 using ReferenceFiniteElements
 using SparseArrays

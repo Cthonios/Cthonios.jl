@@ -19,8 +19,40 @@ function get_output_file_name(inputs::D)::String where D <: Dict{Symbol, Any}
   return inputs[:results][Symbol("output file name")]
 end
 
+function get_output_nodal_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  return inputs[:results][Symbol("nodal fields")]
+end
+
+function get_output_element_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  if Symbol("element fields") in keys(inputs[:results])
+    return inputs[:results][Symbol("element fields")]
+  else
+    return Vector{String}(undef, 0)
+  end
+end
+
+function get_output_quadrature_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  if Symbol("quadrature fields") in keys(inputs[:results])
+    return inputs[:results][Symbol("quadrature fields")]
+  else
+    return Vector{String}(undef, 0)
+  end
+end
+
 function get_solver_input_settings(inputs::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
   return inputs[:solver]
+end
+
+function get_max_properties(domain)
+  return maximum(map(x -> ConstitutiveModels.num_properties(x.model), domain.sections))
+end
+
+function get_max_state_variables(domain)
+  return maximum(map(x -> ConstitutiveModels.num_state_vars(x.model), domain.sections))
+end
+
+function get_max_q_points(domain)
+  return maximum(map(x -> FiniteElementContainers.num_q_points(x), domain.sections))
 end
 
 function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Dict
@@ -36,8 +68,15 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
     @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain, backend(common))
     @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(solver, domain)
     @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
-      get_mesh_file_name(input_settings), get_output_file_name(input_settings),
-      domain.dof, size(domain.domain_cache.X, 1)
+      get_mesh_file_name(input_settings), 
+      get_output_file_name(input_settings),
+      get_output_nodal_fields(input_settings),
+      get_output_element_fields(input_settings),
+      get_output_quadrature_fields(input_settings),
+      domain.dof, size(domain.domain_cache.X, 1),
+      get_max_properties(domain), 
+      get_max_state_variables(domain),
+      get_max_q_points(domain)
     )
   end
   return ForwardProblem(domain, solver, post_processor)
@@ -47,6 +86,7 @@ function Base.show(io::IO, problem::ForwardProblem)
   println(io, "ForwardProblem")
   println(io, "  Domain", problem.domain)
   println(io, "\n  Solver\n", problem.solver)
+  println(io, "\n  Results\n", problem.post_processor)
 end
 
 function solve!(problem::ForwardProblem, common::CthoniosCommon)
