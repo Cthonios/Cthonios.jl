@@ -1,4 +1,4 @@
-abstract type Section{FS, Form, Mod} end
+abstract type Section{ID, FS, Form, Mod} end
 
 function Base.size(section::Section)
   ND = FiniteElementContainers.num_dimensions(section)
@@ -135,7 +135,7 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     
     # finally setup section
     section_type = eval(Meta.parse(section[:type]))
-    section_temp = section_type(fspace, form, model)
+    section_temp = section_type(block_id, fspace, form, model)
 
     # TODO more to do here
     props_temp, state_old_temp, state_new_temp, Πs_temp = setup(section_temp, section[:material][:properties])

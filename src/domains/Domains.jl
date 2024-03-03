@@ -6,9 +6,7 @@ abstract type AbstractDomain{
   BCNodes,
   BCDofs,
   BCFuncIDs,
-  Sections,
-  Time,
-  DomainCache
+  Sections
 } end
 
 include("QuasiStaticDomain.jl")

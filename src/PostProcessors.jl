@@ -28,7 +28,6 @@ function PostProcessor(
   f = FileMesh(ExodusDatabase, mesh_file)
   copy_mesh(f.file_name, out_file)
   Exodus.close(f.mesh_obj)
-  # out = FileMesh(ExodusDatabase, out_file)
   out = ExodusDatabase(out_file, "rw")
 
   nodal_fields = Vector{String}(undef, 0)
@@ -36,14 +35,26 @@ function PostProcessor(
   quadrature_fields = Vector{String}(undef, 0)
 
   # Nodal fields
-  if dims == 2
-    # Exodus.write_names(out, NodalVariable, ["displ_x", "displ_y"])
-    append!(nodal_fields, ["displ_x", "displ_y"])
-  elseif dims == 3
-    # Exodus.write_names(out, NodalVariable, ["displ_x", "displ_y", "displ_z"])
-    ppend!(nodal_fields, ["displ_x", "displ_y", "displ_z"])
-  else
-    @assert false "only dim 2, 3 is supported right now"
+  for nodal_field in output_nodal_fields
+    if nodal_field == "displacement"
+      if dims == 2
+        append!(nodal_fields, ["displ_x", "displ_y"])
+      elseif dims == 3
+        append!(nodal_fields, ["displ_x", "displ_y", "displ_z"])
+      else
+        @assert false "only dim 2, 3 is supported right now"
+      end
+    elseif nodal_field == "internal force"
+      if dims == 2
+        append!(nodal_fields, ["internal_force_x", "internal_force_y"])
+      elseif dims == 3
+        append!(nodal_fields, ["internal_force_x", "internal_force_y", "internal_force_z"])
+      else
+        @assert false "only dim 2, 3 is supported right now"
+      end
+    else
+      @assert false "Unsupported nodal field $nodal_field"
+    end
   end
 
   # Element fields
@@ -123,5 +134,8 @@ Exodus.write_time(p.out_file, n, t)
 
 write_values(p::PostProcessor, type::Type{NodalVariable}, n::Int, name::String, u) = 
 Exodus.write_values(p.out_file, type, n, name, u)
+
+write_values(p::PostProcessor, type::Type{ElementVariable}, n::Int, block_id::Int, name::String, u) = 
+Exodus.write_values(p.out_file, type, n, block_id, name, u)
 
 close(p::PostProcessor) = Exodus.close(p.out_file)

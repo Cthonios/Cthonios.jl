@@ -54,7 +54,8 @@ function cthonios_main(input_file::String, verbose::Bool, ka_backend_str::String
   dump_input_file(common, input_file)
 
   if verbose
-    dump_dependencies_state()
+    # maybe add a debug flag or something like that?
+    # dump_dependencies_state()
     problems_main(input_file, common)
     @info timer(common)
   else

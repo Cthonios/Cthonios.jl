@@ -34,7 +34,7 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   update_unknown_dofs!(assembler, domain)
 
   # also need to assemble once
-  Δt = domain.time.Δt 
+  Δt = domain.domain_cache.time.Δt 
   U = domain.domain_cache.U
   Uu = FiniteElementContainers.create_unknowns(domain.dof) # TODO remove this allocation
   X = domain.domain_cache.X
