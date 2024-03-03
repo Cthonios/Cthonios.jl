@@ -7,7 +7,7 @@ cli_options = ArgParseSettings()
   "--ka-backend"
     help = "a backend to use with KernelAbstractions.jl such as CPU, CUDA, etc."
     arg_type = String
-    default = "NoBackend"
+    default = "NoKABackend"
   "--verbose"
     action = :store_true
     help = "a flag to print to console rather than a log file"

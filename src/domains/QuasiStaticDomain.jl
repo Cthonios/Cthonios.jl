@@ -1,8 +1,9 @@
 struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainCache
   X::V1
   U::V2
-  state::V3
-  props::V4
+  props::V3
+  state_old::V4
+  state_new::V4
   Π::V5
   Πs::V6 # for energy kernels
   f::V7  # for internal force
@@ -10,16 +11,18 @@ struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainC
 end
 
 function Base.similar(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, f, V = cache
+  @unpack X, U, props, state_old, state_new, Π, Πs, f, V = cache
   return QuasiStaticDomainCache(
-    similar(X), similar(U), similar(state),
-    similar(props), similar(Π), similar(Πs), similar(f), similar(V)
+    similar(X), similar(U), 
+    similar(props),
+    similar(state_old), similar(state_new),
+    similar(Π), similar(Πs), similar(f), similar(V)
   )
 end
 
 function unpack(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, f, V = cache
-  return X, U, state, props, Π, Πs, f, V
+  @unpack X, U, props, state_old, state_new, props, Π, Πs, f, V = cache
+  return X, U, props, state_old, state_new, Π, Πs, f, V
 end
 
 struct QuasiStaticDomain{
@@ -62,7 +65,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   )
   
   # section setup
-  sections, props, state, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
+  sections, props, state_old, state_new, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
 
   # time stepper setup
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
@@ -72,7 +75,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   U = FiniteElementContainers.create_fields(dof)
   f = FiniteElementContainers.create_fields(dof).vals
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, f, V)
+  domain_cache = QuasiStaticDomainCache(coords, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V)
 
   return QuasiStaticDomain(
     dof, funcs, 
