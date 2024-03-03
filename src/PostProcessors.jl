@@ -1,15 +1,7 @@
-# output_map = Dict(
-#   "displacement"
-# )
-
-
-struct PostProcessor{Out <: ExodusDatabase, V <: NodalField}
-  # out_file_name::
+struct PostProcessor{Out <: ExodusDatabase}
   out_file::Out
-  scratch_U::V
 end
 
-# function PostProcessor(f::FileMesh, out_file::String, dof::DofManager, dims::Int)
 """
 Constructor for post processor
 
@@ -22,7 +14,7 @@ function PostProcessor(
   output_nodal_fields::Vector{String},
   output_element_fields::Vector{String},
   output_quadrature_fields::Vector{String},
-  dof::DofManager, dims::Int,
+  dims::Int,
   n_properties::Int, n_state_vars::Int, max_q_points::Int
 )
   f = FileMesh(ExodusDatabase, mesh_file)
@@ -85,8 +77,7 @@ function PostProcessor(
   Exodus.write_names(out, ElementVariable, element_fields)
 
   # Exodus.close(out)
-  U = FiniteElementContainers.create_fields(dof)
-  return PostProcessor(out, U)
+  return PostProcessor(out)
 end
 
 function Base.show(io::IO, pp::PostProcessor)

@@ -73,7 +73,7 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
       get_output_nodal_fields(input_settings),
       get_output_element_fields(input_settings),
       get_output_quadrature_fields(input_settings),
-      domain.dof, size(domain.domain_cache.X, 1),
+      size(domain.domain_cache.X, 1),
       get_max_properties(domain), 
       get_max_state_variables(domain),
       get_max_q_points(domain)
@@ -105,6 +105,10 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
 
     @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)
 
+    # copy new state variables to old array
+    @timeit timer(common) "State variable update" begin
+      domain.domain_cache.state_old .= domain.domain_cache.state_new
+    end
     # post-processing
     @timeit timer(common) "Results output" post_process_load_step!(problem, common) 
 
