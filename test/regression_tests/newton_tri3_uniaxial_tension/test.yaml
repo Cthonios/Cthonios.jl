@@ -67,5 +67,8 @@ problems:
     solver: newton
     results:
       output file name: regression_tests/newton_tri3_uniaxial_tension/test.e
+      nodal fields:
+      - displacement
+
 
   

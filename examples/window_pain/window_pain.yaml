@@ -13,6 +13,19 @@ materials:
     properties:
       bulk modulus: 0.833
       shear modulus: 0.3846
+  metal_linear:
+    model: LinearElastic
+    properties:
+      youngs modulus: 1.0
+      poissons ratio: 0.3
+  metal:
+    model: LinearElastoPlasticity
+    properties:
+      youngs modulus: 70.0
+      poissons ratio: 0.3
+      yield stress: 2.0
+      yield surface: J2YieldSurface
+      isotropic hardening model: NoIsotropicHardening
 
 linear solvers:
   direct:

@@ -74,7 +74,10 @@ function PostProcessor(
   end
 
   Exodus.write_names(out, NodalVariable, nodal_fields)
-  Exodus.write_names(out, ElementVariable, element_fields)
+
+  if length(element_fields) > 0
+    Exodus.write_names(out, ElementVariable, element_fields)
+  end
 
   # Exodus.close(out)
   return PostProcessor(out)

@@ -39,7 +39,7 @@ end
 
 # simple setup, eventually dispatch on setup type
 function setup(section::Section, inputs::Dict)
-  props_init, state_init = ConstitutiveModels.setup(section.model, inputs; type=SVector)
+  props_init, state_init = ConstitutiveModels.setup(section.model, inputs)
 
   NQ, NE = FiniteElementContainers.num_q_points(section), num_elements(section)
 
@@ -76,7 +76,7 @@ include("TotalLagrangeSection.jl")
 
 function setup_material(input_settings::D) where D <: Dict{Symbol, Any}
   model_name = input_settings[:model]
-  model = eval(Meta.parse(model_name))()
+  model = eval(Meta.parse(model_name))(input_settings[:properties])
   return model
 end
 
