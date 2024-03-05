@@ -7,10 +7,28 @@ cli_options = ArgParseSettings()
   "--ka-backend"
     help = "a backend to use with KernelAbstractions.jl such as CPU, CUDA, etc."
     arg_type = String
-    default = "NoBackend"
+    default = "NoKABackend"
   "--verbose"
     action = :store_true
     help = "a flag to print to console rather than a log file"
+end
+
+function dump_dependencies_state()
+  deps = Pkg.dependencies()
+
+  @info "Artifacts:"
+  for (uuid, dep) in deps
+    if occursin("_jll", dep.name)
+      @info "$uuid $(rpad(dep.name, 32, ' ')) $(dep.version)"
+    end
+  end
+  @info "\n"
+  @info "Dependencies:"
+  for (uuid, dep) in deps
+    if !occursin("_jll", dep.name)
+      @info "$uuid $(rpad(dep.name, 32, ' ')) $(dep.version)"
+    end
+  end
 end
 
 function problems_main(input_file, common)
@@ -36,10 +54,13 @@ function cthonios_main(input_file::String, verbose::Bool, ka_backend_str::String
   dump_input_file(common, input_file)
 
   if verbose
+    # maybe add a debug flag or something like that?
+    # dump_dependencies_state()
     problems_main(input_file, common)
     @info timer(common)
   else
     with_logger(common) do
+      dump_dependencies_state()
       problems_main(input_file, common)
       new_section("Timings")
       @info timer(common)

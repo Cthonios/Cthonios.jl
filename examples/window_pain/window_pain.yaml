@@ -2,7 +2,7 @@
 functions:
   displacement_ramp: 
     type: ScalarFunction{2, Float64, Float64, Float64}
-    expression: (x, t) -> 1.0 * t
+    expression: (x, t) -> -0.5 * t
   zero_func:
     type: ScalarFunction{2, Float64, Float64, Float64}
     expression: (x, t) -> 0.0
@@ -13,6 +13,19 @@ materials:
     properties:
       bulk modulus: 0.833
       shear modulus: 0.3846
+  metal_linear:
+    model: LinearElastic
+    properties:
+      youngs modulus: 1.0
+      poissons ratio: 0.3
+  metal:
+    model: LinearElastoPlasticity
+    properties:
+      youngs modulus: 70.0
+      poissons ratio: 0.3
+      yield stress: 2.0
+      yield surface: J2YieldSurface
+      isotropic hardening model: NoIsotropicHardening
 
 linear solvers:
   direct:
@@ -20,12 +33,12 @@ linear solvers:
     factorization method: ldl
 
 nonlinear solvers:
+  trs:
+    type: TrustRegionSolver
+    linear solver: direct
   newton:
     type: NewtonSolver
     linear solver: direct
-    relative tolerance: 1.0e-8
-    absolute tolerance: 1.0e-8
-    max steps: 100
 
 # Domains scope
 
@@ -33,7 +46,7 @@ domains:
   domain_1:
     mesh:
       type: ExodusDatabase{Int32, Int32, Int32, Float64}
-      file name: regression_tests/newton_tri3_uniaxial_tension/test.g
+      file name: window_pain_tri3.g
 
     boundary conditions:
       displacement: 
@@ -58,17 +71,21 @@ domains:
       type: ConstantTimeStepper
       start time: 0.0
       end time: 1.0
-      time step: 0.01
+      time step: 0.025
 
 problems:
   forward_1:
     type: ForwardProblem
     domain: domain_1
-    solver: newton
+    solver: trs
     results:
-      output file name: regression_tests/newton_tri3_uniaxial_tension/test.e
+      output file name: output.e
       nodal fields:
       - displacement
-
+      - internal force
+      element fields:
+      - properties
+      quadrature fields:
+      - state variables
 
   

@@ -34,15 +34,17 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   update_unknown_dofs!(assembler, domain)
 
   # also need to assemble once
+  Δt = domain.domain_cache.time.Δt 
   U = domain.domain_cache.U
   Uu = FiniteElementContainers.create_unknowns(domain.dof) # TODO remove this allocation
   X = domain.domain_cache.X
   update_fields!(U, domain, X, Uu)
   
   sections = domain.sections
-  state = domain.domain_cache.state
+  state_old = domain.domain_cache.state_old
+  state_new = domain.domain_cache.state_new
   props = domain.domain_cache.props
-  stiffness!(assembler, sections, U, state, props, X, backend)
+  stiffness!(assembler, state_new, sections, Δt, X, U, props, state_old, backend)
 
   # setup matrix to setup a factorization
   # TODO eventually we might have matrix free stuff

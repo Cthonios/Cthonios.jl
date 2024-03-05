@@ -64,5 +64,7 @@ problems:
     solver: trs
     results:
       output file name: regression_tests/trs_tri3_uniaxial_tension/test.e
+      nodal fields:
+      - displacement
 
   

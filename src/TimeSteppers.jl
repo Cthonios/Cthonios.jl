@@ -13,6 +13,10 @@ mutable struct ConstantTimeStepper{T <: Number} <: TimeStepper{T}
   Δt::T
 end
 
+function Base.similar(::ConstantTimeStepper)
+  return ConstantTimeStepper(0.0, 0.0, 0.0, 0, 0.0)
+end
+
 function reset!(time::ConstantTimeStepper)
   time.current_time = time.start_time
   time.current_time_step = 1

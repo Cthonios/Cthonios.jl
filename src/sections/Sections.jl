@@ -1,4 +1,12 @@
-abstract type Section{FS, Form, Mod} end
+abstract type Section{ID, FS, Form, Mod} end
+
+function Base.size(section::Section)
+  ND = FiniteElementContainers.num_dimensions(section)
+  NN = FiniteElementContainers.num_nodes_per_element(section)
+  NP = ConstitutiveModels.num_properties(section.model)
+  NS = ConstitutiveModels.num_state_vars(section.model)
+  return ND, NN, NP, NS
+end
 
 FiniteElementContainers.num_dimensions(sec::Section)           = FiniteElementContainers.num_dimensions(sec.fspace)
 FiniteElementContainers.num_elements(sec::Section)             = FiniteElementContainers.num_elements(sec.fspace)
@@ -31,7 +39,7 @@ end
 
 # simple setup, eventually dispatch on setup type
 function setup(section::Section, inputs::Dict)
-  props_init, state_init = ConstitutiveModels.setup(section.model, inputs; type=SVector)
+  props_init, state_init = ConstitutiveModels.setup(section.model, inputs)
 
   NQ, NE = FiniteElementContainers.num_q_points(section), num_elements(section)
 
@@ -47,16 +55,18 @@ function setup(section::Section, inputs::Dict)
   # state = QuadratureField{length(state_init), NQ, NE, StructVector, typeof(state_init)}(undef)
 
   # TODO add this type to FiniteElementContainers in some way as a wrapper
-  state = Array{eltype(state_init), 3}(undef, length(state_init), NQ, NE)
+  state_old = Array{eltype(state_init), 3}(undef, length(state_init), NQ, NE)
+  state_new = Array{eltype(state_init), 3}(undef, length(state_init), NQ, NE)
 
   for e in 1:NE
     props[:, e] = props_init
     for q in 1:NQ
-      state[:, q, e] = state_init
+      state_old[:, q, e] = state_init
+      state_new[:, q, e] = state_init
     end
   end
 
-  return props, state, Πs
+  return props, state_old, state_new, Πs
 end
 
 include("TotalLagrangeSection.jl")
@@ -66,7 +76,7 @@ include("TotalLagrangeSection.jl")
 
 function setup_material(input_settings::D) where D <: Dict{Symbol, Any}
   model_name = input_settings[:model]
-  model = eval(Meta.parse(model_name))()
+  model = eval(Meta.parse(model_name))(input_settings[:properties])
   return model
 end
 
@@ -74,7 +84,8 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
   new_section("Sections")
   block_ids = element_block_ids(mesh)
   sections = Dict{Symbol, Any}()
-  state = Dict{Symbol, Any}()
+  state_old = Dict{Symbol, Any}()
+  state_new = Dict{Symbol, Any}()
   props = Dict{Symbol, Any}()
   Πs = Dict{Symbol, Any}()
 
@@ -124,19 +135,24 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     
     # finally setup section
     section_type = eval(Meta.parse(section[:type]))
-    section_temp = section_type(fspace, form, model)
+    section_temp = section_type(block_id, fspace, form, model)
 
     # TODO more to do here
-    props_temp, state_temp, Πs_temp = setup(section_temp, section[:material][:properties])
+    props_temp, state_old_temp, state_new_temp, Πs_temp = setup(section_temp, section[:material][:properties])
 
     # store section
     name = Symbol("section_$n")
     sections[name] = section_temp
     props[name] = props_temp
-    state[name] = state_temp
+    state_old[name] = state_old_temp
+    state_new[name] = state_new_temp
     Πs[name] = Πs_temp
 
     n = n + 1
   end
-  return NamedTuple(sections), ComponentArray(props), ComponentArray(state), ComponentArray(Πs)
+  return NamedTuple(sections), 
+         ComponentArray(props), 
+         ComponentArray(state_old), 
+         ComponentArray(state_new), 
+         ComponentArray(Πs)
 end

@@ -19,8 +19,40 @@ function get_output_file_name(inputs::D)::String where D <: Dict{Symbol, Any}
   return inputs[:results][Symbol("output file name")]
 end
 
+function get_output_nodal_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  return inputs[:results][Symbol("nodal fields")]
+end
+
+function get_output_element_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  if Symbol("element fields") in keys(inputs[:results])
+    return inputs[:results][Symbol("element fields")]
+  else
+    return Vector{String}(undef, 0)
+  end
+end
+
+function get_output_quadrature_fields(inputs::D)::Vector{String} where D <: Dict{Symbol, Any}
+  if Symbol("quadrature fields") in keys(inputs[:results])
+    return inputs[:results][Symbol("quadrature fields")]
+  else
+    return Vector{String}(undef, 0)
+  end
+end
+
 function get_solver_input_settings(inputs::D)::Dict{Symbol, Any} where D <: Dict{Symbol, Any}
   return inputs[:solver]
+end
+
+function get_max_properties(domain)
+  return maximum(map(x -> ConstitutiveModels.num_properties(x.model), domain.sections))
+end
+
+function get_max_state_variables(domain)
+  return maximum(map(x -> ConstitutiveModels.num_state_vars(x.model), domain.sections))
+end
+
+function get_max_q_points(domain)
+  return maximum(map(x -> FiniteElementContainers.num_q_points(x), domain.sections))
 end
 
 function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Dict
@@ -36,8 +68,15 @@ function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Di
     @timeit timer(common) "Solver" solver = setup_nonlinear_solver(get_solver_input_settings(input_settings), domain, backend(common))
     @timeit timer(common) "Update unknown dofs" update_unknown_dofs!(solver, domain)
     @timeit timer(common) "Postprocessor" post_processor = PostProcessor(
-      get_mesh_file_name(input_settings), get_output_file_name(input_settings),
-      domain.dof, size(domain.domain_cache.X, 1)
+      get_mesh_file_name(input_settings), 
+      get_output_file_name(input_settings),
+      get_output_nodal_fields(input_settings),
+      get_output_element_fields(input_settings),
+      get_output_quadrature_fields(input_settings),
+      size(domain.domain_cache.X, 1),
+      get_max_properties(domain), 
+      get_max_state_variables(domain),
+      get_max_q_points(domain)
     )
   end
   return ForwardProblem(domain, solver, post_processor)
@@ -47,46 +86,79 @@ function Base.show(io::IO, problem::ForwardProblem)
   println(io, "ForwardProblem")
   println(io, "  Domain", problem.domain)
   println(io, "\n  Solver\n", problem.solver)
+  println(io, "\n  Results\n", problem.post_processor)
 end
 
 function solve!(problem::ForwardProblem, common::CthoniosCommon)
   domain, solver = problem.domain, problem.solver
-  reset!(domain.time)
+  reset!(domain.domain_cache.time)
 
-  @timeit timer(common) "Results output" post_process_load_step!(problem)
+  @timeit timer(common) "Results output" post_process_load_step!(problem, common)
 
-  while domain.time.current_time <= domain.time.end_time
-    step!(domain.time)
+  while domain.domain_cache.time.current_time <= domain.domain_cache.time.end_time
+    step!(domain.domain_cache.time)
 
     @info "$(repeat('=', 96))"
-    @info "= Load step $(domain.time.current_time_step - 1)"
-    @info "= Time      $(domain.time.current_time)"
+    @info "= Load step $(domain.domain_cache.time.current_time_step - 1)"
+    @info "= Time      $(domain.domain_cache.time.current_time)"
     @info "$(repeat('=', 96))"
 
     @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)
 
+    # copy new state variables to old array
+    @timeit timer(common) "State variable update" begin
+      domain.domain_cache.state_old .= domain.domain_cache.state_new
+    end
     # post-processing
-    @timeit timer(common) "Results output" post_process_load_step!(problem) 
+    @timeit timer(common) "Results output" post_process_load_step!(problem, common) 
 
   end
 
   close(problem.post_processor)
 end
 
-function post_process_load_step!(problem::ForwardProblem)
+function post_process_load_step!(problem::ForwardProblem, common::CthoniosCommon)
   # update_bcs!(domain.post_processor.scratch_U, domain)
   domain = problem.domain
+  cache = problem.domain.domain_cache
   solver = problem.solver
   pp = problem.post_processor
-  update_fields!(pp.scratch_U, domain, domain.domain_cache.X, solver.Uu)
+  time_step = domain.domain_cache.time.current_time_step
+  # update_fields!(pp.scratch_U, domain, domain.domain_cache.X, solver.Uu)
 
   # write displacements
-  write_time(pp, domain.time.current_time_step, domain.time.current_time)
-  write_values(pp, NodalVariable, domain.time.current_time_step, "displ_x", pp.scratch_U[1, :])
-  write_values(pp, NodalVariable, domain.time.current_time_step, "displ_y", pp.scratch_U[2, :])
+  write_time(pp, domain.domain_cache.time.current_time_step, domain.domain_cache.time.current_time)
 
-  if size(problem.domain.domain_cache.X, 1) == 3
-    write_values(pp, NodalVariable, domain.time.current_time_step, "displ_z", pp.scratch_U[3, :])
+  # Nodal variables first
+  if "displ_x" in keys(pp.out_file.nodal_var_name_dict)
+    write_values(pp, NodalVariable, time_step, "displ_x", cache.U[1, :])
+    write_values(pp, NodalVariable, time_step, "displ_y", cache.U[2, :])
+
+    if size(problem.domain.domain_cache.X, 1) == 3
+      write_values(pp, NodalVariable, time_step, "displ_z", cache.U[3, :])
+    end
+  end
+
+  if "internal_force_x" in keys(pp.out_file.nodal_var_name_dict)
+    # need to run the routine here
+    internal_force!(solver, domain, solver.Uu, backend(common))
+
+    write_values(pp, NodalVariable, time_step, "internal_force_x", cache.f[1, :])
+    write_values(pp, NodalVariable, time_step, "internal_force_y", cache.f[2, :])
+
+    if size(problem.domain.domain_cache.X, 1) == 3
+      write_values(pp, NodalVariable, time_step, "internal_force_z", cache.f[3, :])
+    end
+  end
+
+  # Now element variables
+  for (name, section) in pairs(domain.sections)
+    if "properties_001" in keys(pp.out_file.element_var_name_dict)
+      for n in axes(domain.domain_cache.props[name], 1)
+        temp = @views cache.props[name]
+        write_values(pp, ElementVariable, time_step, section.block_id, "properties_$(lpad(n, 3, '0'))", temp[n, :])
+      end
+    end
   end
 
   # TODO fill out more output

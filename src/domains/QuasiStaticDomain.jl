@@ -1,8 +1,10 @@
-struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainCache
+struct QuasiStaticDomainCache{Time, V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainCache
+  time::Time
   X::V1
   U::V2
-  state::V3
-  props::V4
+  props::V3
+  state_old::V4
+  state_new::V4
   Π::V5
   Πs::V6 # for energy kernels
   f::V7  # for internal force
@@ -10,16 +12,19 @@ struct QuasiStaticDomainCache{V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainC
 end
 
 function Base.similar(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, f, V = cache
+  @unpack time, X, U, props, state_old, state_new, Π, Πs, f, V = cache
   return QuasiStaticDomainCache(
-    similar(X), similar(U), similar(state),
-    similar(props), similar(Π), similar(Πs), similar(f), similar(V)
+    similar(time),
+    similar(X), similar(U), 
+    similar(props),
+    similar(state_old), similar(state_new),
+    similar(Π), similar(Πs), similar(f), similar(V)
   )
 end
 
 function unpack(cache::QuasiStaticDomainCache)
-  @unpack X, U, state, props, Π, Πs, f, V = cache
-  return X, U, state, props, Π, Πs, f, V
+  @unpack time, X, U, props, state_old, state_new, props, Π, Πs, f, V = cache
+  return time, X, U, props, state_old, state_new, Π, Πs, f, V
 end
 
 struct QuasiStaticDomain{
@@ -29,16 +34,14 @@ struct QuasiStaticDomain{
   BCDofs,
   BCFuncIDs,
   Sections,
-  Time,
   DomainCache
-} <: AbstractDomain{Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections, Time, DomainCache}
+} <: AbstractDomain{Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections}
   dof::Dof
   funcs::Funcs
   bc_nodes::BCNodes
   bc_dofs::BCDofs
   bc_func_ids::BCFuncIDs
   sections::Sections
-  time::Time
   domain_cache::DomainCache
 end
 
@@ -62,7 +65,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   )
   
   # section setup
-  sections, props, state, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
+  sections, props, state_old, state_new, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
 
   # time stepper setup
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
@@ -70,14 +73,14 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   # cache setup
   # X = copy(coords)
   U = FiniteElementContainers.create_fields(dof)
-  f = FiniteElementContainers.create_fields(dof).vals
+  f = FiniteElementContainers.create_fields(dof)
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(coords, U, state, props, zeros(Float64, 1), Πs, f, V)
+  domain_cache = QuasiStaticDomainCache(time, coords, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V)
 
   return QuasiStaticDomain(
     dof, funcs, 
     disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
-    sections, time, domain_cache
+    sections, domain_cache
   )
 end
 
@@ -92,14 +95,14 @@ function Base.show(io::IO, domain::QuasiStaticDomain)
     println(io, val)
   end
   print(io, "      TimeStepper\n")
-  print(io, "        Type = $(typeof(domain.time).name.name)")
+  print(io, "        Type = $(typeof(domain.domain_cache.time).name.name)")
 end
 
 # access methods
 coordinates(d::QuasiStaticDomain)  = d.coords
 dof_manager(d::QuasiStaticDomain)  = d.dof
 sections(d::QuasiStaticDomain)     = d.sections
-time_stepper(d::QuasiStaticDomain) = d.time
+# time_stepper(d::QuasiStaticDomain) = d.time
 
 # FEM container methods
 # DofManager hooks
@@ -118,7 +121,7 @@ end
 function update_bcs!(U, domain::QuasiStaticDomain, Xs)
   for (node, dof, func_id) in zip(domain.bc_nodes, domain.bc_dofs, domain.bc_func_ids)
     X = @views Xs[:, node]
-    t = domain.time.current_time
+    t = domain.domain_cache.time.current_time
     U[dof] = domain.funcs[func_id](X, t)
   end
 end
@@ -133,7 +136,7 @@ function update_fields!(U, domain::QuasiStaticDomain, Xs, Uu)
 end
 
 # Time stepping hooks
-step!(domain::QuasiStaticDomain) = step!(domain.time)
+step!(domain::QuasiStaticDomain) = step!(domain.domain_cache.time)
 
 # Parsing
 get_domain_bcs_inputs(input_settings)::Dict{Symbol, Any} = input_settings[:boundary_conditions]
