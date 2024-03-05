@@ -141,7 +141,7 @@ function post_process_load_step!(problem::ForwardProblem, common::CthoniosCommon
 
   if "internal_force_x" in keys(pp.out_file.nodal_var_name_dict)
     # need to run the routine here
-    internal_force!(solver, domain, solver.Uu, backend(common))
+    internal_force!(solver, domain, domain.domain_cache.Uu, backend(common))
 
     write_values(pp, NodalVariable, time_step, "internal_force_x", cache.f[1, :])
     write_values(pp, NodalVariable, time_step, "internal_force_y", cache.f[2, :])

@@ -5,15 +5,9 @@ function solve! end
 
 function update_unknown_dofs!(assembler::StaticAssembler, d::QuasiStaticDomain)
   # update the dofs
-  FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
+  update_unknown_dofs!(d)
   FiniteElementContainers.update_unknown_dofs!(assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
 end
-
-# function update_unknown_dofs!(assembler::MatrixFreeStaticAssembler, d::QuasiStaticDomain)
-#   # update the dofs
-#   FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
-#   # FiniteElementContainers.update_unknown_dofs!(assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
-# end
 
 # DirectLinearSolver
 include("DirectLinearSolver.jl")

@@ -36,7 +36,8 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   # also need to assemble once
   Δt = domain.domain_cache.time.Δt 
   U = domain.domain_cache.U
-  Uu = FiniteElementContainers.create_unknowns(domain.dof) # TODO remove this allocation
+  # Uu = FiniteElementContainers.create_unknowns(domain.dof) # TODO remove this allocation
+  Uu = domain.domain_cache.Uu
   X = domain.domain_cache.X
   update_fields!(U, domain, X, Uu)
   
@@ -53,6 +54,10 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   factorization = ldl(K)
 
   return DirectLinearSolver(settings, assembler, factorization)
+end
+
+function update_unknown_dofs!(solver::DirectLinearSolver, domain::QuasiStaticDomain)
+  update_unknown_dofs!(solver.assembler, domain)
 end
 
 function solve!(Uu, solver::DirectLinearSolver, domain::QuasiStaticDomain, common::CthoniosCommon)

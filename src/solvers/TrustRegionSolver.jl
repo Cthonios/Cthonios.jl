@@ -30,14 +30,10 @@ end
 struct TrustRegionSolver{
   S <: TrustRegionSolverSettings,
   L <: AbstractLinearSolver,
-  V <: AbstractVector,
-  F <: NodalField
-} <: NonlinearSolver{S, L, V}
+  V <: AbstractVector
+} <: NonlinearSolver{S, L}
   settings::S
   linear_solver::L
-  Uu::V
-  ΔUu::V
-  Hv_field::F
   cauchy_point::V
   q_newton_point::V
   d::V
@@ -50,9 +46,6 @@ end
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
   linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
-  Uu             = create_unknowns(domain)
-  ΔUu            = create_unknowns(domain)
-  Hv_field       = create_fields(domain)
   cauchy_point   = create_unknowns(domain)
   q_newton_point = create_unknowns(domain)
   d              = create_unknowns(domain)
@@ -62,7 +55,6 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend
   y_scratch_4    = create_unknowns(domain)
   return TrustRegionSolver(
     settings, linear_solver, 
-    Uu, ΔUu, Hv_field, 
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4
   )
@@ -129,8 +121,8 @@ end
 
 function hvp(solver, domain, common, u, v)
   @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(solver.Hv_field, domain, u, v, backend(common))
-    Hv = @views solver.Hv_field[domain.dof.unknown_dofs]
+    stiffness_action!(domain.domain_cache.Hv, domain, u, v, backend(common))
+    Hv = @views domain.domain_cache.Hv[domain.dof.unknown_dofs]
   end
   return Hv
 end
@@ -368,8 +360,8 @@ function solve!(
 )
 
   # unpack cached arrays from solver and domain
-  Uu             = solver.Uu
-  ΔUu            = solver.ΔUu
+  Uu             = domain.domain_cache.Uu
+  ΔUu            = domain.domain_cache.ΔUu
   cauchy_point   = solver.cauchy_point
   q_newton_point = solver.q_newton_point
   d              = solver.d

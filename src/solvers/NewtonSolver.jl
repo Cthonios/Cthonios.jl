@@ -39,22 +39,17 @@ end
 
 struct NewtonSolver{
   S <: NewtonSolverSettings, 
-  L <: AbstractLinearSolver, 
-  V <: AbstractVector
-} <: NonlinearSolver{S, L, V}
+  L <: AbstractLinearSolver
+} <: NonlinearSolver{S, L}
   settings::S
   linear_solver::L
-  Uu::V
-  ΔUu::V
 end
 
 # TODO maybe add preconditioner below?
 function NewtonSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict
   settings      = NewtonSolverSettings(input_settings) # TODO add non-defaults
   linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
-  Uu            = create_unknowns(domain)
-  ΔUu           = create_unknowns(domain)
-  return NewtonSolver(settings, linear_solver, Uu, ΔUu)
+  return NewtonSolver(settings, linear_solver)
 end
 
 function Base.show(io::IO, solver::NewtonSolver)
@@ -72,9 +67,7 @@ function solve!(
   common::CthoniosCommon
 )
   # unpack cached arrays from solver and domain
-  Uu, ΔUu = solver.Uu, solver.ΔUu
-  X = domain.domain_cache.X
-  U = domain.domain_cache.U
+  @unpack X, Uu, ΔUu, U = domain.domain_cache
 
   @timeit timer(common) "Update BCs" begin 
     update_bcs!(U, domain, X)

@@ -1,30 +1,33 @@
-struct QuasiStaticDomainCache{Time, V1, V2, V3, V4, V5, V6, V7, V8} <: AbstractDomainCache
+struct QuasiStaticDomainCache{Time, V1, V2, V3, V4, V5, V6, V7} <: AbstractDomainCache
   time::Time
   X::V1
-  U::V2
-  props::V3
-  state_old::V4
-  state_new::V4
-  Π::V5
-  Πs::V6 # for energy kernels
-  f::V7  # for internal force
-  V::V8 # for working with krylov methods
+  Uu::V2
+  ΔUu::V2
+  U::V3
+  props::V4
+  state_old::V5
+  state_new::V5
+  Π::V6
+  Πs::V7 # for energy kernels
+  f::V3  # for internal force
+  V::V3 # for working with krylov methods
+  Hv::V3 # for working with krylov methods
 end
 
 function Base.similar(cache::QuasiStaticDomainCache)
-  @unpack time, X, U, props, state_old, state_new, Π, Πs, f, V = cache
+  @unpack time, X, Uu, ΔUu, U, props, state_old, state_new, Π, Πs, f, V, Hv = cache
   return QuasiStaticDomainCache(
     similar(time),
-    similar(X), similar(U), 
+    similar(X), similar(Uu), similar(ΔUu), similar(U), 
     similar(props),
     similar(state_old), similar(state_new),
-    similar(Π), similar(Πs), similar(f), similar(V)
+    similar(Π), similar(Πs), similar(f), similar(V), similar(Hv)
   )
 end
 
 function unpack(cache::QuasiStaticDomainCache)
-  @unpack time, X, U, props, state_old, state_new, props, Π, Πs, f, V = cache
-  return time, X, U, props, state_old, state_new, Π, Πs, f, V
+  @unpack time, X, Uu, ΔUu, U, props, state_old, state_new, props, Π, Πs, f, V, Hv = cache
+  return time, X, Uu, ΔUu, U, props, state_old, state_new, Π, Πs, f, V, Hv
 end
 
 struct QuasiStaticDomain{
@@ -66,16 +69,17 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   
   # section setup
   sections, props, state_old, state_new, Πs = setup_sections(get_domain_sections_inputs(input_settings), mesh_file, dof)
-
   # time stepper setup
   time = ConstantTimeStepper(get_domain_time_stepper_inputs(input_settings))
 
   # cache setup
-  # X = copy(coords)
+  Uu = FiniteElementContainers.create_unknowns(dof)
+  ΔUu = FiniteElementContainers.create_unknowns(dof)
   U = FiniteElementContainers.create_fields(dof)
   f = FiniteElementContainers.create_fields(dof)
   V = FiniteElementContainers.create_fields(dof)
-  domain_cache = QuasiStaticDomainCache(time, coords, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V)
+  Hv = FiniteElementContainers.create_fields(dof)
+  domain_cache = QuasiStaticDomainCache(time, coords, Uu, ΔUu, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V, Hv)
 
   return QuasiStaticDomain(
     dof, funcs, 
@@ -116,6 +120,8 @@ properly set in the domain coming in
 function update_unknown_dofs!(d::QuasiStaticDomain)
   # update the dofs
   FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
+  resize!(d.domain_cache.Uu, length(d.dof.unknown_dofs))
+  resize!(d.domain_cache.ΔUu, length(d.dof.unknown_dofs))
 end
 
 function update_bcs!(U, domain::QuasiStaticDomain, Xs)
@@ -137,36 +143,3 @@ end
 
 # Time stepping hooks
 step!(domain::QuasiStaticDomain) = step!(domain.domain_cache.time)
-
-# Parsing
-get_domain_bcs_inputs(input_settings)::Dict{Symbol, Any} = input_settings[:boundary_conditions]
-get_domain_displacement_bcs_inputs(input_settings)::Vector{Dict{Symbol, Any}} = get_domain_bcs_inputs(input_settings)[:displacement] 
-get_domain_sections_inputs(input_settings)::Vector{Dict{Symbol, Any}} = input_settings[:sections]
-get_domain_time_stepper_inputs(input_settings)::Dict{Symbol, Any} = input_settings[:time_stepper]
-
-required_domain_keys = String[
-  "mesh",
-  "functions",
-  "boundary conditions",
-  "materials",
-  "sections"
-]
-
-create_mesh(type, input_settings) = FileMesh(type, input_settings)
-
-function read_mesh(input_settings)#::FileMesh{ExodusDatabase{Int32, Int32, Int32, Float64}} where D <: Dict
-  @assert isfile(input_settings[:mesh][Symbol("file name")])
-  @info "Mesh file = $(input_settings[:mesh][Symbol("file name")])"
-  @info "Opening mesh"
-  type = eval(Meta.parse(input_settings[:mesh][:type]))
-  mesh = create_mesh(type, input_settings[:mesh][Symbol("file name")])
-  return mesh
-end
-
-function read_coordinates(mesh)#::Matrix{Float64}
-  @info "Reading coordinates"
-  coords = FiniteElementContainers.coordinates(mesh)
-  coords = NodalField{size(coords), Vector}(coords)
-  @info "Read coordinates into field of type $(typeof(coords))"
-  return coords
-end
