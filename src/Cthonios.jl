@@ -7,6 +7,7 @@ using ArgParse
 using ComponentArrays
 using ConstitutiveModels
 using DocStringExtensions
+using Enzyme
 using Exodus
 using FiniteElementContainers
 using FunctionWrappers
@@ -59,10 +60,11 @@ include("TimeSteppers.jl")
 # Level 3 stuff
 include("domains/Domains.jl")
 include("mechanics/Mechanics.jl")
+include("WarmStart.jl")
 include("solvers/NonlinearSolvers.jl")
 
 # Finally problems
-include("Problems.jl")
+include("problems/Problems.jl")
 
 # CLI
 include("Main.jl")

@@ -179,6 +179,7 @@ end
 
 function energy_gradient end
 function energy_hvp end
+function internal_force_gradient end
 
 include("Utils.jl")
 include("SectionIterators.jl")

@@ -103,7 +103,7 @@ end
 # TODO should below methods be moved to a top level abstract set of methods?
 function objective(solver, domain, common, u)
   @timeit timer(common) "Energy" begin
-    energy!(solver.linear_solver, domain, u, backend(common))
+    energy!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
     o = domain.domain_cache.Π[1]
   end
   return o
@@ -111,9 +111,8 @@ end
 
 function objective_and_grad(solver, domain, common, u)
   @timeit timer(common) "Energy and internal force" begin
-    energy_and_internal_force!(solver.linear_solver, domain, u, backend(common))
+    energy_and_internal_force!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
     o = domain.domain_cache.Π[1]
-    # g = @views solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
     g = @views domain.domain_cache.f[domain.dof.unknown_dofs]
   end
   return o, g
@@ -121,7 +120,7 @@ end
 
 function hvp(solver, domain, common, u, v)
   @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(domain.domain_cache.Hv, domain, u, v, backend(common))
+    stiffness_action!(solver, domain, domain.domain_cache, u, v, backend(common))
     Hv = @views domain.domain_cache.Hv[domain.dof.unknown_dofs]
   end
   return Hv
@@ -137,7 +136,7 @@ end
 
 function hessian(solver, domain, common, u)
   @timeit timer(common) "Hessian" begin
-    stiffness!(solver, domain, u, backend(common))
+    stiffness!(solver, domain, domain.domain_cache, u, backend(common))
     K = SparseArrays.sparse!(solver.linear_solver.assembler) #|> Symmetric
   end
   return K
@@ -371,7 +370,7 @@ function solve!(
 
   # calculate initial residual and objective
   @timeit timer(common) "Energy, internal force, and stiffness" begin
-    energy_internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
+    energy_internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
   end
 
   # saving initial objective and gradient
