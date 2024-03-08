@@ -7,7 +7,7 @@ struct ForwardProblem{Domain, Solver, Post}
   post_processor::Post
 end
 
-function ForwardProblem(input_settings::D, common::CthoniosCommon) where D <: Dict
+function ForwardProblem(_, input_settings::D, common::CthoniosCommon) where D <: Dict
 
   @timeit timer(common) "Setup" begin
     @timeit timer(common) "Domain" domain = QuasiStaticDomain(get_domain_input_settings(input_settings))
@@ -45,24 +45,28 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
   use_warm_start = true
 
   domain, solver = problem.domain, problem.solver
-  reset!(domain.domain_cache.time)
+  time = domain.domain_cache.time
+  reset!(time)
 
   @timeit timer(common) "Results output" post_process_load_step!(problem, common)
 
-  while domain.domain_cache.time.current_time <= domain.domain_cache.time.end_time
+  while time.current_time <= time.end_time
+
+    @info "$(repeat('=', 96))"
+    @info "= Load step    $(time.current_time_step)"
+    @info "= Old Time     $(time.current_time)"
+    @info "= New Time     $(time.current_time + time.Δt)"
+    @info "= End Time     $(time.end_time)"
+    @info "= % Completete $(100.0 * (time.current_time + time.Δt) / time.end_time)"
+    @info "$(repeat('=', 96))"
 
     if use_warm_start
       @timeit timer(common) "Warm start" begin
         warm_start!(solver, domain, domain.domain_cache, domain.domain_cache.Uu, backend(common))
       end
     else
-      step!(domain.domain_cache.time)
+      step!(time)
     end
-
-    @info "$(repeat('=', 96))"
-    @info "= Load step $(domain.domain_cache.time.current_time_step - 1)"
-    @info "= Time      $(domain.domain_cache.time.current_time)"
-    @info "$(repeat('=', 96))"
 
     @timeit timer(common) "Nonlinear solver" solve!(solver, domain, common)
 

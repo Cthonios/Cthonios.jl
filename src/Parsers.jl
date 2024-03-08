@@ -97,13 +97,6 @@ Helper to parse a domain and all settings need to set it up
 """
 function parse_domains(input_settings::D) where D <: Dict{Symbol, Any}
   domain_settings = Dict{Symbol, Any}()
-  # for key in keys(input_settings[:domains])
-  #   domain_settings[key] = Dict{Symbol, Any}()
-  #   domain_settings[key][:mesh] = parse_mesh(input_settings, key)
-  #   domain_settings[key][:boundary_conditions] = parse_boundary_conditions(input_settings, key)
-  #   domain_settings[key][:sections] = parse_sections(input_settings, key)
-  #   domain_settings[key][:time_stepper] = parse_time_stepper(input_settings, key)
-  # end
   for key in keys(input_settings[:domains])
     domain_settings[key] = parse_domains(input_settings, key)
   end
@@ -117,17 +110,19 @@ function parse_problems(
   input_settings::D, domain_settings::D, 
   linear_solver_settings::D, nonlinear_solver_settings::D
 ) where D <: Dict{Symbol, Any}
-  problem_settings = Dict{Symbol, Any}()
-  for key in keys(input_settings[:problems])
+  # problem_settings = Dict{Symbol, Any}()
+  problem_settings = Vector{Dict{Symbol, Any}}(undef, length(input_settings[:problems]))
+  # for key in keys(input_settings[:problems])
+  for key in 1:length(input_settings[:problems])
     problem_settings[key] = Dict{Symbol, Any}()
     problem_settings[key][:type] = input_settings[:problems][key][:type]
-    problem_settings[key][:domain] = domain_settings[Symbol(input_settings[:problems][key][:domain])]
-    problem_settings[key][:solver] = nonlinear_solver_settings[Symbol(input_settings[:problems][key][:solver])]
-    problem_settings[key][:results] = input_settings[:problems][key][:results]
+    problem_settings[key][:domain] = copy(domain_settings[Symbol(input_settings[:problems][key][:domain])])
+    problem_settings[key][:solver] = copy(nonlinear_solver_settings[Symbol(input_settings[:problems][key][:solver])])
+    problem_settings[key][:results] = copy(input_settings[:problems][key][:results])
 
     # now swap out the nonlinear solver linear solver settings
     problem_settings[key][:solver][Symbol("linear solver")] =
-    linear_solver_settings[Symbol(problem_settings[key][:solver][Symbol("linear solver")])]
+    copy(linear_solver_settings[Symbol(problem_settings[key][:solver][Symbol("linear solver")])])
   end
   return problem_settings
 end

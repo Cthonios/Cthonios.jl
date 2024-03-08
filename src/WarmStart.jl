@@ -40,7 +40,6 @@ function warm_start!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
   dcache.U .= 1.0
 
   # using stiffness matrix for now, switch to linear operator
-  # K = SparseArrays.sparse!()
   stiffness!(solver, domain, cache, Uu, backend)
   K = SparseArrays.sparse!(solver.linear_solver.assembler)
 
@@ -50,10 +49,10 @@ function warm_start!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
     Duplicated(cache.state_new, dcache.state_new),
     Const(sections),
     Const(Δt),
-    Duplicated(cache.X, dcache.X),
+    Const(cache.X),
     Duplicated(cache.U, dU),
-    Duplicated(cache.props, dcache.props),
-    Duplicated(cache.state_old, dcache.state_old),
+    Const(cache.props),
+    Const(cache.state_old),
     Const(backend)
   )
 

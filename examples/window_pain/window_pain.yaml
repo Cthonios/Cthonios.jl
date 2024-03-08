@@ -11,8 +11,8 @@ materials:
   soft rubber:
     model: NeoHookean
     properties:
-      bulk modulus: 0.833
-      shear modulus: 0.3846
+      bulk modulus: 50.0
+      shear modulus: 1.0
   metal_linear:
     model: LinearElastic
     properties:
@@ -74,8 +74,7 @@ domains:
       time step: 0.025
 
 problems:
-  forward_1:
-    type: ForwardProblem
+  - type: ForwardProblem
     domain: domain_1
     solver: trs
     results:
@@ -87,5 +86,16 @@ problems:
       - properties
       quadrature fields:
       - state variables
+
+  - type: EnergySensitivityProblem
+    domain: domain_1
+    solver: trs
+    results:
+      output file name: gradients.e
+      nodal fields:
+      - displacement
+      - dcoordinates
+      element fields:
+      - dproperties
 
   

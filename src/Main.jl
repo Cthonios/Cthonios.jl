@@ -33,11 +33,12 @@ end
 
 function problems_main(input_file, common)
   input_settings = parse_input_file(input_file)
-  for (key, prob_settings) in input_settings[:problems]
-    new_section("Problem $key")
-    @timeit timer(common) "Problem $key" begin
+  prob = nothing
+  for prob_settings in input_settings[:problems]
+    new_section("Problem $(prob_settings[:type])")
+    @timeit timer(common) "Problem $(prob_settings[:type])" begin
       type = eval(Meta.parse(prob_settings[:type]))
-      prob = type(prob_settings, common)
+      prob = type(prob, prob_settings, common)
       solve!(prob, common)
     end
   end
