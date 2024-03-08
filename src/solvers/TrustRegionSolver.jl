@@ -41,6 +41,7 @@ struct TrustRegionSolver{
   y_scratch_2::V
   y_scratch_3::V
   y_scratch_4::V
+  use_warm_start::Bool
 end
 
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
@@ -53,10 +54,23 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend
   y_scratch_2    = create_unknowns(domain)
   y_scratch_3    = create_unknowns(domain)
   y_scratch_4    = create_unknowns(domain)
+  if Symbol("warm start") in keys(input_settings)
+    parsed_string = input_settings[Symbol("warm start")]
+    if parsed_string == "on"
+      use_warm_start = true
+    elseif parsed_string == "off"
+      use_warm_start = false
+    else
+      @assert false "Bad value for warm start"
+    end
+  else
+    use_warm_start = false
+  end
   return TrustRegionSolver(
     settings, linear_solver, 
     cauchy_point, q_newton_point, d,
-    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4
+    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
+    use_warm_start
   )
 end
 

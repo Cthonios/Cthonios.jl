@@ -36,6 +36,7 @@ nonlinear solvers:
   trs:
     type: TrustRegionSolver
     linear solver: direct
+    warm start: on
   newton:
     type: NewtonSolver
     linear solver: direct

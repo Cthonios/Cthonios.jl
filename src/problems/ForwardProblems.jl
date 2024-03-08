@@ -42,7 +42,7 @@ function Base.show(io::IO, problem::ForwardProblem)
 end
 
 function solve!(problem::ForwardProblem, common::CthoniosCommon)
-  use_warm_start = true
+  # use_warm_start = true
 
   domain, solver = problem.domain, problem.solver
   time = domain.domain_cache.time
@@ -60,7 +60,7 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
     @info "= % Completete $(100.0 * (time.current_time + time.Δt) / time.end_time)"
     @info "$(repeat('=', 96))"
 
-    if use_warm_start
+    if solver.use_warm_start
       @timeit timer(common) "Warm start" begin
         warm_start!(solver, domain, domain.domain_cache, domain.domain_cache.Uu, backend(common))
       end

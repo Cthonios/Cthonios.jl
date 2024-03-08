@@ -43,13 +43,27 @@ struct NewtonSolver{
 } <: NonlinearSolver{S, L}
   settings::S
   linear_solver::L
+  use_warm_start::Bool
 end
 
 # TODO maybe add preconditioner below?
 function NewtonSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict
   settings      = NewtonSolverSettings(input_settings) # TODO add non-defaults
   linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
-  return NewtonSolver(settings, linear_solver)
+
+  if Symbol("warm start") in keys(input_settings)
+    parsed_string = input_settings[Symbol("warm start")]
+    if parsed_string == "on"
+      use_warm_start = true
+    elseif parsed_string == "off"
+      use_warm_start = false
+    else
+      @assert false "Bad value for warm start"
+    end
+  else
+    use_warm_start = false
+  end
+  return NewtonSolver(settings, linear_solver, use_warm_start)
 end
 
 function Base.show(io::IO, solver::NewtonSolver)
@@ -76,7 +90,7 @@ function solve!(
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     @timeit timer(common) "Residual and stiffness" begin 
-      internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
+      internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
     end
 
     @timeit timer(common) "Linear solve" begin 
