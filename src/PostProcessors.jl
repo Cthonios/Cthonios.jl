@@ -2,6 +2,33 @@ struct PostProcessor{Out <: ExodusDatabase}
   out_file::Out
 end
 
+NODAL_FIELDS = Dict{String, String}(
+  "displacement"   => "displ",
+  "internal force" => "internal_force",
+  "dcoordinates"   => "dcoordinates"
+)
+ELEMENT_FIELDS = Dict{String, String}(
+  "properties"  => "properties",
+  "dproperties" => "dproperties"
+)
+
+function vector_names(base_name::String, n_dims::Int)
+  if n_dims == 2
+    names = [base_name * "_x", base_name * "_y"]
+  elseif n_dims == 3
+    names = [base_name * "_x", base_name * "_y", base_name * "_z"]
+  end
+  return names
+end
+
+function variable_length_field_names(base_name::String, n_vars::Int)
+  names = String[]
+  for n in 1:n_vars
+    push!(names, base_name * "_$(lpad(n, 3, '0'))")
+  end
+  return names
+end
+
 """
 Constructor for post processor
 
@@ -28,35 +55,22 @@ function PostProcessor(
 
   # Nodal fields
   for nodal_field in output_nodal_fields
-    if nodal_field == "displacement"
-      if dims == 2
-        append!(nodal_fields, ["displ_x", "displ_y"])
-      elseif dims == 3
-        append!(nodal_fields, ["displ_x", "displ_y", "displ_z"])
-      else
-        @assert false "only dim 2, 3 is supported right now"
-      end
-    elseif nodal_field == "internal force"
-      if dims == 2
-        append!(nodal_fields, ["internal_force_x", "internal_force_y"])
-      elseif dims == 3
-        append!(nodal_fields, ["internal_force_x", "internal_force_y", "internal_force_z"])
-      else
-        @assert false "only dim 2, 3 is supported right now"
-      end
-    else
-      @assert false "Unsupported nodal field $nodal_field"
+    try
+      append!(nodal_fields, vector_names(NODAL_FIELDS[nodal_field], dims))
+    catch e
+      throw(e)
     end
   end
 
   # Element fields
   for element_field in output_element_fields
     if element_field == "properties"
-      for n in 1:n_properties
-        push!(element_fields, "properties_$(lpad(n, 3, '0'))")
-      end
+      append!(element_fields, variable_length_field_names("properties", n_properties))
+    elseif element_field == "dproperties"
+      @show "dprops here"
+      append!(element_fields, variable_length_field_names("dproperties", n_properties))
     else
-      @assert false "Unsupported element field requested for output"
+      @assert false "Unsupported element field requested for output $element_field"
     end
   end
 
@@ -76,6 +90,8 @@ function PostProcessor(
   Exodus.write_names(out, NodalVariable, nodal_fields)
 
   if length(element_fields) > 0
+    @show "here"
+    @show element_fields
     Exodus.write_names(out, ElementVariable, element_fields)
   end
 

@@ -39,22 +39,31 @@ end
 
 struct NewtonSolver{
   S <: NewtonSolverSettings, 
-  L <: AbstractLinearSolver, 
-  V <: AbstractVector
-} <: NonlinearSolver{S, L, V}
+  L <: AbstractLinearSolver
+} <: NonlinearSolver{S, L}
   settings::S
   linear_solver::L
-  Uu::V
-  ΔUu::V
+  use_warm_start::Bool
 end
 
 # TODO maybe add preconditioner below?
 function NewtonSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict
   settings      = NewtonSolverSettings(input_settings) # TODO add non-defaults
   linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
-  Uu            = create_unknowns(domain)
-  ΔUu           = create_unknowns(domain)
-  return NewtonSolver(settings, linear_solver, Uu, ΔUu)
+
+  if Symbol("warm start") in keys(input_settings)
+    parsed_string = input_settings[Symbol("warm start")]
+    if parsed_string == "on"
+      use_warm_start = true
+    elseif parsed_string == "off"
+      use_warm_start = false
+    else
+      @assert false "Bad value for warm start"
+    end
+  else
+    use_warm_start = false
+  end
+  return NewtonSolver(settings, linear_solver, use_warm_start)
 end
 
 function Base.show(io::IO, solver::NewtonSolver)
@@ -72,9 +81,7 @@ function solve!(
   common::CthoniosCommon
 )
   # unpack cached arrays from solver and domain
-  Uu, ΔUu = solver.Uu, solver.ΔUu
-  X = domain.domain_cache.X
-  U = domain.domain_cache.U
+  @unpack X, Uu, ΔUu, U = domain.domain_cache
 
   @timeit timer(common) "Update BCs" begin 
     update_bcs!(U, domain, X)
@@ -83,7 +90,7 @@ function solve!(
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     @timeit timer(common) "Residual and stiffness" begin 
-      internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
+      internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
     end
 
     @timeit timer(common) "Linear solve" begin 

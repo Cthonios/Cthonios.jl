@@ -61,14 +61,10 @@ domains:
       time step: 0.01
 
 problems:
-  forward_1:
-    type: ForwardProblem
+  - type: ForwardProblem
     domain: domain_1
     solver: newton
     results:
       output file name: regression_tests/newton_tri3_uniaxial_tension/test.e
       nodal fields:
       - displacement
-
-
-  

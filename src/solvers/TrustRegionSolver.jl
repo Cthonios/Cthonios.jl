@@ -30,14 +30,10 @@ end
 struct TrustRegionSolver{
   S <: TrustRegionSolverSettings,
   L <: AbstractLinearSolver,
-  V <: AbstractVector,
-  F <: NodalField
-} <: NonlinearSolver{S, L, V}
+  V <: AbstractVector
+} <: NonlinearSolver{S, L}
   settings::S
   linear_solver::L
-  Uu::V
-  ΔUu::V
-  Hv_field::F
   cauchy_point::V
   q_newton_point::V
   d::V
@@ -45,14 +41,12 @@ struct TrustRegionSolver{
   y_scratch_2::V
   y_scratch_3::V
   y_scratch_4::V
+  use_warm_start::Bool
 end
 
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
   linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
-  Uu             = create_unknowns(domain)
-  ΔUu            = create_unknowns(domain)
-  Hv_field       = create_fields(domain)
   cauchy_point   = create_unknowns(domain)
   q_newton_point = create_unknowns(domain)
   d              = create_unknowns(domain)
@@ -60,11 +54,23 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend
   y_scratch_2    = create_unknowns(domain)
   y_scratch_3    = create_unknowns(domain)
   y_scratch_4    = create_unknowns(domain)
+  if Symbol("warm start") in keys(input_settings)
+    parsed_string = input_settings[Symbol("warm start")]
+    if parsed_string == "on"
+      use_warm_start = true
+    elseif parsed_string == "off"
+      use_warm_start = false
+    else
+      @assert false "Bad value for warm start"
+    end
+  else
+    use_warm_start = false
+  end
   return TrustRegionSolver(
     settings, linear_solver, 
-    Uu, ΔUu, Hv_field, 
     cauchy_point, q_newton_point, d,
-    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4
+    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
+    use_warm_start
   )
 end
 
@@ -111,7 +117,7 @@ end
 # TODO should below methods be moved to a top level abstract set of methods?
 function objective(solver, domain, common, u)
   @timeit timer(common) "Energy" begin
-    energy!(solver.linear_solver, domain, u, backend(common))
+    energy!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
     o = domain.domain_cache.Π[1]
   end
   return o
@@ -119,9 +125,8 @@ end
 
 function objective_and_grad(solver, domain, common, u)
   @timeit timer(common) "Energy and internal force" begin
-    energy_and_internal_force!(solver.linear_solver, domain, u, backend(common))
+    energy_and_internal_force!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
     o = domain.domain_cache.Π[1]
-    # g = @views solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs]
     g = @views domain.domain_cache.f[domain.dof.unknown_dofs]
   end
   return o, g
@@ -129,8 +134,8 @@ end
 
 function hvp(solver, domain, common, u, v)
   @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(solver.Hv_field, domain, u, v, backend(common))
-    Hv = @views solver.Hv_field[domain.dof.unknown_dofs]
+    stiffness_action!(solver, domain, domain.domain_cache, u, v, backend(common))
+    Hv = @views domain.domain_cache.Hv[domain.dof.unknown_dofs]
   end
   return Hv
 end
@@ -145,7 +150,7 @@ end
 
 function hessian(solver, domain, common, u)
   @timeit timer(common) "Hessian" begin
-    stiffness!(solver, domain, u, backend(common))
+    stiffness!(solver, domain, domain.domain_cache, u, backend(common))
     K = SparseArrays.sparse!(solver.linear_solver.assembler) #|> Symmetric
   end
   return K
@@ -368,8 +373,8 @@ function solve!(
 )
 
   # unpack cached arrays from solver and domain
-  Uu             = solver.Uu
-  ΔUu            = solver.ΔUu
+  Uu             = domain.domain_cache.Uu
+  ΔUu            = domain.domain_cache.ΔUu
   cauchy_point   = solver.cauchy_point
   q_newton_point = solver.q_newton_point
   d              = solver.d
@@ -379,7 +384,7 @@ function solve!(
 
   # calculate initial residual and objective
   @timeit timer(common) "Energy, internal force, and stiffness" begin
-    energy_internal_force_and_stiffness!(solver.linear_solver, domain, Uu, backend(common))
+    energy_internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
   end
 
   # saving initial objective and gradient

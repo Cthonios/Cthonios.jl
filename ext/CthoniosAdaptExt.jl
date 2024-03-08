@@ -49,15 +49,15 @@ function Adapt.adapt_structure(to, solver::Cthonios.NewtonSolver)
   return Cthonios.NewtonSolver(settings, linear_solver, Uu, ΔUu)
 end
 
-function Adapt.adapt_structure(to, solver::Cthonios.TrustRegionSolver)
-  settings = Adapt.adapt_structure(to, solver.settings)
-  linear_solver = Adapt.adapt_structure(to, solver.linear_solver)
-  Uu = Adapt.adapt_structure(to, solver.Uu)
-  ΔUu = Adapt.adapt_structure(to, solver.ΔUu)
-  Hv = Adapt.adapt_structure(to, solver.Hv)
-  Hv_field = Adapt.adapt_structure(to, solver.Hv_field)
-  return Cthonios.TrustRegionSolver(settings, linear_solver, Uu, ΔUu, Hv, Hv_field)
-end
+# function Adapt.adapt_structure(to, solver::Cthonios.TrustRegionSolver)
+#   settings = Adapt.adapt_structure(to, solver.settings)
+#   linear_solver = Adapt.adapt_structure(to, solver.linear_solver)
+#   Uu = Adapt.adapt_structure(to, solver.Uu)
+#   ΔUu = Adapt.adapt_structure(to, solver.ΔUu)
+#   Hv = Adapt.adapt_structure(to, solver.Hv)
+#   Hv_field = Adapt.adapt_structure(to, solver.Hv_field)
+#   return Cthonios.TrustRegionSolver(settings, linear_solver, Uu, ΔUu, Hv, Hv_field)
+# end
 
 function Adapt.adapt_structure(to, prob::Cthonios.ForwardProblem)
   domain = Adapt.adapt_structure(to, prob.domain)
