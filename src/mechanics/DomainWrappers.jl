@@ -45,7 +45,7 @@ function stiffness!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
 end
 
 # TODO cleanup this method output
-function stiffness_action!(Hv, domain::QuasiStaticDomain, cache, Uu, Vv, backend)
+function stiffness_action!(solver, domain::QuasiStaticDomain, cache, Uu, Vv, backend)
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
