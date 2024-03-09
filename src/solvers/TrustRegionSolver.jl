@@ -161,6 +161,32 @@ end
 function preconditioner!(solver, domain, common, Uu)
   @timeit timer(common) "Preconditioner" begin
     H = hessian(solver, domain, common, Uu)
+    
+    attempt = 1
+    while attempt < 10
+      @info "Updating preconditioner, attempt = $attempt"
+
+      try
+        if attempt == 1
+          H_temp = H
+        else
+          shift = 10.0^(-5 + attempt)
+          H_temp = H + shift * I
+        end
+        ldl_factorize!(H_temp, solver.linear_solver.factorization)
+        break
+      catch e
+        @info e
+        @info "Failed to factor preconditioner. Attempting again"
+        attempt += 1 
+      end
+    end
+  end
+end
+
+function preconditioner_old!(solver, domain, common, Uu)
+  @timeit timer(common) "Preconditioner" begin
+    H = hessian(solver, domain, common, Uu)
     # P = ldl(H)
     ldl_factorize!(H, solver.linear_solver.factorization)
     # TODO add shift stuff to LDL
@@ -400,6 +426,8 @@ function solve!(
 
   # begin loop over tr iters
   cumulative_cg_iters = 0
+  tried_new_precond = false
+
   for n in 1:solver.settings.max_trust_iters
 
     # need hvp
@@ -479,6 +507,20 @@ function solve!(
       end
 
       # TODO still need to do some other stuff with updating preconditioner
+      if tr_size < solver.settings.min_tr_size
+        if !tried_new_precond
+          @info "Updating preconditioner due to small trust region size"
+          preconditioner!(solver, domain, common, Uu)
+          cumulative_cg_iters = 0
+          tried_new_precond = true
+          happy = true
+          tr_size = solver.settings.tr_size
+        else
+          @info "The trust region is too small. Accepting but be careful."
+          return nothing
+        end
+
+      end
     end
   end
 
