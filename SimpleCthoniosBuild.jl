@@ -4,5 +4,5 @@ create_app(
   executables=[
     "cthonios" => "julia_main"
   ],
-  precompile_execution_file="precompile/precompile.jl"
+  # precompile_execution_file="precompile/precompile.jl"
 )
