@@ -23,6 +23,7 @@ using Pkg
 using Printf
 using ReferenceFiniteElements
 using SparseArrays
+using SparseDiffTools
 using StaticArrays
 using Tensors
 using TimerOutputs

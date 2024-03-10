@@ -114,50 +114,7 @@ function is_converged(
   return false
 end
 
-# TODO should below methods be moved to a top level abstract set of methods?
-function objective(solver, domain, common, u)
-  @timeit timer(common) "Energy" begin
-    energy!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
-    o = domain.domain_cache.Π[1]
-  end
-  return o
-end
-
-function objective_and_grad(solver, domain, common, u)
-  @timeit timer(common) "Energy and internal force" begin
-    energy_and_internal_force!(solver.linear_solver, domain, domain.domain_cache, u, backend(common))
-    o = domain.domain_cache.Π[1]
-    g = @views domain.domain_cache.f[domain.dof.unknown_dofs]
-  end
-  return o, g
-end
-
-function hvp(solver, domain, common, u, v)
-  @timeit timer(common) "Stiffness action" begin
-    stiffness_action!(solver, domain, domain.domain_cache, u, v, backend(common))
-    Hv = @views domain.domain_cache.Hv[domain.dof.unknown_dofs]
-  end
-  return Hv
-end
-
-# function hvp!(Hv, solver, domain, common, u, v)
-#   @timeit timer(common) "Stiffness action" begin
-#     stiffness_action!(solver.Hv_field, domain, u, v)
-#     Hv .= @views solver.Hv_field[domain.dof.unknown_dofs]
-#   end
-#   return nothing
-# end
-
-function hessian(solver, domain, common, u)
-  @timeit timer(common) "Hessian" begin
-    stiffness!(solver, domain, domain.domain_cache, u, backend(common))
-    K = SparseArrays.sparse!(solver.linear_solver.assembler) #|> Symmetric
-  end
-  return K
-end
-# TODO should above methods be moved to a top level abstract set of methods?
-
-
+# Figure out a general interface for a preconditioner
 function preconditioner!(solver, domain, common, Uu)
   @timeit timer(common) "Preconditioner" begin
     H = hessian(solver, domain, common, Uu)
@@ -182,40 +139,6 @@ function preconditioner!(solver, domain, common, Uu)
       end
     end
   end
-end
-
-function preconditioner_old!(solver, domain, common, Uu)
-  @timeit timer(common) "Preconditioner" begin
-    H = hessian(solver, domain, common, Uu)
-    # P = ldl(H)
-    ldl_factorize!(H, solver.linear_solver.factorization)
-    # TODO add shift stuff to LDL
-    # attempt = 1 # TODO make this a global
-    # while attempt < 10
-    #   @info "Updating preconditioner, attempt = $attempt"
-    #   try
-    #     P = cholesky(H; shift=10.0^(-5 + attempt))
-    #     # P = opCholesky(H)
-    #     # P = CholeskyPreconditioner(H)
-    #     # P = DiagonalPreconditioner(H)
-    #     # NU = length(domain.dof.unknown_dofs)
-    #     # op = LinearOperator(
-    #     #   Float64, NU, NU, true, true,
-    #     #   (Hv, v) -> hvp!(Hv, solver, domain, common, Uu, v)
-    #     # )
-    #     # P = InvPreconditioner(op)
-    #     return P
-    #   catch e
-    #     @info e
-    #     @info "Failed to factor preconditioner. Attempting again"
-    #     attempt += 1
-    #   else
-    #     break
-    #   end
-    # end
-    # @assert false "Failed to factorize hessian after 10 attempts"
-  end
-  # return P
 end
 
 function calculate_cauchy_point!(cauchy_point, solver, common, g, Hg, tr_size)
@@ -264,7 +187,7 @@ minimize r * z + 0.5 * z * J * z
 function minimize_trust_region_sub_problem!(
   z,
   solver::TrustRegionSolver, domain, common::CthoniosCommon,
-  x::V, r_in::V, #cauchy_point, # cauhcy point is really a scratch array to reduce an allocation
+  x::V, r_in, #cauchy_point, # cauhcy point is really a scratch array to reduce an allocation
   tr_size::Float64
 ) where V <: AbstractVector
 
@@ -408,14 +331,8 @@ function solve!(
   # unpack some solver settings
   tr_size = solver.settings.tr_size
 
-  # calculate initial residual and objective
-  @timeit timer(common) "Energy, internal force, and stiffness" begin
-    energy_internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
-  end
-
   # saving initial objective and gradient
-  o = domain.domain_cache.Π[1]
-  g = domain.domain_cache.f[domain.dof.unknown_dofs]
+  o, g = objective_and_gradient(solver, domain, common, Uu)
   g_norm = norm(g)
 
   # preconditioner
@@ -465,7 +382,7 @@ function solve!(
       y = solver.y_scratch_1
       @. y = Uu + d
 
-      real_objective, gy = objective_and_grad(solver, domain, common, y)
+      real_objective, gy = objective_and_gradient(solver, domain, common, y)
       real_objective = real_objective - o
 
       if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
@@ -524,5 +441,5 @@ function solve!(
     end
   end
 
-  @assert false
+  @assert false "Reached maximum number of trust region iterations."
 end

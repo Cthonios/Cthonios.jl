@@ -43,6 +43,15 @@ function energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend:
   return nothing
 end 
 
+function internal_force(sections, Δt, X, U, props, state_old, backend::Backend)
+  f = similar(U)
+  f .= 0.0
+  state_new = similar(state_old)
+  state_new .= 0.0
+  internal_force!(f, state_new, sections, Δt, X, U, props, state_old, backend)
+  return f, state_new
+end
+
 function internal_force!(f, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
   f .= zero(eltype(f))
   for (name, section) in pairs(sections)

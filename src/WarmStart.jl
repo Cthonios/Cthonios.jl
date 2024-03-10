@@ -14,10 +14,50 @@ function seed!(::ReverseMode, cache::Cthonios.QuasiStaticDomainCache)
   return nothing
 end
 
-function warm_start!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
+function warm_start!(solver, domain::QuasiStaticDomain, common, Uu)
   @info "Warm start"
   # unpack stuff
-  Δt = domain.domain_cache.time.Δt
+  cache = domain.domain_cache
+  Δt = cache.time.Δt
+  sections = domain.sections
+  @unpack X, U, props, state_old, state_new, Π, f = cache
+
+  # update fields in a round about way
+  Uu_old = copy(Uu)
+  U_old  = copy(U)
+  update_fields!(U_old, domain, X, Uu_old)
+
+  # now update time
+  step!(domain)
+  update_fields!(U, domain, X, Uu)
+
+  dU = similar(U)
+  dU .= 0.0
+  @. dU = U_old - U
+
+  K = hessian(solver, domain, common, Uu)
+
+  @timeit timer(common) "JacVec" begin
+
+    Jv = JacVec(
+      z -> internal_force(sections, Δt, X, z, props, state_old, backend(common))[1],
+      U
+    )
+  end
+
+  @timeit timer(common) "Jv*dU" mul!(cache.Hv, Jv, dU)
+
+  @views b = cache.Hv[domain.dof.unknown_dofs]
+  @timeit timer(common) "solve" temp_Uu = K \ b
+
+  @. cache.Uu += temp_Uu
+end
+
+function warm_start_old!(solver, domain::QuasiStaticDomain, common, Uu)
+  @info "Warm start"
+  # unpack stuff
+  cache = domain.domain_cache
+  Δt = cache.time.Δt
   sections = domain.sections
   @unpack X, U, props, state_old, state_new, Π, f = cache
 
@@ -40,7 +80,7 @@ function warm_start!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
   dcache.U .= 1.0
 
   # using stiffness matrix for now, switch to linear operator
-  stiffness!(solver, domain, cache, Uu, backend)
+  stiffness!(solver, domain, cache, Uu, backend(common))
   K = SparseArrays.sparse!(solver.linear_solver.assembler)
 
   autodiff(
@@ -53,7 +93,7 @@ function warm_start!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
     Duplicated(cache.U, dU),
     Const(cache.props),
     Const(cache.state_old),
-    Const(backend)
+    Const(backend(common))
   )
 
   @views b = dcache.f[domain.dof.unknown_dofs]

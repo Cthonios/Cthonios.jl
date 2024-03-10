@@ -62,7 +62,7 @@ function solve!(problem::ForwardProblem, common::CthoniosCommon)
 
     if solver.use_warm_start
       @timeit timer(common) "Warm start" begin
-        warm_start!(solver, domain, domain.domain_cache, domain.domain_cache.Uu, backend(common))
+        warm_start!(solver, domain, common, domain.domain_cache.Uu)
       end
     else
       step!(time)

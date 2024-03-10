@@ -67,7 +67,6 @@ function PostProcessor(
     if element_field == "properties"
       append!(element_fields, variable_length_field_names("properties", n_properties))
     elseif element_field == "dproperties"
-      @show "dprops here"
       append!(element_fields, variable_length_field_names("dproperties", n_properties))
     else
       @assert false "Unsupported element field requested for output $element_field"
@@ -90,8 +89,6 @@ function PostProcessor(
   Exodus.write_names(out, NodalVariable, nodal_fields)
 
   if length(element_fields) > 0
-    @show "here"
-    @show element_fields
     Exodus.write_names(out, ElementVariable, element_fields)
   end
 
