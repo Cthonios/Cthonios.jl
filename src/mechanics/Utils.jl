@@ -4,7 +4,7 @@ function unpack_state(section, state, q, e)
   return state_q
 end
 
-function unpack_element(section, U, props, X, e)
+function unpack_element(name, section, U, props, X, e)
   # get sizes
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
@@ -13,26 +13,40 @@ function unpack_element(section, U, props, X, e)
   # setup arrays
   conn = dof_connectivity(section, e)
   U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
-  props_el = SVector{NP, eltype(props)}(@views props[:, e])
+  props_el = SVector{NP, eltype(props)}(@views props[name][:, e])
   X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
   return conn, U_el, props_el, X_el
 end
 
-function unpack_element(section, U, props, X, V, e)
+function unpack_element_fields(section, X, U, e)
   # get sizes
   ND = FiniteElementContainers.num_dimensions(section)
   NN = FiniteElementContainers.num_nodes_per_element(section)
   NP = ConstitutiveModels.num_properties(section.model)
-  NDOF = ND * NN
 
   # setup arrays
   conn = dof_connectivity(section, e)
-  U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
-  props_el = SVector{NP, eltype(props)}(@views props[:, e])
   X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
-  V_el = SVector{NDOF, eltype(U)}(@views V[conn])
-  return conn, U_el, props_el, X_el, V_el
+  U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
+
+  return conn, X_el, U_el
 end
+
+# function unpack_element(section, U, props, X, V, e)
+#   # get sizes
+#   ND = FiniteElementContainers.num_dimensions(section)
+#   NN = FiniteElementContainers.num_nodes_per_element(section)
+#   NP = ConstitutiveModels.num_properties(section.model)
+#   NDOF = ND * NN
+
+#   # setup arrays
+#   conn = dof_connectivity(section, e)
+#   U_el = SMatrix{ND, NN, eltype(U), ND * NN}(@views U[conn])
+#   props_el = SVector{NP, eltype(props)}(@views props[:, e])
+#   X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[conn])
+#   V_el = SVector{NDOF, eltype(U)}(@views V[conn])
+#   return conn, U_el, props_el, X_el, V_el
+# end
 
 function unpack(section, U, state, props, X, q, e)
   # get sizes

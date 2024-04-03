@@ -83,3 +83,6 @@ function julia_main()::Cint
   
   return 0
 end
+
+function cthonios_main_mpi end
+function julia_main_mpi end

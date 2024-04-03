@@ -90,7 +90,7 @@ function solve!(
   norm_R0 = 0.0
   for n in 1:solver.settings.max_steps
     @timeit timer(common) "Residual and stiffness" begin 
-      internal_force_and_stiffness!(solver.linear_solver, domain, domain.domain_cache, Uu, backend(common))
+      internal_force_and_stiffness!(solver, domain, domain.domain_cache, Uu, backend(common))
     end
 
     @timeit timer(common) "Linear solve" begin 
@@ -99,7 +99,8 @@ function solve!(
 
     # TODO above should use linear solver in solver
     @. Uu    = Uu - ΔUu
-    norm_R   = @views norm(domain.domain_cache.f[domain.dof.unknown_dofs])
+    # norm_R   = @views norm(domain.domain_cache.f[domain.dof.unknown_dofs])
+    norm_R   = @views norm(solver.linear_solver.assembler.residuals[domain.dof.unknown_dofs])
     norm_ΔUu = norm(ΔUu)
     
     # save first residual norm for calculating relative residual

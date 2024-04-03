@@ -61,7 +61,7 @@ include("TimeSteppers.jl")
 # Level 3 stuff
 include("domains/Domains.jl")
 include("mechanics/Mechanics.jl")
-include("WarmStart.jl")
+include("solvers/WarmStart.jl")
 include("solvers/NonlinearSolvers.jl")
 
 # Finally problems

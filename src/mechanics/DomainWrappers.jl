@@ -1,6 +1,6 @@
 # TODO remove solver from the ones that don't need it...
 
-function energy!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
+function strain_energy!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
@@ -9,7 +9,7 @@ function energy!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
 
   # update fields here
   update_fields!(U, domain, X, Uu)
-  energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend)
+  strain_energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend)
   Π[1] = sum(Πs)
 
   return nothing
@@ -25,6 +25,8 @@ function internal_force!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
   # update fields here
   update_fields!(U, domain, X, Uu)
   internal_force!(f, state_new, sections, Δt, X, U, props, state_old, backend)
+  
+  solver.linear_solver.assembler.residuals .= f
 
   return nothing
 end
@@ -63,7 +65,7 @@ function stiffness_action!(solver, domain::QuasiStaticDomain, cache, Uu, Vv, bac
   return nothing
 end
 
-function energy_and_internal_force!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
+function strain_energy_and_internal_force!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
@@ -72,8 +74,9 @@ function energy_and_internal_force!(solver, domain::QuasiStaticDomain, cache, Uu
 
   # update fields here
   update_fields!(U, domain, X, Uu)
-  energy_and_internal_force!(Πs, f, state_new, sections, Δt, X, U, props, state_old, backend)
+  strain_energy_and_internal_force!(Πs, f, state_new, sections, Δt, X, U, props, state_old, backend)
   Π[1] = sum(Πs)
+  solver.linear_solver.assembler.residuals .= f
   return nothing
 end
 
@@ -81,45 +84,48 @@ function internal_force_and_stiffness!(solver, domain::QuasiStaticDomain, cache,
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
-  asm = solver.assembler
+  asm = solver.linear_solver.assembler
   sections = domain.sections
   @unpack X, U, props, state_old, state_new, Π, f = cache
 
   # update fields here
   update_fields!(U, domain, X, Uu)
   internal_force_and_stiffness!(f, asm, state_new, sections, Δt, X, U, props, state_old, backend)
+  solver.linear_solver.assembler.residuals .= f
 
   return nothing
 end
 
-function energy_internal_force_and_stiffness!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
+function strain_energy_internal_force_and_stiffness!(solver, domain::QuasiStaticDomain, cache, Uu, backend)
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
-  asm = solver.assembler
+  asm = solver.linear_solver.assembler
   sections = domain.sections
   @unpack X, U, props, state_old, state_new, Π, Πs, f = cache
 
   # update fields here
   update_fields!(U, domain, X, Uu)
-  energy_internal_force_and_stiffness!(Πs, f, asm, state_new, sections, Δt, X, U, props, state_old, backend)
+  strain_energy_internal_force_and_stiffness!(Πs, f, asm, state_new, sections, Δt, X, U, props, state_old, backend)
   Π[1] = sum(Πs)
+  solver.linear_solver.assembler.residuals .= f
   return nothing
 end
 
 # TODO maybe this one isn't so general...
-function energy_internal_force_and_stiffness_action!(solver, domain::QuasiStaticDomain, cache, Uu, Vv, backend)
+function strain_energy_internal_force_and_stiffness_action!(solver, domain::QuasiStaticDomain, cache, Uu, Vv, backend)
 
   # unpack stuff
   Δt = domain.domain_cache.time.Δt
-  Hv = solver.assembler.stiffness_actions
+  Hv = solver.linear_solver.assembler.stiffness_actions
   sections = domain.sections
   @unpack X, U, props, state_old, state_new, Π, Πs, f, V = cache
 
   # update fields here
   update_fields!(U, domain, X, Uu)
   update_unknowns!(V, domain, Vv)
-  energy_internal_force_and_stiffness_action!(Πs, f, Hv, state_new, sections, Δt, X, U, props, state_new, V, backend)
+  strain_energy_internal_force_and_stiffness_action!(Πs, f, Hv, state_new, sections, Δt, X, U, props, state_new, V, backend)
   Π[1] = sum(Πs)
+  solver.linear_solver.assembler.residuals .= f
   return nothing
 end

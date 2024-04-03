@@ -33,10 +33,12 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 [weakdeps]
 AbstractDifferentiation = "c29ec348-61ec-40c8-8164-b8c60e9d9f3d"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+PartitionedArrays = "5a9dfac6-5c52-46f7-8278-5e2210713be9"
 
 [extensions]
 CthoniosAbstractDifferentiationExt = ["AbstractDifferentiation"]
 CthoniosAdaptExt = ["Adapt"]
+CthoniosPartitionedArraysExt = ["PartitionedArrays"]
 
 [compat]
 AbstractDifferentiation = "0.6"
@@ -47,8 +49,7 @@ ComponentArrays = "0.15"
 ConstitutiveModels = "0.1.1"
 DocStringExtensions = "0.9"
 Enzyme = "0.11"
-Exodus = "0.12"
-FiniteElementContainers = "0.5.0"
+Exodus = "0.13"
 FunctionWrappers = "1"
 IterativeSolvers = "0.9"
 JET = "0.8"
@@ -59,9 +60,10 @@ LinearOperators = "2"
 Logging = "1"
 LoggingExtras = "1"
 Parameters = "0.12"
+PartitionedArrays = "0.4"
 Pkg = "1"
 Printf = "1"
-ReferenceFiniteElements = "0.11.1"
+ReferenceFiniteElements = "0.11"
 SparseArrays = "1"
 SparseDiffTools = "2"
 StaticArrays = "1"

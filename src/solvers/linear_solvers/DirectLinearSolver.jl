@@ -62,7 +62,8 @@ end
 
 function solve!(Uu, solver::DirectLinearSolver, domain::QuasiStaticDomain, common::CthoniosCommon)
   K = SparseArrays.sparse!(solver.assembler)
-  R = @views domain.domain_cache.f[domain.dof.unknown_dofs]
+  # R = @views domain.domain_cache.f[domain.dof.unknown_dofs]
+  R = @views solver.assembler.residuals[domain.dof.unknown_dofs]
   @timeit timer(common) "Factorization" begin
     # solver.settings.factorization_method!(K, solver.factorization)
     ldl_factorize!(K, solver.factorization)
