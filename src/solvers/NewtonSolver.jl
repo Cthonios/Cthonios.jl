@@ -1,9 +1,15 @@
+"""
+$(TYPEDFIELDS)
+"""
 @kwdef struct NewtonSolverSettings <: NonlinearSolverSettings
   max_steps::Int = 20
   relative_tolerance::Float64 = 1.0e-8
   absolute_tolerance::Float64 = 1.0e-8
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function NewtonSolverSettings(input_settings::D) where D <: Dict
   if Symbol("absolute tolerance") in keys(input_settings)
     absolute_tolerance = input_settings[Symbol("absolute tolerance")]
@@ -37,6 +43,9 @@ function Base.show(io::IO, settings::NewtonSolverSettings)
   )
 end
 
+"""
+$(TYPEDFIELDS)
+"""
 struct NewtonSolver{
   S <: NewtonSolverSettings, 
   L <: AbstractLinearSolver
@@ -47,6 +56,9 @@ struct NewtonSolver{
 end
 
 # TODO maybe add preconditioner below?
+"""
+$(TYPEDSIGNATURES)
+"""
 function NewtonSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict
   settings      = NewtonSolverSettings(input_settings) # TODO add non-defaults
   linear_solver = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
@@ -76,6 +88,9 @@ function logger(::NewtonSolver, n, norm_R, norm_R0, norm_U)
   @info @sprintf "Iteration %5i: ||R|| = %1.6e    ||R/R0|| = %1.6e    ||ΔUu|| = %1.6e" n norm_R (norm_R / norm_R0) norm_U
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function solve!(
   solver::NewtonSolver, domain::QuasiStaticDomain,
   common::CthoniosCommon

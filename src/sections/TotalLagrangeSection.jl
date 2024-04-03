@@ -1,3 +1,8 @@
+"""
+$(TYPEDFIELDS)
+$(TYPEDSIGNATURES)
+Section for total Lagrangia (the actual way to spell his name) formulations
+"""
 struct TotalLagrangeSection{
   ID, FS, Form, Mod
 } <: Section{ID, FS, Form, Mod}

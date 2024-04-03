@@ -1,3 +1,6 @@
+"""
+$(TYPEDFIELDS)
+"""
 struct QuasiStaticDomainCache{Time, V1, V2, V3, V4, V5, V6, V7} <: AbstractDomainCache
   time::Time
   X::V1
@@ -14,6 +17,9 @@ struct QuasiStaticDomainCache{Time, V1, V2, V3, V4, V5, V6, V7} <: AbstractDomai
   Hv::V3 # for working with krylov methods
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function Base.similar(cache::QuasiStaticDomainCache)
   @unpack time, X, Uu, ΔUu, U, props, state_old, state_new, Π, Πs, f, V, Hv = cache
   return QuasiStaticDomainCache(
@@ -25,11 +31,17 @@ function Base.similar(cache::QuasiStaticDomainCache)
   )
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function unpack(cache::QuasiStaticDomainCache)
   @unpack time, X, Uu, ΔUu, U, props, state_old, state_new, props, Π, Πs, f, V, Hv = cache
   return time, X, Uu, ΔUu, U, props, state_old, state_new, Π, Πs, f, V, Hv
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 struct QuasiStaticDomain{
   Dof,
   Funcs,
@@ -48,6 +60,9 @@ struct QuasiStaticDomain{
   domain_cache::DomainCache
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
 
   # global stuff
@@ -88,6 +103,9 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   )
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 QuasiStaticDomain(input_file::String, key) =
 QuasiStaticDomain(parse_input_file(input_file)[:domains][key])
 
@@ -114,6 +132,7 @@ create_fields(d::QuasiStaticDomain) = FiniteElementContainers.create_fields(d.do
 create_unknowns(d::QuasiStaticDomain) = FiniteElementContainers.create_unknowns(d.dof)
 
 """
+$(TYPEDSIGNATURES)
 This methods assumes the bc dofs and func ids are already
 properly set in the domain coming in
 """
@@ -124,6 +143,10 @@ function update_unknown_dofs!(d::QuasiStaticDomain)
   resize!(d.domain_cache.ΔUu, length(d.dof.unknown_dofs))
 end
 
+"""
+$(TYPEDSIGNATURES)
+This method updates the nodes with dirichlet bcs in U
+"""
 function update_bcs!(U, domain::QuasiStaticDomain, Xs)
   for (node, dof, func_id) in zip(domain.bc_nodes, domain.bc_dofs, domain.bc_func_ids)
     X = @views Xs[:, node]
@@ -132,14 +155,33 @@ function update_bcs!(U, domain::QuasiStaticDomain, Xs)
   end
 end
 
+"""
+$(TYPEDSIGNATURES)
+Updates the unknowns in U with the values in Uu
+based on the current free vs. fixed dof layout in domain.dof.
+
+I think this one is deprecated?
+"""
 function update_unknowns!(U, domain::QuasiStaticDomain, Uu)
   FiniteElementContainers.update_fields!(U, domain.dof, Uu)
 end
 
+"""
+$(TYPEDSIGNATURES)
+Updates both the bcs and unknowns in U
+based on the current free vs. fixed dof layout in domain.dof and
+the bcs currently in the domain.
+
+I think this one is deprecated?
+"""
 function update_fields!(U, domain::QuasiStaticDomain, Xs, Uu)
   update_bcs!(U, domain, Xs)
   update_unknowns!(U, domain, Uu)
 end
 
 # Time stepping hooks
+"""
+$(TYPEDSIGNATURES)
+Advances the domain's time stepper one step.
+"""
 step!(domain::QuasiStaticDomain) = step!(domain.domain_cache.time)

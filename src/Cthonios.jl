@@ -18,6 +18,7 @@ using LinearAlgebra
 using LinearOperators
 using Logging
 using LoggingExtras
+using PackageCompiler
 using Parameters
 using Pkg
 using Printf
@@ -33,18 +34,18 @@ import FunctionWrappers: FunctionWrapper
 
 
 # for docs
-@template (FUNCTIONS, METHODS, MACROS) = 
-"""
-$(TYPEDSIGNATURES)
-$(DOCSTRING)
-$(METHODLIST)
-"""
+# @template (FUNCTIONS, METHODS, MACROS) = 
+# """
+# $(TYPEDSIGNATURES)
+# $(DOCSTRING)
+# $(METHODLIST)
+# """
 
-@template (TYPES) = 
-"""
-$(TYPEDFIELDS)
-$(DOCSTRING)
-"""
+# @template (TYPES) = 
+# """
+# $(TYPEDFIELDS)
+# $(DOCSTRING)
+# """
 
 # Level 1 stuff
 # include("Backends.jl")

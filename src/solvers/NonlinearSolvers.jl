@@ -1,18 +1,28 @@
 include("linear_solvers/LinearSolvers.jl")
 
+"""
+"""
 abstract type NonlinearSolverSettings end
+"""
+"""
 abstract type NonlinearSolver{S, L} end
 
 function logger end # To be defined for each solver
 function solve! end # TO be defined for each solver
 function update_unknown_dofs! end # To be defined for each solver
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function update_unknown_dofs!(solver::NonlinearSolver, d::QuasiStaticDomain)
   # update the dofs using the linear solver method
   update_unknown_dofs!(solver.linear_solver, d)
 end
 
 # Wrappers methods around different domain types
+"""
+$(TYPEDSIGNATURES)
+"""
 function objective(solver, domain::QuasiStaticDomain, common, u)
   @timeit timer(common) "Objective" begin
     strain_energy!(solver, domain, domain.domain_cache, u, backend(common))
@@ -21,6 +31,9 @@ function objective(solver, domain::QuasiStaticDomain, common, u)
   return o
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function gradient(solver, domain::QuasiStaticDomain, common, u)
   @timeit timer(common) "Objective and gradient" begin
     internal_force!(solver, domain, domain.domain_cache, u, backend(common))
@@ -29,6 +42,9 @@ function gradient(solver, domain::QuasiStaticDomain, common, u)
   return g
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function hvp(solver, domain::QuasiStaticDomain, common, u, v)
   @timeit timer(common) "Hvp" begin
     stiffness_action!(solver, domain, domain.domain_cache, u, v, backend(common))
@@ -37,6 +53,9 @@ function hvp(solver, domain::QuasiStaticDomain, common, u, v)
   return Hv
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function hessian(solver, domain::QuasiStaticDomain, common, u)
   @timeit timer(common) "Hessian" begin
     stiffness!(solver, domain, domain.domain_cache, u, backend(common))
@@ -45,6 +64,9 @@ function hessian(solver, domain::QuasiStaticDomain, common, u)
   return K
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function objective_and_gradient(solver, domain::QuasiStaticDomain, common, u)
   @timeit timer(common) "Objective and gradient" begin
     strain_energy_and_internal_force!(solver, domain, domain.domain_cache, u, backend(common))
@@ -54,6 +76,9 @@ function objective_and_gradient(solver, domain::QuasiStaticDomain, common, u)
   return o, g
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function objective_gradient_and_hessian(solver, domain::QuasiStaticDomain, common, u)
   @timeit timer(common) "Objective, gradient, and Hessian" begin
     strain_energy_internal_force_and_stiffness!(solver, domain, domain.domain_cache, u, backend(common))

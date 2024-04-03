@@ -13,6 +13,20 @@ cli_options = ArgParseSettings()
     help = "a flag to print to console rather than a log file"
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
+function build_executable(; build_dir::String = dirname(dirname(pathof(@__MODULE__))), force::Bool = false)
+  create_app(
+    build_dir, "cthonios";
+    executables=[
+      "cthonios" => "julia_main"
+    ],
+    force=force
+    # precompile_execution_file="precompile/precompile.jl"
+  )
+end
+
 function dump_dependencies_state()
   deps = Pkg.dependencies()
 
@@ -44,6 +58,9 @@ function problems_main(input_file, common)
   end
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function cthonios_main(input_file::String, verbose::Bool, ka_backend_str::String)
   log_file_name = splitext(input_file)[1] * ".log"
 
