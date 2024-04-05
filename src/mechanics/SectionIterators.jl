@@ -1,13 +1,13 @@
 # top level in place method that loops over sections
-# function energy!(Π, U, domain::QuasiStaticDomain, Uu, state, props, X)
-function energy_old!(Πs, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
+# function strain_energy!(Π, U, domain::QuasiStaticDomain, Uu, state, props, X)
+function strain_energy_old!(Πs, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
   Πs .= zero(eltype(Πs))
   for (name, section) in pairs(sections)
     Πs_temp        = Πs[name]
     state_old_temp = state_old[name]
     state_new_temp = state_new[name]
     props_temp     = props[name]
-    energy!(
+    strain_energy!(
       Πs_temp, state_new_temp, 
       section, Δt, X, U, props_temp, state_old_temp, backend
     )
@@ -18,7 +18,7 @@ function energy_old!(Πs, state_new, sections, Δt, X, U, props, state_old, back
   return nothing
 end 
 
-function energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
+function strain_energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
   Πs .= zero(eltype(Πs))
   for (name, section) in pairs(sections)
     ND, NN, NP, NS = size(section)
@@ -30,7 +30,7 @@ function energy!(Πs, state_new, sections, Δt, X, U, props, state_old, backend:
       props_el = SVector{NP, eltype(props)}(@views props[name][:, e])
       for q in 1:FiniteElementContainers.num_q_points(section)
         state_old_q = SVector{NS, eltype(state_old)}(@views state_old[name][:, q, e])
-        W_q, state_new_q = energy(
+        W_q, state_new_q = strain_energy(
           section.model, section.formulation,
           Δt, X_el, U_el, props_el, state_old_q,
           interpolants(section, q)...
@@ -156,7 +156,7 @@ function stiffness_action!(Kv, state_new, sections, Δt, X, U, props, state_old,
 end
 
 # dual return outputs
-function energy_and_internal_force!(Πs, f, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
+function strain_energy_and_internal_force!(Πs, f, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
   Πs .= zero(eltype(Πs))
   f .= zero(eltype(f))
   for (name, section) in pairs(sections)
@@ -174,7 +174,7 @@ function energy_and_internal_force!(Πs, f, state_new, sections, Δt, X, U, prop
 
       for q in 1:FiniteElementContainers.num_q_points(section)
         state_old_q = SVector{NS, eltype(state_old)}(@views state_old[name][:, q, e])
-        W_q, f_q, state_new_q = energy_and_internal_force(
+        W_q, f_q, state_new_q = strain_energy_and_internal_force(
           section.model, section.formulation,
           Δt, X_el, U_el, props_el, state_old_q,
           interpolants(section, q)...
@@ -233,7 +233,7 @@ function internal_force_and_stiffness!(f, assembler, state_new, sections, Δt, X
 end 
 
 # triple return outputs
-function energy_internal_force_and_stiffness!(Πs, f, assembler, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
+function strain_energy_internal_force_and_stiffness!(Πs, f, assembler, state_new, sections, Δt, X, U, props, state_old, backend::Backend)
   Πs .= zero(eltype(Πs))
   f .= zero(eltype(f))
   assembler.stiffnesses .= zero(eltype(assembler.stiffnesses))
@@ -253,7 +253,7 @@ function energy_internal_force_and_stiffness!(Πs, f, assembler, state_new, sect
   
       for q in 1:FiniteElementContainers.num_q_points(section)
         state_old_q = SVector{NS, eltype(state_old)}(@views state_old[name][:, q, e])
-        W_q, f_q, K_q, state_new_q = energy_internal_force_and_stiffness(
+        W_q, f_q, K_q, state_new_q = strain_energy_internal_force_and_stiffness(
           section.model, section.formulation,
           Δt, X_el, U_el, props_el, state_old_q,
           interpolants(section, q)...
@@ -274,7 +274,7 @@ function energy_internal_force_and_stiffness!(Πs, f, assembler, state_new, sect
   return nothing
 end
 
-function energy_internal_force_and_stiffness_action!(Πs, f, Hv, state_new, sections, Δt, X, U, props, state_old, V, backend::Backend)
+function strain_energy_internal_force_and_stiffness_action!(Πs, f, Hv, state_new, sections, Δt, X, U, props, state_old, V, backend::Backend)
   Πs .= zero(eltype(Πs))
   f .= zero(eltype(f))
   Hv .= zero(eltype(Hv))
@@ -294,7 +294,7 @@ function energy_internal_force_and_stiffness_action!(Πs, f, Hv, state_new, sect
 
       for q in 1:FiniteElementContainers.num_q_points(section)
         state_old_q = SVector{NS, eltype(state_old)}(@views state_old[name][:, q, e])
-        W_q, f_q, H_q, state_new_q = energy_internal_force_and_stiffness(
+        W_q, f_q, H_q, state_new_q = strain_energy_internal_force_and_stiffness(
           section.model, section.formulation,
           Δt, X_el, U_el, props_el, state_old_q,
           interpolants(section, q)...

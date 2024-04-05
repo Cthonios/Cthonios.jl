@@ -1,9 +1,15 @@
 # CURRENTLY NOT HOOKED UP TO ANYTHING
+"""
+$(TYPEDFIELDS)
+"""
 struct DirectLinearSolverSettings{F1, F2} <: AbstractLinearSolverSettings
   factorization_method::F1
   factorization_method!::F2
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function DirectLinearSolverSettings(input_settings::Dict{Symbol, Any})
   method_name = input_settings[Symbol("factorization method")]
   in_place_method_name = method_name * "_factorize!"
@@ -12,6 +18,9 @@ function DirectLinearSolverSettings(input_settings::Dict{Symbol, Any})
   return DirectLinearSolverSettings(factorization_method, factorization_method!)
 end
 
+"""
+$(TYPEDFIELDS)
+"""
 struct DirectLinearSolver{Settings, Assembler, Factorization} <: AbstractLinearSolver{Settings, Assembler}
   settings::Settings
   assembler::Assembler
@@ -26,6 +35,9 @@ function Base.show(io::IO, solver::DirectLinearSolver)
 end
 
 # TODO maybe add some settings
+"""
+$(TYPEDSIGNATURES)
+"""
 function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStaticDomain, backend)
   settings = DirectLinearSolverSettings(input_settings)
   assembler = StaticAssembler(domain.dof, map(x -> x.fspace, values(domain.sections)))
@@ -56,13 +68,20 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   return DirectLinearSolver(settings, assembler, factorization)
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function update_unknown_dofs!(solver::DirectLinearSolver, domain::QuasiStaticDomain)
   update_unknown_dofs!(solver.assembler, domain)
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function solve!(Uu, solver::DirectLinearSolver, domain::QuasiStaticDomain, common::CthoniosCommon)
   K = SparseArrays.sparse!(solver.assembler)
-  R = @views domain.domain_cache.f[domain.dof.unknown_dofs]
+  # R = @views domain.domain_cache.f[domain.dof.unknown_dofs]
+  R = @views solver.assembler.residuals[domain.dof.unknown_dofs]
   @timeit timer(common) "Factorization" begin
     # solver.settings.factorization_method!(K, solver.factorization)
     ldl_factorize!(K, solver.factorization)

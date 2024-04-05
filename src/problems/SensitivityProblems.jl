@@ -39,7 +39,7 @@ function solve!(prob::EnergySensitivityProblem, common::CthoniosCommon)
   dUu = similar(Uu)
 
   autodiff(
-    Reverse, energy!,
+    Reverse, strain_energy!,
     Const(solver),
     Const(domain),
     Duplicated(cache, tangent_cache),

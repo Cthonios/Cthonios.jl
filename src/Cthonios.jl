@@ -19,7 +19,6 @@ using LinearOperators
 using Logging
 using LoggingExtras
 using Parameters
-using Pkg
 using Printf
 using ReferenceFiniteElements
 using SparseArrays
@@ -33,18 +32,18 @@ import FunctionWrappers: FunctionWrapper
 
 
 # for docs
-@template (FUNCTIONS, METHODS, MACROS) = 
-"""
-$(TYPEDSIGNATURES)
-$(DOCSTRING)
-$(METHODLIST)
-"""
+# @template (FUNCTIONS, METHODS, MACROS) = 
+# """
+# $(TYPEDSIGNATURES)
+# $(DOCSTRING)
+# $(METHODLIST)
+# """
 
-@template (TYPES) = 
-"""
-$(TYPEDFIELDS)
-$(DOCSTRING)
-"""
+# @template (TYPES) = 
+# """
+# $(TYPEDFIELDS)
+# $(DOCSTRING)
+# """
 
 # Level 1 stuff
 # include("Backends.jl")
@@ -61,7 +60,7 @@ include("TimeSteppers.jl")
 # Level 3 stuff
 include("domains/Domains.jl")
 include("mechanics/Mechanics.jl")
-include("WarmStart.jl")
+include("solvers/WarmStart.jl")
 include("solvers/NonlinearSolvers.jl")
 
 # Finally problems

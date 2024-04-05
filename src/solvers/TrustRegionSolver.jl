@@ -1,3 +1,6 @@
+"""
+$(TYPEDFIELDS)
+"""
 Base.@kwdef mutable struct TrustRegionSolverSettings <: NonlinearSolverSettings
   t_1::Float64                                  = 0.25
   t_2::Float64                                  = 1.75
@@ -27,6 +30,9 @@ function Base.show(io::IO, settings::TrustRegionSolverSettings)
   print(io, "\n")
 end
 
+"""
+$(TYPEDFIELDS)
+"""
 struct TrustRegionSolver{
   S <: TrustRegionSolverSettings,
   L <: AbstractLinearSolver,
@@ -44,6 +50,9 @@ struct TrustRegionSolver{
   use_warm_start::Bool
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
   linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
@@ -115,6 +124,9 @@ function is_converged(
 end
 
 # Figure out a general interface for a preconditioner
+"""
+$(TYPEDSIGNATURES)
+"""
 function preconditioner!(solver, domain, common, Uu)
   @timeit timer(common) "Preconditioner" begin
     H = hessian(solver, domain, common, Uu)
@@ -141,6 +153,9 @@ function preconditioner!(solver, domain, common, Uu)
   end
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function calculate_cauchy_point!(cauchy_point, solver, common, g, Hg, tr_size)
   @timeit timer(common) "Cauchy point" begin
     P = solver.linear_solver.factorization
@@ -160,6 +175,9 @@ function calculate_cauchy_point!(cauchy_point, solver, common, g, Hg, tr_size)
   return cauchy_point_norm_squared
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
   ρ = -model_objective / -real_objective
 
@@ -182,6 +200,7 @@ function update_tr_size(solver, model_objective, real_objective, step_type, tr_s
 end
 
 """
+$(TYPEDSIGNATURES)
 minimize r * z + 0.5 * z * J * z
 """
 function minimize_trust_region_sub_problem!(
@@ -271,6 +290,9 @@ function minimize_trust_region_sub_problem!(
   return :interior, solver.settings.max_cg_iters
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function dog_leg_step!(d, solver, common, cauchy_point, q_newton_point, tr_size)
   @timeit timer(common) "Doglog step" begin
     P = solver.linear_solver.factorization
@@ -316,6 +338,9 @@ function dog_leg_step!(d, solver, common, cauchy_point, q_newton_point, tr_size)
   return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function solve!(
   solver::TrustRegionSolver, domain::QuasiStaticDomain,
   common::CthoniosCommon
