@@ -18,9 +18,7 @@ using LinearAlgebra
 using LinearOperators
 using Logging
 using LoggingExtras
-using PackageCompiler
 using Parameters
-using Pkg
 using Printf
 using ReferenceFiniteElements
 using SparseArrays
