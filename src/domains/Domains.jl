@@ -37,9 +37,7 @@ function read_mesh(input_settings)#::FileMesh{ExodusDatabase{Int32, Int32, Int32
 end
 
 function read_coordinates(mesh)#::Matrix{Float64}
-  @info "Reading coordinates"
   coords = FiniteElementContainers.coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
-  @info "Read coordinates into field of type $(typeof(coords))"
   return coords
 end

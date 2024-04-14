@@ -7,6 +7,10 @@ export ExodusDatabase
 export FileMesh
 export FiniteElementContainers
 
+# Backends
+export CthoniosBackend
+export NoKABackend
+
 # Boundary condtions
 export DisplacementBC
 
@@ -18,6 +22,10 @@ export ScalarFunction
 
 # sections
 export TotalLagrangeSection
+
+# solvers
+export DirectLinearSolver
+export DirectLinearSolverSettings
 
 # time steppers
 export ConstantTimeStepper

@@ -1,4 +1,3 @@
-# CURRENTLY NOT HOOKED UP TO ANYTHING
 """
 $(TYPEDFIELDS)
 """
@@ -12,6 +11,18 @@ $(TYPEDSIGNATURES)
 """
 function DirectLinearSolverSettings(input_settings::Dict{Symbol, Any})
   method_name = input_settings[Symbol("factorization method")]
+  in_place_method_name = method_name * "_factorize!"
+  factorization_method = eval(Meta.parse(method_name))
+  factorization_method! = eval(Meta.parse(in_place_method_name))
+  return DirectLinearSolverSettings(factorization_method, factorization_method!)
+end
+
+"""
+$(TYPEDSIGNATURES)
+Sticky tac right now since we only support ldl right now.
+"""
+function DirectLinearSolverSettings()
+  method_name = "ldl"
   in_place_method_name = method_name * "_factorize!"
   factorization_method = eval(Meta.parse(method_name))
   factorization_method! = eval(Meta.parse(in_place_method_name))
@@ -34,12 +45,11 @@ function Base.show(io::IO, solver::DirectLinearSolver)
   print(io, "      $(typeof(solver.factorization))\n")
 end
 
-# TODO maybe add some settings
 """
 $(TYPEDSIGNATURES)
+general method used for scripting and input file parsing
 """
-function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStaticDomain, backend)
-  settings = DirectLinearSolverSettings(input_settings)
+function DirectLinearSolver(domain::QuasiStaticDomain, settings::DirectLinearSolverSettings, backend)
   assembler = StaticAssembler(domain.dof, map(x -> x.fspace, values(domain.sections)))
 
   # need to update dofs prior to factorization
@@ -60,12 +70,19 @@ function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStat
   stiffness!(assembler, state_new, sections, Δt, X, U, props, state_old, backend)
 
   # setup matrix to setup a factorization
-  # TODO eventually we might have matrix free stuff
-  # TODO so this is probably not general
   K = SparseArrays.sparse!(assembler)
   factorization = ldl(K)
 
   return DirectLinearSolver(settings, assembler, factorization)
+end
+
+# TODO maybe add some settings
+"""
+$(TYPEDSIGNATURES)
+"""
+function DirectLinearSolver(input_settings::Dict{Symbol, Any}, domain::QuasiStaticDomain, backend)
+  settings = DirectLinearSolverSettings(input_settings)
+  return DirectLinearSolver(domain, settings, backend)
 end
 
 """
