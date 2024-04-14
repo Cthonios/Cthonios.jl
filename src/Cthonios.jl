@@ -2,14 +2,25 @@ module Cthonios
 
 # TODO add exports
 # Things from dependencies
+export DofManager
 export ExodusDatabase
 export FileMesh
+export FiniteElementContainers
 
 # Boundary condtions
 export DisplacementBC
 
+# Domains
+export QuasiStaticDomain
+
 # Functions
 export ScalarFunction
+
+# sections
+export TotalLagrangeSection
+
+# time steppers
+export ConstantTimeStepper
 
 # dependencies
 using ArgParse

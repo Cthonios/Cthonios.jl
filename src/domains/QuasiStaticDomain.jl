@@ -61,7 +61,47 @@ struct QuasiStaticDomain{
 end
 
 """
+scripting method
+"""
+function QuasiStaticDomain(
+  mesh::FileMesh, dof, funcs, sections, props, disp_bcs, time
+)
+  # get coordinates from mesh
+  coords = read_coordinates(mesh)
+
+  # collect stuff for displacement bcs
+  disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids = collect_displacement_bc_indices(disp_bcs)
+
+  # handle property setup?
+  props, state_old, state_new, Πs = setup_section_caches(sections, props)
+  section_names = tuple(map(section -> Symbol("section_$(section.block_id)"), sections)...)
+  sections = NamedTuple{section_names}(sections)
+
+  # cache setup
+  Uu = FiniteElementContainers.create_unknowns(dof)
+  ΔUu = FiniteElementContainers.create_unknowns(dof)
+  U = FiniteElementContainers.create_fields(dof)
+  f = FiniteElementContainers.create_fields(dof)
+  V = FiniteElementContainers.create_fields(dof)
+  Hv = FiniteElementContainers.create_fields(dof)
+
+  domain_cache = QuasiStaticDomainCache(time, coords, Uu, ΔUu, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V, Hv)
+
+  return QuasiStaticDomain{
+    typeof(dof), typeof(funcs),
+    typeof(disp_bc_nodes), typeof(disp_bc_dofs), typeof(disp_bc_func_ids),
+    typeof(sections), typeof(domain_cache)
+  }(
+    dof, funcs, 
+    disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
+    sections, domain_cache
+  )
+end
+
+"""
 $(TYPEDSIGNATURES)
+TODO refine to only have parsing stuff then call 
+the method above
 """
 function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
 
@@ -96,7 +136,11 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   Hv = FiniteElementContainers.create_fields(dof)
   domain_cache = QuasiStaticDomainCache(time, coords, Uu, ΔUu, U, props, state_old, state_new, zeros(Float64, 1), Πs, f, V, Hv)
 
-  return QuasiStaticDomain(
+  return QuasiStaticDomain{
+    typeof(dof), typeof(funcs),
+    typeof(disp_bc_nodes), typeof(disp_bc_dofs), typeof(disp_bc_func_ids),
+    typeof(sections), typeof(domain_cache)
+  }(
     dof, funcs, 
     disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
     sections, domain_cache

@@ -101,25 +101,17 @@ function interpolants(ref_fe::ReferenceFE, formulation, X_el, q::Int)
   return ∇N_X, JxW, G
 end
 
-# simple setup, eventually dispatch on setup type
 """
-$(TYPEDSIGNATURES)
+sets up necessary section cache arrays for a single section given
+constant properties
 """
-function setup(section::Section, inputs::Dict)
-  props_init, state_init = ConstitutiveModels.setup(section.model, inputs)
-
+function setup_section_cache(section, props_inputs)
+  props_init, state_init = ConstitutiveModels.setup(section.model, props_inputs)
   NQ, NE = FiniteElementContainers.num_q_points(section), num_elements(section)
 
-  # if length(state_init) == 0
-  #   @warn "Assigning a single state variable to a path-indepent model"
-  #   state_init = SVector{1, eltype(state_init)}(zero(eltype(state_init)))
-  # end
-  
-  # scratch array for energy kernels
   Πs = ElementField{NQ, NE, Vector, Float64}(undef)
   Πs .= 0.0
   props = ElementField{length(props_init), NE, Matrix, eltype(props_init)}(undef)
-  # state = QuadratureField{length(state_init), NQ, NE, StructVector, typeof(state_init)}(undef)
 
   # TODO add this type to FiniteElementContainers in some way as a wrapper
   state_old = Array{eltype(state_init), 3}(undef, length(state_init), NQ, NE)
@@ -134,6 +126,35 @@ function setup(section::Section, inputs::Dict)
   end
 
   return props, state_old, state_new, Πs
+end
+
+"""
+takes an unnamed but ordered set of properties and sections
+
+Currently assumes all blocks in the mesh are being used
+
+TODO add omit block type stuff
+"""
+function setup_section_caches(sections, props_inputs)
+  @assert length(sections) == length(props_inputs) "Needs to be the same length"
+  state_old = Dict{Symbol, Any}()
+  state_new = Dict{Symbol, Any}()
+  props = Dict{Symbol, Any}()
+  Πs = Dict{Symbol, Any}()
+
+  for (section, props_input) in zip(sections, props_inputs)
+    key = Symbol("section_$(section.block_id)")
+    p, s_old, s_new, pi = setup_section_cache(section, props_input)
+    state_old[key] = s_old
+    state_new[key] = s_new
+    props[key] = p
+    Πs[key] = pi
+  end
+
+  return ComponentArray(props), 
+         ComponentArray(state_old), 
+         ComponentArray(state_new), 
+         ComponentArray(Πs)
 end
 
 include("TotalLagrangeSection.jl")
@@ -156,10 +177,6 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
   new_section("Sections")
   block_ids = element_block_ids(mesh)
   sections = Dict{Symbol, Any}()
-  state_old = Dict{Symbol, Any}()
-  state_new = Dict{Symbol, Any}()
-  props = Dict{Symbol, Any}()
-  Πs = Dict{Symbol, Any}()
 
   n = 1
 
@@ -209,22 +226,19 @@ function setup_sections(input_settings::D, mesh::FileMesh, dof) where D <: Vecto
     section_type = eval(Meta.parse(section[:type]))
     section_temp = section_type(block_id, fspace, form, model)
 
-    # TODO more to do here
-    props_temp, state_old_temp, state_new_temp, Πs_temp = setup(section_temp, section[:material][:properties])
-
     # store section
     name = Symbol("section_$n")
     sections[name] = section_temp
-    props[name] = props_temp
-    state_old[name] = state_old_temp
-    state_new[name] = state_new_temp
-    Πs[name] = Πs_temp
 
     n = n + 1
   end
+
+  props_inputs = map(section -> section[:material][:properties], input_settings)
+  props, state_old, state_new, Πs = setup_section_caches(values(sections), props_inputs)
+
   return NamedTuple(sections), 
-         ComponentArray(props), 
-         ComponentArray(state_old), 
-         ComponentArray(state_new), 
-         ComponentArray(Πs)
+         props,
+         state_old,
+         state_new,
+         Πs
 end
