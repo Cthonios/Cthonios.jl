@@ -8,6 +8,13 @@ const ScalarFunction{D, T1, T2, T3} = FunctionWrapper{T1, Tuple{SVector{D, T2}, 
 const ScalarFunctionWrapperArray = Vector{ScalarFunction}
 
 """
+Method to define a scalar function via a script
+"""
+function ScalarFunction(f::F, n_dims::Int) where F <: Function
+  return ScalarFunction{n_dims, Float64, Float64, Float64}(f)
+end
+
+"""
 $(TYPEDSIGNATURES)
 This method constructs a ```Function``` from a
 a dictionary of inputs. Typically this will be called
