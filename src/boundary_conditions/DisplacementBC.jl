@@ -40,6 +40,30 @@ function DisplacementBC(inputs, mesh_file, num_dofs, nset_id, dof)
   return DisplacementBC{typeof(nset_nodes), typeof(dofs)}(nset_nodes, dofs, func_id)
 end
 
+"""
+Function to help in script inputs
+
+Note this assumes the number of dofs is equal to the number of dimensions
+int he mesh file. This will break for thermomechanical problems
+
+TODO change DisplacementBC to hold a unique FunctionWrapper
+TODO also add a method that uses a nset name
+"""
+function DisplacementBC(mesh_file::FileMesh, nset_id::Int, dof::Int, func_id::Int)
+  num_dofs = FiniteElementContainers.num_dimensions(mesh_file)
+  nset_nodes = convert.(Int64, nodeset(mesh_file, nset_id))
+  sort!(nset_nodes)
+  dofs = similar(nset_nodes)
+  for n in axes(dofs, 1)
+    dofs[n] = (nset_nodes[n] - 1) * num_dofs + dof
+  end
+  @info "  Displacement BC"
+  @info "    Nodeset ID   = $nset_id"
+  @info "    Dof          = $dof"
+  @info "    Function ID  = $func_id"
+  return DisplacementBC{typeof(nset_nodes), typeof(dofs)}(nset_nodes, dofs, func_id)
+end
+
 function setup_displacement_bcs(
   inputs::D, mesh_file::FileMesh, num_dofs::Int
 )::Tuple{Vector{Int64}, Vector{Int64}, Vector{Int64}} where D <: Vector{Dict{Symbol, Any}}

@@ -1,6 +1,15 @@
 module Cthonios
 
 # TODO add exports
+# Things from dependencies
+export ExodusDatabase
+export FileMesh
+
+# Boundary condtions
+export DisplacementBC
+
+# Functions
+export ScalarFunction
 
 # dependencies
 using ArgParse
@@ -28,6 +37,8 @@ using Tensors
 using TimerOutputs
 using YAML
 
+import Exodus: ExodusDatabase
+import FiniteElementContainers: FileMesh
 import FunctionWrappers: FunctionWrapper
 
 
