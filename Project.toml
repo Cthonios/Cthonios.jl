@@ -41,7 +41,7 @@ CthoniosPartitionedArraysExt = ["PartitionedArrays"]
 
 [compat]
 AbstractDifferentiation = "0.6"
-Adapt = "3"
+Adapt = "3, 4"
 Aqua = "0.8"
 ArgParse = "1"
 ComponentArrays = "0.15"
