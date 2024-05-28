@@ -1,0 +1,10 @@
+Input FEM file                  = /home/craig/.julia/dev/Cthonios/examples/hole_array/mesh.g
+LB file                         = /home/craig/.julia/dev/Cthonios/examples/hole_array/mesh.g.nem
+Parallel Results File Base Name = /home/craig/.julia/dev/Cthonios/examples/hole_array/mesh
+File Extension for Spread Files = .g
+Number of Processors            = 4
+------------------------------------------------------------
+                Parallel I/O section                        
+------------------------------------------------------------
+Parallel Disk Info= number=1, offset=1, zeros, nosubdirectory
+Parallel file location = root=/home/craig/.julia/dev/Cthonios/examples/hole_array/, subdir=.

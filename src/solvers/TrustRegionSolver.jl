@@ -53,9 +53,13 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
-  settings       = TrustRegionSolverSettings() # TODO add non-defaults
-  linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
+function TrustRegionSolver(
+  domain::QuasiStaticDomain, 
+  linear_solver,
+  settings::TrustRegionSolverSettings, 
+  backend;
+  use_warm_start::Bool = false
+)
   cauchy_point   = create_unknowns(domain)
   q_newton_point = create_unknowns(domain)
   d              = create_unknowns(domain)
@@ -63,6 +67,21 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend
   y_scratch_2    = create_unknowns(domain)
   y_scratch_3    = create_unknowns(domain)
   y_scratch_4    = create_unknowns(domain)
+
+  return TrustRegionSolver(
+    settings, linear_solver, 
+    cauchy_point, q_newton_point, d,
+    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
+    use_warm_start
+  )
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend) where D <: Dict{Symbol, Any}
+  settings       = TrustRegionSolverSettings() # TODO add non-defaults
+  linear_solver  = setup_linear_solver(input_settings[Symbol("linear solver")], domain, backend)
   if Symbol("warm start") in keys(input_settings)
     parsed_string = input_settings[Symbol("warm start")]
     if parsed_string == "on"
@@ -75,12 +94,7 @@ function TrustRegionSolver(input_settings::D, domain::QuasiStaticDomain, backend
   else
     use_warm_start = false
   end
-  return TrustRegionSolver(
-    settings, linear_solver, 
-    cauchy_point, q_newton_point, d,
-    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
-    use_warm_start
-  )
+  return TrustRegionSolver(domain, linear_solver, settings, backend; use_warm_start=use_warm_start)
 end
 
 function Base.show(io::IO, solver::TrustRegionSolver)

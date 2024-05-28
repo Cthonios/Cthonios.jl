@@ -1,18 +1,23 @@
 module Cthonios
 
-# TODO add exports
 # Things from dependencies
 export DofManager
 export ExodusDatabase
 export FileMesh
 export FiniteElementContainers
+export PlaneStrain
+export ThreeDimensional
 
 # Backends
 export CthoniosBackend
 export NoKABackend
 
+# Common
+export CthoniosCommon
+
 # Boundary condtions
 export DisplacementBC
+export DisplacementBCContainer
 
 # Domains
 export QuasiStaticDomain
@@ -20,15 +25,29 @@ export QuasiStaticDomain
 # Functions
 export ScalarFunction
 
+# post processors
+export PostProcessor
+
+# problems
+export EnergySensitivityProblem
+export ForwardProblem
+
 # sections
 export TotalLagrangeSection
 
 # solvers
 export DirectLinearSolver
 export DirectLinearSolverSettings
+export NewtonSolver
+export NewtonSolverSettings
+export TrustRegionSolver
+export TrustRegionSolverSettings
+export solve!
+export warm_start!
 
 # time steppers
 export ConstantTimeStepper
+export step!
 
 # dependencies
 using ArgParse
@@ -49,6 +68,7 @@ using LoggingExtras
 using Parameters
 using Printf
 using ReferenceFiniteElements
+using RuntimeGeneratedFunctions
 using SparseArrays
 using SparseDiffTools
 using StaticArrays
@@ -60,6 +80,7 @@ import Exodus: ExodusDatabase
 import FiniteElementContainers: FileMesh
 import FunctionWrappers: FunctionWrapper
 
+RuntimeGeneratedFunctions.init(@__MODULE__)
 
 # for docs
 # @template (FUNCTIONS, METHODS, MACROS) = 

@@ -14,7 +14,7 @@ function seed!(::ReverseMode, cache::Cthonios.QuasiStaticDomainCache)
   return nothing
 end
 
-function warm_start!(solver, domain::QuasiStaticDomain, common, Uu)
+function warm_start_busted!(solver, domain::QuasiStaticDomain, common, Uu)
   @info "Warm start"
   # unpack stuff
   cache = domain.domain_cache
@@ -45,7 +45,11 @@ function warm_start!(solver, domain::QuasiStaticDomain, common, Uu)
     )
   end
 
-  @timeit timer(common) "Jv*dU" mul!(cache.Hv, Jv, dU)
+  # @timeit timer(common) "Jv*dU" mul!(cache.Hv, Jv, dU)
+  @timeit timer(common) "Jv*dU" begin 
+    # mul!(cache.Hv, Jv, dU)
+    cache.Hv .= Jv * dU
+  end
 
   @views b = cache.Hv[domain.dof.unknown_dofs]
   @timeit timer(common) "solve" temp_Uu = K \ b
@@ -53,7 +57,7 @@ function warm_start!(solver, domain::QuasiStaticDomain, common, Uu)
   @. cache.Uu += temp_Uu
 end
 
-function warm_start_old!(solver, domain::QuasiStaticDomain, common, Uu)
+function warm_start!(solver, domain::QuasiStaticDomain, common, Uu)
   @info "Warm start"
   # unpack stuff
   cache = domain.domain_cache

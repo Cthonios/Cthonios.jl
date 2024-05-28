@@ -13,7 +13,7 @@ $(TYPEDSIGNATURES)
 function update_unknown_dofs!(assembler::StaticAssembler, d::QuasiStaticDomain)
   # update the dofs
   update_unknown_dofs!(d)
-  FiniteElementContainers.update_unknown_dofs!(assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
+  FiniteElementContainers.update_unknown_dofs!(assembler, d.dof, map(x -> x.fspace, d.sections), d.disp_bcs.bc_dofs)
 end
 
 # DirectLinearSolver

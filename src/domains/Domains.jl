@@ -3,9 +3,7 @@ abstract type AbstractDomainCache end
 abstract type AbstractDomain{
   Dof,
   Funcs,
-  BCNodes,
-  BCDofs,
-  BCFuncIDs,
+  DispBCs,
   Sections
 } end
 

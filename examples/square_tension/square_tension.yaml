@@ -1,0 +1,98 @@
+# Global scope
+functions:
+  displacement_ramp: 
+    type: ScalarFunction{2, Float64, Float64, Float64}
+    expression: (x, t) -> 0.25 * t
+  zero_func:
+    type: ScalarFunction{2, Float64, Float64, Float64}
+    expression: (x, t) -> 0.0
+
+materials:
+  soft rubber:
+    model: NeoHookean
+    properties:
+      bulk modulus: 0.833
+      shear modulus: 0.3846
+  swanson rubber:
+    model: Swanson
+    properties:
+      bulk modulus: 10.0
+      A1: 0.264536
+      alpha1: 3.451703
+      A2: 0.856198
+      alpha2: 0.001
+      B1: 1.89529
+      beta1: 0.001
+  swanson rubber 2:
+    model: Swanson
+    properties:
+      bulk modulus: 10.0
+      A1: 0.727646
+      alpha1: -0.210494
+      A2: 0.311541
+      alpha2: 0.016216
+      B1: 0.0
+      beta1: 0.5
+
+
+linear solvers:
+  direct:
+    type: DirectLinearSolver
+    factorization method: ldl
+
+nonlinear solvers:
+  trs:
+    type: TrustRegionSolver
+    linear solver: direct
+    warm start: on
+  newton:
+    type: NewtonSolver
+    linear solver: direct
+
+# Domains scope
+
+domains:
+  domain_1:
+    mesh:
+      type: ExodusDatabase{Int32, Int32, Int32, Float64}
+      file name: mesh.g
+
+    boundary conditions:
+      displacement: 
+      - nodeset ids: [2]
+        dofs: [1, 2]
+        function: zero_func
+      - nodeset ids: [4]
+        dofs: [1]
+        function: displacement_ramp
+      - nodeset ids: [4]
+        dofs: [2]
+        function: zero_func
+
+    sections:
+    - type: TotalLagrangeSection
+      block id: 1
+      formulation: plane strain
+      material: swanson rubber 2
+
+    # below is TODO
+    time stepper:
+      type: ConstantTimeStepper
+      start time: 0.0
+      end time: 1.0
+      time step: 0.05
+
+problems:
+  - type: ForwardProblem
+    domain: domain_1
+    solver: trs
+    results:
+      output file name: output.e
+      nodal fields:
+      - displacement
+      - internal force
+      element fields:
+      - properties
+      quadrature fields:
+      - state variables
+

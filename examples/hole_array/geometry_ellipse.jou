@@ -1,0 +1,50 @@
+reset
+
+#width  = {width  = 1.0}
+#minor_radius = {minor_radius = .1168}
+#major_radius = {major_radius = minor_radius * .618}
+
+
+create surface rectangle width {width} zplane
+move surface 1 x {width / 2.} y {width / 2.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 2 x {width / 6.} y {width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 3 x {3 * width / 6.} y {width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 4 x {5 * width / 6.} y {width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 5 x {width / 6.} y {3 * width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 6 x {3 * width / 6.} y {3 * width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 7 x {5 * width / 6.} y {3 * width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 8 x {width / 6.} y {5 * width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 9 x {3 * width / 6.} y {5 * width / 6.}
+
+create surface ellipse major radius {major_radius} minor radius {minor_radius} zplane
+move surface 10 x {5 * width / 6.} y {5 * width / 6.}
+
+subtract surface 2 to 10 from surface 1
+
+surface 11 scheme trimesh
+surface 11 size {width / 75.0}
+mesh surface 11
+
+block 1 add surface 11
+block 1 element type tri3
+
+nodeset 1 add curve 3
+nodeset 2 add curve 1
+
+export genesis "mesh.g" overwrite

@@ -45,17 +45,13 @@ $(TYPEDSIGNATURES)
 struct QuasiStaticDomain{
   Dof,
   Funcs,
-  BCNodes,
-  BCDofs,
-  BCFuncIDs,
+  DispBCs,
   Sections,
   DomainCache
-} <: AbstractDomain{Dof, Funcs, BCNodes, BCDofs, BCFuncIDs, Sections}
+} <: AbstractDomain{Dof, Funcs, DispBCs, Sections}
   dof::Dof
   funcs::Funcs
-  bc_nodes::BCNodes
-  bc_dofs::BCDofs
-  bc_func_ids::BCFuncIDs
+  disp_bcs::DispBCs
   sections::Sections
   domain_cache::DomainCache
 end
@@ -68,9 +64,6 @@ function QuasiStaticDomain(
 )
   # get coordinates from mesh
   coords = read_coordinates(mesh)
-
-  # collect stuff for displacement bcs
-  disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids = collect_displacement_bc_indices(disp_bcs)
 
   # handle property setup?
   props, state_old, state_new, Πs = setup_section_caches(sections, props)
@@ -89,11 +82,11 @@ function QuasiStaticDomain(
 
   return QuasiStaticDomain{
     typeof(dof), typeof(funcs),
-    typeof(disp_bc_nodes), typeof(disp_bc_dofs), typeof(disp_bc_func_ids),
+    typeof(disp_bcs),
     typeof(sections), typeof(domain_cache)
   }(
     dof, funcs, 
-    disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
+    disp_bcs,
     sections, domain_cache
   )
 end
@@ -118,7 +111,7 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
   dof       = DofManager{ND, NNodes, Vector{Float64}}()
   
   # bc setup
-  disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids = setup_displacement_bcs(
+  disp_bcs = setup_displacement_bcs(
     get_domain_displacement_bcs_inputs(input_settings), mesh_file, ND
   )
   
@@ -138,11 +131,11 @@ function QuasiStaticDomain(input_settings::D) where D <: Dict{Symbol, Any}
 
   return QuasiStaticDomain{
     typeof(dof), typeof(funcs),
-    typeof(disp_bc_nodes), typeof(disp_bc_dofs), typeof(disp_bc_func_ids),
+    typeof(disp_bcs),
     typeof(sections), typeof(domain_cache)
   }(
     dof, funcs, 
-    disp_bc_nodes, disp_bc_dofs, disp_bc_func_ids,
+    disp_bcs,
     sections, domain_cache
   )
 end
@@ -182,22 +175,34 @@ properly set in the domain coming in
 """
 function update_unknown_dofs!(d::QuasiStaticDomain)
   # update the dofs
-  FiniteElementContainers.update_unknown_dofs!(d.dof, d.bc_dofs)
+  FiniteElementContainers.update_unknown_dofs!(d.dof, d.disp_bcs.bc_dofs)
   resize!(d.domain_cache.Uu, length(d.dof.unknown_dofs))
   resize!(d.domain_cache.ΔUu, length(d.dof.unknown_dofs))
 end
+
 
 """
 $(TYPEDSIGNATURES)
 This method updates the nodes with dirichlet bcs in U
 """
 function update_bcs!(U, domain::QuasiStaticDomain, Xs)
-  for (node, dof, func_id) in zip(domain.bc_nodes, domain.bc_dofs, domain.bc_func_ids)
+  for (node, dof, func_id) in zip(domain.disp_bcs.bc_nodes, domain.disp_bcs.bc_dofs, domain.disp_bcs.bc_func_ids)
     X = @views Xs[:, node]
     t = domain.domain_cache.time.current_time
     U[dof] = domain.funcs[func_id](X, t)
   end
 end
+
+# Leads to IR barf with enzyme
+# function update_bcs!(U, domain::QuasiStaticDomain, Xs)
+#   t = domain.domain_cache.time.current_time
+#   for bc in domain.disp_bcs
+#     for (node, dof) in zip(bc.nodes, bc.dofs)
+#       X = @views Xs[:, node]
+#     U[dof] = bc.func(X, t)
+#     end
+#   end
+# end
 
 """
 $(TYPEDSIGNATURES)

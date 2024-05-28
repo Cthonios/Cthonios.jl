@@ -1,9 +1,14 @@
+"""
+"""
 struct DisplacementBC{Nodes, Dofs} <: AbstractDirichletBC{Nodes, Dofs}
   nodes::Nodes
   dofs::Dofs
   func_id::Int64
+  # func::ScalarFunction{2, Float64, Float64, Float64} # Change if this works
 end
 
+"""
+"""
 function DisplacementBC(inputs::D, mesh_file::FileMesh, num_dofs::Int, nset_id::Int, dof::Int) where D <: Dict{Symbol, Any}
   func_id = inputs[:function][:func_id]
   nset_nodes = convert.(Int64, nodeset(mesh_file, nset_id))
@@ -41,9 +46,22 @@ function DisplacementBC(mesh_file::FileMesh, nset_id::Int, dof::Int, func_id::In
   return DisplacementBC{typeof(nset_nodes), typeof(dofs)}(nset_nodes, dofs, func_id)
 end
 
+# gives IR barf
+# function DisplacementBC(mesh_file::FileMesh, nset_id::Int, dof::Int, func)
+#   num_dofs = FiniteElementContainers.num_dimensions(mesh_file)
+#   nset_nodes = convert.(Int64, nodeset(mesh_file, nset_id))
+#   sort!(nset_nodes)
+#   dofs = similar(nset_nodes)
+#   for n in axes(dofs, 1)
+#     dofs[n] = (nset_nodes[n] - 1) * num_dofs + dof
+#   end
+#   return DisplacementBC{typeof(nset_nodes), typeof(dofs)}(nset_nodes, dofs, func)
+# end
+
 function setup_displacement_bcs(
   inputs::D, mesh_file::FileMesh, num_dofs::Int
-)::Tuple{Vector{Int64}, Vector{Int64}, Vector{Int64}} where D <: Vector{Dict{Symbol, Any}}
+) where D <: Vector{Dict{Symbol, Any}}
+# )::Tuple{Vector{Int64}, Vector{Int64}, Vector{Int64}} where D <: Vector{Dict{Symbol, Any}}
 
   new_section("Displacement Boundary Conditions")
   @info "Reading in and setting up displacement BCs"
@@ -58,7 +76,8 @@ function setup_displacement_bcs(
     end
   end
 
-  return collect_displacement_bc_indices(bcs)
+  # return collect_displacement_bc_indices(bcs)
+  return DisplacementBCContainer(bcs)
 end
 
 function collect_displacement_bc_indices(
@@ -84,4 +103,23 @@ function collect_displacement_bc_indices(
   bc_func_ids = bc_func_ids[sort_bc_nodes]
 
   return bc_nodes, bc_dofs, bc_func_ids
+end
+
+"""
+"""
+struct DisplacementBCContainer{
+  BCNodes,
+  BCDofs,
+  BCFuncIDs
+}
+  bc_nodes::BCNodes
+  bc_dofs::BCDofs
+  bc_func_ids::BCFuncIDs
+end
+
+"""
+"""
+function DisplacementBCContainer(bcs)
+  bc_nodes, bc_dofs, bc_func_ids = collect_displacement_bc_indices(bcs)
+  return DisplacementBCContainer(bc_nodes, bc_dofs, bc_func_ids)
 end

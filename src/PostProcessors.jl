@@ -42,9 +42,16 @@ function PostProcessor(
   output_element_fields::Vector{String},
   output_quadrature_fields::Vector{String},
   dims::Int,
-  n_properties::Int, n_state_vars::Int, max_q_points::Int
+  n_properties::Int, n_state_vars::Int, max_q_points::Int;
+  force::Bool = false
 )
   f = FileMesh(ExodusDatabase, mesh_file)
+
+  if isfile(out_file)
+    if force
+      rm(out_file; force=force)
+    end
+  end
   copy_mesh(f.file_name, out_file)
   Exodus.close(f.mesh_obj)
   out = ExodusDatabase(out_file, "rw")

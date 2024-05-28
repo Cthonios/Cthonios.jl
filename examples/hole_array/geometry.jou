@@ -1,0 +1,33 @@
+reset
+
+#width  = {width  = 1.0}
+#radius = {radius = 0.1168}
+
+create surface rectangle width {width} zplane
+move surface 1 x {width / 2.} y {width / 2.}
+
+webcut body 1 with cylinder radius {radius} axis z center {width / 6} {width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {3. * width / 6} {width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {5. * width / 6} {width / 6} 0
+
+webcut body 1 with cylinder radius {radius} axis z center {width / 6} {3. * width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {3. * width / 6} {3. * width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {5. * width / 6} {3. * width / 6} 0
+
+webcut body 1 with cylinder radius {radius} axis z center {width / 6} {5. * width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {3. * width / 6} {5. * width / 6} 0
+webcut body 1 with cylinder radius {radius} axis z center {5. * width / 6} {5. * width / 6} 0
+
+delete body 2 to 10
+
+surface 18 scheme trimesh
+surface 18 size {width / 75.0}
+mesh surface 18
+
+block 1 add surface 18
+block 1 element type tri3
+
+nodeset 1 add curve 3
+nodeset 2 add curve 1
+
+export genesis "mesh.g" overwrite

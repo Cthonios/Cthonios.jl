@@ -35,7 +35,10 @@ function setup_function(inputs::D) where D <: Dict{Symbol, Any}
   @info "  type       = $type"
   @info "  expression = $func"
   @info ""
-  return eval(Meta.parse(type))(eval(Meta.parse(func)))
+  # return eval(Meta.parse(type))(eval(Meta.parse(func)))
+  @warn "Currently not using ScalarFunction..."
+  ex = Meta.parse(func)
+  return @RuntimeGeneratedFunction(ex)
 end
 
 """
