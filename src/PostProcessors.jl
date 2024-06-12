@@ -36,15 +36,25 @@ closes exodus db by default, needs to be re-opend downstream
 this is mainly for debuggin purposes
 """
 function PostProcessor(
-  mesh_file::String, 
+  # mesh_file::String, 
+  domain,
   out_file::String, 
   output_nodal_fields::Vector{String},
   output_element_fields::Vector{String},
   output_quadrature_fields::Vector{String},
-  dims::Int,
-  n_properties::Int, n_state_vars::Int, max_q_points::Int
+  # dims::Int,
+  # n_properties::Int, n_state_vars::Int, max_q_points::Int;
+  force::Bool = false
 )
-  f = FileMesh(ExodusDatabase, mesh_file)
+  # f = FileMesh(ExodusDatabase, mesh_file)
+  f = domain.static.mesh
+  dims = FiniteElementContainers.num_dimensions(domain.static.mesh) |> Int64
+
+  if isfile(out_file)
+    if force
+      rm(out_file; force=force)
+    end
+  end
   copy_mesh(f.file_name, out_file)
   Exodus.close(f.mesh_obj)
   out = ExodusDatabase(out_file, "rw")
