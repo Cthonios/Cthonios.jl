@@ -8,6 +8,13 @@ struct DirichletBC{Dofs} <: AbstractBCInput
   func
 end
 
+# parser constructor
+function DirichletBC(inputs::Dict{Symbol, Any})
+  func_inputs = inputs[:function]
+  func = @RuntimeGeneratedFunction(Meta.parse(func_inputs))
+  return DirichletBC(inputs[:nodeset], inputs[:dofs], func)
+end
+
 function Base.show(io::IO, bc::DirichletBC)
   println(io, "DirichletBC:")
   println(io, "  Nodeset name = $(bc.nset_name)")
@@ -83,3 +90,6 @@ function setup_dirichlet_bcs(
   end
   return NamedTuple(bcs)
 end
+
+
+const DisplacementBC = DirichletBC

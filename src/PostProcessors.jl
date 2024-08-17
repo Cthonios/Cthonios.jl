@@ -47,8 +47,8 @@ function PostProcessor(
   force::Bool = false
 )
   # f = FileMesh(ExodusDatabase, mesh_file)
-  f = domain.static.mesh
-  dims = FiniteElementContainers.num_dimensions(domain.static.mesh) |> Int64
+  f = domain.mesh
+  dims = FiniteElementContainers.num_dimensions(domain.mesh) |> Int64
 
   if isfile(out_file)
     if force
@@ -104,6 +104,14 @@ function PostProcessor(
 
   # Exodus.close(out)
   return PostProcessor(out)
+end
+
+function PostProcessor(inputs::Dict{Symbol, Any}, domain)
+  out_file = inputs[Symbol("output file")]
+  nodal_fields = input_with_default(inputs, "nodal fields", String[])
+  element_fields = input_with_default(inputs, "element fields", String[])
+  quad_fields = input_with_default(inputs, "quadrature fields", String[])
+  return PostProcessor(domain, out_file, nodal_fields, element_fields, quad_fields, true)
 end
 
 function Base.show(io::IO, pp::PostProcessor)

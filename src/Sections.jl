@@ -9,6 +9,13 @@ struct TotalLagrangeSection <: AbstractSectionInput
   props
 end
 
+function TotalLagrangeSection(inputs::Dict{Symbol, Any})
+  formulation = eval(Symbol(inputs[:formulation]))()
+  model = eval(Symbol(inputs[:model]))()
+  q_degree = inputs[Symbol("quadrature degree")]
+  return TotalLagrangeSection(inputs[:block], formulation, model, q_degree, inputs[:properties])
+end
+
 struct TotalLagrangeSectionInternal{Fspace, Form, Model} <: AbstractSection
   # block_id::Int64
   block_name::String
@@ -33,6 +40,18 @@ function TotalLagrangeSectionInternal(
     block_name, fspace, formulation, model
   )
   return section
+end
+
+function Base.copy(section::TotalLagrangeSectionInternal)
+  deepcopy(section)
+end
+
+function Base.show(io::IO, sec::TotalLagrangeSectionInternal)
+  println(io, "TotalLagrangeSectionInternal:")
+  println(io, "  Block name         = $(sec.block_name)")
+  println(io, "  Formulation        = $(sec.formulation)")
+  println(io, "  Constitutive model = $(sec.model)")
+  # println(io, "  Function space = $(sec.fspace)")
 end
 
 """
