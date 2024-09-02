@@ -35,15 +35,18 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 """
 struct TrustRegionSolver{
-  L <: AbstractLinearSolver,
+  # L <: AbstractLinearSolver,
+  L,
   O,
   U <: AbstractVector,
   F <: NodalField,
   S <: TrustRegionSolverSettings
 } <: AbstractNonlinearSolver{L, O, U}
-  linear_solver::L
+  # linear_solver::L
+  preconditioner::L
   objective::O
   ΔUu::U
+  U::F
   V::F
   o::U
   g::F
@@ -61,13 +64,15 @@ end
 
 """
 $(TYPEDSIGNATURES)
+TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(objective; use_warm_start=true)
   domain = objective.domain
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
   # TODO eventually write a custom linear solver for this one
-  linear_solver  = DirectSolver(domain)
+  preconditioner = CholeskyPreconditioner(objective)
   ΔUu            = create_unknowns(domain)
+  U              = create_fields(domain)
   V              = create_fields(domain)
   o              = zeros(1)
   g              = create_fields(domain) # gradient
@@ -82,8 +87,8 @@ function TrustRegionSolver(objective; use_warm_start=true)
   # TODO remove this hardcoded thing
   use_warm_start = false
   return TrustRegionSolver(
-    linear_solver, objective,
-    ΔUu, V,
+    preconditioner, objective,
+    ΔUu, U, V,
     o, g, Hv,
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
@@ -119,8 +124,7 @@ function is_converged(
 )
 
   gg = dot(real_res, real_res)
-  # @show gg
-  # @show norm(model_res)
+
   if gg < solver.settings.tol^2
     model_res_norm = norm(model_res)
     real_res_norm  = sqrt(gg)
@@ -136,30 +140,6 @@ function is_converged(
   return false
 end
 
-function preconditioner(solver, p)
-  solver.linear_solver.assembler.stiffnesses .= 0.0
-  tangent!(solver.linear_solver, solver.objective, p)
-  H = SparseArrays.sparse!(solver.linear_solver.assembler) |> Symmetric
-
-  attempt = 1
-  while attempt < 10
-    @info "Updating preconditioner, attempt = $attempt"
-    try
-      if attempt == 1
-        P = cholesky(H)
-      else
-        shift = 10.0^(-5 + attempt)
-        P = cholesky(H; shift=shift)
-      end
-      return P
-    catch e
-      # @info e
-      @info "Failed to factor preconditioner. Attempting again"
-      attempt += 1 
-    end
-  end
-end
-
 """
 $(TYPEDSIGNATURES)
 """
@@ -169,12 +149,10 @@ function calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
   if gHg > 0
     α = -dot(g, g) / gHg
     @. cauchy_point = α * g
-    # ldiv!(y_scratch_1, P, cauchy_point)
-    y_scratch_1 .= P \ cauchy_point
+    ldiv!(y_scratch_1, P, cauchy_point)
     cauchy_point_norm_squared = dot(cauchy_point, y_scratch_1)
   else
-    # ldiv!(y_scratch_1, P, g)
-    y_scratch_1 .= P \ g
+    ldiv!(y_scratch_1, P, g)
     @. cauchy_point = -g * (tr_size / sqrt(dot(g, y_scratch_1)))
     @info "negative curavture unpreconditioned cauchy point direction found."
   end
@@ -232,10 +210,7 @@ function minimize_trust_region_sub_problem!(
     solver.settings.cg_tol^2
   )
 
-  # @timeit timer(common) "Multiply by approximate hessian" begin
-  # ldiv!(Pr, P, r)
-  Pr .= P \ r
-  # end
+  ldiv!(Pr, P, r)
 
   @. d = -Pr
 
@@ -272,10 +247,7 @@ function minimize_trust_region_sub_problem!(
 
     @. r = r + α * Hd
 
-    # @timeit timer(common) "Multiply by approximate hessian" begin
-    #   ldiv!(Pr, P, r)
-    # end
-    Pr .= P \ r
+    ldiv!(Pr, P, r)
 
     rPrNp1 = dot(r, Pr)
     
@@ -302,11 +274,9 @@ function dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
   y_scratch_1 = solver.y_scratch_1
   y_scratch_2 = solver.y_scratch_2
 
-  # ldiv!(y_scratch_1, P, cauchy_point)
-  y_scratch_1 .= P \ cauchy_point
+  ldiv!(y_scratch_1, P, cauchy_point)
   cc = dot(cauchy_point, y_scratch_1)
-  # ldiv!(y_scratch_1, P, q_newton_point)
-  y_scratch_1 .= P \ q_newton_point
+  ldiv!(y_scratch_1, P, q_newton_point)
   nn = dot(q_newton_point, y_scratch_1)
 
   tt = tr_size * tr_size
@@ -315,13 +285,11 @@ function dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
   if cc >= tt
     d .= sqrt(tt / cc) * cauchy_point
     return nothing
-    # return cauchy_point * sqrt(tt / cc)
   end
 
   # return cauchy point? seems the preconditioner was not accurate
   if cc > nn
     @warn "cp outside newton, preconditioner likely inaccurate"
-    # return cauchy_point
     d .= cauchy_point
     return nothing
   end
@@ -329,8 +297,7 @@ function dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
   # on the dogleg
   if nn > tt
     @. y_scratch_2 = q_newton_point - cauchy_point
-    # ldiv!(y_scratch_1, P, y_scratch_2)
-    y_scratch_1 .= P \ y_scratch_2
+    ldiv!(y_scratch_1, P, y_scratch_2)
     dd = dot(y_scratch_2, y_scratch_1)
     zd = dot(cauchy_point, y_scratch_1)
 
@@ -368,8 +335,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
   @info @sprintf "Initial residual  = %1.6e" g_norm
 
   # preconditioner
-  update_fields!(solver, Uu)
-  P = preconditioner(solver, p)
+  P = solver.preconditioner
+  update_preconditioner!(P, solver.objective, Uu, p)
 
   # begin loop over tr iters
   cumulative_cg_iters = 0
@@ -407,7 +374,6 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
       model_objective = dot(g, d) + 0.5 * dJd
 
-      # y = Uu + d
       y = solver.y_scratch_1
       @. y = Uu + d
 
@@ -427,7 +393,12 @@ function solve!(solver::TrustRegionSolver, Uu, p)
       model_res_norm = norm(model_res)
       real_res_norm = norm(gy)
 
-      tr_size, will_accept = update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
+      tr_size, will_accept = update_tr_size(
+        solver, 
+        model_objective, real_objective, 
+        step_type, tr_size, 
+        real_res_norm, g_norm
+      )
 
       logger(
         solver, 
@@ -439,7 +410,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
       if will_accept
         Uu .= y
         g .= gy
-        o = Cthonios.objective(solver, Uu, p)
+        o = objective(solver, Uu, p)
         g_norm = norm(g)
         happy = true
       else
@@ -449,15 +420,15 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
       # TODO not sure what to do here
       if n_cg_iters >= solver.settings.max_cg_iters ||
-        cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
-        P = preconditioner(solver, p)
+         cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
+        update_preconditioner!(P, solver.objective, Uu, p)
       end
 
       # TODO still need to do some other stuff with updating preconditioner
       if tr_size < solver.settings.min_tr_size
         if !tried_new_precond
           @info "Updating preconditioner due to small trust region size"
-          P = preconditioner(solver, p)
+          update_preconditioner!(P, solver.objective, Uu, p)
           cumulative_cg_iters = 0
           tried_new_precond = true
           happy = true

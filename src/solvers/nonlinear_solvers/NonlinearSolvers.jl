@@ -25,7 +25,8 @@ end
 
 function objective(solver::AbstractNonlinearSolver, Uu, p)
   o = solver.o
-  U = solver.linear_solver.U
+  # U = solver.linear_solver.U
+  U = solver.U
   func = solver.objective.value
   o .= zero(eltype(o))
   domain_iterator!(o, U, func, solver.objective.domain, Uu, p)
@@ -34,7 +35,8 @@ end
 
 function gradient(solver::AbstractNonlinearSolver, Uu, p)
   g = solver.g
-  U = solver.linear_solver.U
+  # U = solver.linear_solver.U
+  U = solver.U
   func = solver.objective.gradient
   g .= zero(eltype(g))
   domain_iterator!(g, U, func, solver.objective.domain, Uu, p)
@@ -43,7 +45,8 @@ end
 
 function hvp(solver::AbstractNonlinearSolver, Uu, p, Vv)
   @unpack V, Hv = solver
-  U = solver.linear_solver.U
+  # U = solver.linear_solver.U
+  U = solver.U
   func = solver.objective.hessian
   Hv .= zero(eltype(Hv))
   domain_iterator!(Hv, U, V, func, solver.objective.domain, Uu, p, Vv)
@@ -109,7 +112,8 @@ update the unknowns in solver.linear_solver.U
 with the values in Uu
 """
 function update_fields!(solver::AbstractNonlinearSolver, Uu)
-  update_fields!(solver.linear_solver, solver.objective, Uu)
+  # update_fields!(solver.linear_solver, solver.objective, Uu)
+  update_fields!(solver.U, solver.objective, Uu)
   return nothing
 end
 

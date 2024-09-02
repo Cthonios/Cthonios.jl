@@ -17,8 +17,9 @@ function DirectSolver(domain::Domain)
   update_unknown_dofs!(domain, asm)
   R = asm.residuals[domain.dof.unknown_dofs]
   K = SparseArrays.sparse!(asm) |> Symmetric
-  assumptions = OperatorAssumptions(true)
-  prob = LinearProblem(K, R; assumptions=assumptions)
+  assumptions = OperatorAssumptions(false)
+  Pl = CholeskyFactorization(; shift=0.0)
+  prob = LinearProblem(K, R; assumptions=assumptions, Pl=Pl)
   linsolve = init(prob)
   U = create_fields(domain)
   return DirectSolver(asm, linsolve, U)
@@ -74,5 +75,15 @@ function tangent!(solver::DirectSolver, obj, p)
   domain_iterator!(K, hessian, domain, solver.U, p)
   K = SparseArrays.sparse!(K) |> Symmetric
   solver.linsolve.A = K
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_preconditioner!(solver::DirectSolver, attempt::Int)
+  shift = 10^(-5 + attempt)
+  P = CholeskyFactorization(; shift=shift)
+  solver.linsolve.Pl = P
   return nothing
 end
