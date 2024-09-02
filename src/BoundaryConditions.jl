@@ -1,32 +1,31 @@
-abstract type AbstractBC end
 abstract type AbstractBCInput end
+abstract type AbstractBCInternal end
 
-# used for inputs
-struct DirichletBC{Dofs} <: AbstractBCInput
-  nset_name::String
-  dofs::Dofs
-  func
-end
-
-# parser constructor
-function DirichletBC(inputs::Dict{Symbol, Any})
-  func_inputs = inputs[:function]
-  func = @RuntimeGeneratedFunction(Meta.parse(func_inputs))
-  return DirichletBC(inputs[:nodeset], inputs[:dofs], func)
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
+struct DirichletBC{N, D, F} <: AbstractBCInput
+  nset_name::N
+  dofs::D
+  func::F
 end
 
 function Base.show(io::IO, bc::DirichletBC)
   println(io, "DirichletBC:")
-  println(io, "  Nodeset name = $(bc.nset_name)")
-  println(io, "  Active dofs  = $(bc.dofs)")
-  println(io, "  Function     = $(bc.func)")
+  println(io, "  Node set = $(bc.nset_name)")
+  println(io, "  Dofs     = $(bc.dofs)")
+  println(io, "  Function = $(bc.func)")
 end
 
-# real driver
-struct DirichletBCInternal{Nodes, Dofs, Func} <: AbstractBC
-  nodes::Nodes
-  dofs::Dofs
-  func::Func
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
+struct DirichletBCInternal{N, D, F} <: AbstractBCInternal
+  nodes::N
+  dofs::D
+  func::F
 end
 
 function Base.show(io::IO, bc::DirichletBCInternal)
@@ -35,24 +34,10 @@ function Base.show(io::IO, bc::DirichletBCInternal)
   println(io, "  Function             = $(bc.func)")
 end
 
-# TODO add show methods for Neumann bcs
-
-# dummy for now, no internals yet
-struct NeumnanBC <: AbstractBCInput
-  sset_name::String
-  func
-end
-
-# TODO make Neumann bc internal do something
-struct NeumnanBCInternal <: AbstractBC
-  # TODO fill this out
-end
-
-# BC stuff
 """
-Add a single BC. Note that update_unknown_dofs will have to be called after this
+$(TYPEDSIGNATURES)
 """
-function setup_dirichlet_bc(mesh, bc::DirichletBC, n_dofs)
+function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   for dof in bc.dofs
     if dof < 1 || dof > n_dofs
       throw(ErrorException("Bad dof number in DirichletBC."))
@@ -76,20 +61,5 @@ function setup_dirichlet_bc(mesh, bc::DirichletBC, n_dofs)
   return bc_internal
 end
 
-"""
-Add a list of bcs. update_unknown_dofs is always called at the end
-even if there are no dirichlet bcs
-"""
-function setup_dirichlet_bcs(
-  mesh, bcs_in::Vector{T}, n_dofs
-) where T <: DirichletBC
-  bcs = Dict{Symbol, Any}()
-  for (n, bc) in enumerate(bcs_in)
-    bc_name = Symbol("dirichlet_bc_$n")
-    bcs[bc_name] = setup_dirichlet_bc(mesh, bc, n_dofs)
-  end
-  return NamedTuple(bcs)
-end
-
-
-const DisplacementBC = DirichletBC
+# exports
+export DirichletBC
