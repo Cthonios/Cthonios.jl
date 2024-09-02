@@ -17,14 +17,20 @@ makedocs(;
         assets=String[],
     ),
     pages=[
-        "Home"              => "index.md",
-        "Running Cthonios"  => "running_cthonios.md",
-        "Domains"           => "domains.md",
-        "Functions"         => "functions.md",
-        "Materials"         => "materials.md",
-        "Sections"          => "sections.md",
-        "Nonlinear Solvers" => "nonlinear_solvers.md",
-        "Linear Solvers"    => "linear_solvers.md"
+        "Home"                => "index.md",
+        "Running Cthonios"    => "running_cthonios.md",
+        "Boundary Conditions" => "bcs.md",
+        "Domains"             => "domains.md",
+        "Iterators"           => "iterators.md",
+        "Materials"           => "materials.md",
+        "Objectives"          => "objectives.md",
+        "Physics"             => "physics.md",
+        "Sections"            => "sections.md",
+        "Solvers"             => [
+            "Linear solvers"    => "linear_solvers.md"
+            "Nonlinear solvers" => "nonlinear_solvers.md"
+        ],
+        "TimeSteppers"       => "time_steppers.md"
     ],
 )
 

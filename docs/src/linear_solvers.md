@@ -13,16 +13,16 @@ linear solvers:
     factorization method: ldl
 ```
 
-# Direct Solver
-```@autodocs
-Modules = [Cthonios]
-Pages = ["solvers/linear_solvers/DirectLinearSolver.jl"]
-Order = [:type, :function]
-```
-
-# General
+# General methods and abstract types
 ```@autodocs
 Modules = [Cthonios]
 Pages = ["solvers/linear_solvers/LinearSolvers.jl"]
+Order = [:type, :function]
+```
+
+# Direct Solver
+```@autodocs
+Modules = [Cthonios]
+Pages = ["solvers/linear_solvers/DirectSolver.jl"]
 Order = [:type, :function]
 ```

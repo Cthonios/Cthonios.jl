@@ -4,9 +4,7 @@ CurrentModule = Cthonios
 # Running from the REPL
 To run ```Cthonios``` from the REPL one can utilize the following method
 
-```@docs
-cthonios_main
-```
+TODO
 
 # Running Cthonios as an executable
 To run ```Cthonios``` as an executable, one must first run the ```CthoniosBuild.jl``` script (assuming one has ```PackageCompiler``` installed already). This will build an executable called ```cthonios``` in a ```build``` folder. To run ```Cthonios``` you can use the following command
