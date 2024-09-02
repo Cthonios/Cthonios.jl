@@ -23,6 +23,33 @@ function create_unknowns(solver::AbstractNonlinearSolver)
   return create_unknowns(solver.objective.domain)
 end
 
+function objective(solver::AbstractNonlinearSolver, Uu, p)
+  o = solver.o
+  U = solver.linear_solver.U
+  func = solver.objective.value
+  o .= zero(eltype(o))
+  domain_iterator!(o, U, func, solver.objective.domain, Uu, p)
+  return @views o[1]
+end
+
+function gradient(solver::AbstractNonlinearSolver, Uu, p)
+  g = solver.g
+  U = solver.linear_solver.U
+  func = solver.objective.gradient
+  g .= zero(eltype(g))
+  domain_iterator!(g, U, func, solver.objective.domain, Uu, p)
+  return @views g[solver.objective.domain.dof.unknown_dofs]
+end
+
+function hvp(solver::AbstractNonlinearSolver, Uu, p, Vv)
+  @unpack V, Hv = solver
+  U = solver.linear_solver.U
+  func = solver.objective.hessian
+  Hv .= zero(eltype(Hv))
+  domain_iterator!(Hv, U, V, func, solver.objective.domain, Uu, p, Vv)
+  return @views Hv[solver.objective.domain.dof.unknown_dofs]
+end
+
 """
 $(TYPEDSIGNATURES)
 Computes the residual and in-place updates
@@ -88,3 +115,4 @@ end
 
 # nonlinear solvers
 include("NewtonSolver.jl")
+include("TrustRegionSolver.jl")

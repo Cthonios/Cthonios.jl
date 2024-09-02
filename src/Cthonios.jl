@@ -12,6 +12,7 @@ using Printf
 using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
+using TimerOutputs
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 

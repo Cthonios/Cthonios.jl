@@ -84,6 +84,25 @@ end
 
 """
 $(TYPEDSIGNATURES)
+"""
+function domain_iterator!(global_val, U::NodalField, f, domain, Uu::T, p) where T <: AbstractVector
+  update_fields!(U, domain, Uu)
+  domain_iterator!(global_val, f, domain, U, p)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function domain_iterator!(global_val, U::NodalField, V::NodalField, f, domain, Uu, p, Vv)
+  update_fields!(U, domain, Uu)
+  update_fields!(V, domain, Vv)
+  domain_iterator!(global_val, f, domain, U, p, V)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
 Iterator over a domain ```domain``` to fill a global value
 ```global_val``` based on a quadrature level function 
 ```f``` provided a nodal field ```U``` and set of
@@ -104,6 +123,45 @@ function domain_iterator!(global_val, f, domain, U, p)
         interps = getindex(fspace, domain.X, q, e)
         local_val += f(physics, interps, U_el)
       end
+
+      # assembly
+      assemble!(global_val, domain.sections, block_num, e, local_val)
+    end
+  end
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+Iterator over a domain ```domain``` to fill a global value
+```global_val``` based on a quadrature level function 
+```f``` provided a nodal field ```U``` and set of
+paramaters ```p```
+"""
+function domain_iterator!(global_val, f, domain, U::NodalField, p, V::NodalField)
+  # sections = domain.sections
+  # loop over sections
+  # TODO remove below
+  # V = create_fields(domain)
+  # update_fields!(V, domain, Vv)
+  # TODO remove above
+  for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
+    fspace, physics = section.fspace, section.physics
+    # loop over elements
+    for e in 1:num_elements(fspace)
+      ND, NN, NP, NS = size(section)
+      NF = num_dofs_per_node(section.fspace)
+      dof_conn = dof_connectivity(fspace, e)
+      U_el = element_fields(section, U, dof_conn)
+      V_el = element_fields(section, V, dof_conn)
+      # local_val = scratch_variable(global_val, section)
+      local_val = zeros(SMatrix{NN * NF, NN * NF, eltype(global_val), NN * NF * NN * NF})
+      # loop over quadrature points
+      for q in 1:num_q_points(fspace)
+        interps = getindex(fspace, domain.X, q, e)
+        local_val += f(physics, interps, U_el)
+      end
+      local_val = local_val * vec(V_el)
 
       # assembly
       assemble!(global_val, domain.sections, block_num, e, local_val)

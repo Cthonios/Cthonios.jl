@@ -11,34 +11,20 @@ struct SolidMechanics{
   formulation::Form
 end
 
-# function discrete_gradient(physics::SolidMechanics, ∇N_X)
-#   return FiniteElementContainers.discrete_gradient(
-#     physics.formulation, ∇N_X
-#   )
-# end
-
-# function extract_stiffness(physics::SolidMechanics, A)
-#   return FiniteElementContainers.extract_stiffness(
-#     physics.formulation, A
-#   )
-# end 
-
-# function extract_stress(physics::SolidMechanics, P)
-#   return FiniteElementContainers.extract_stress(
-#     physics.formulation, P
-#   )
-# end
-
-# function modify_field_gradients(physics::SolidMechanics, ∇u)
-#   return FiniteElementContainers.modify_field_gradients(
-#     physics.formulation, ∇u
-#   )
-# end
-
+"""
+$(TYPEDSIGNATURES)
+Energy method at the quadrature level for
+Lagrangian solid mechanics. This equivalent to
+the quadrature point calculation needed for the 
+following integral
+``
+\\Pi = \\int_\\Omega\\psi\\left(\\mathbf{F}\\right)d\\Omega
+``
+"""
 function energy(physics::SolidMechanics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
-  ∇u_q = modify_field_gradients(physics/formulation, ∇u_q)
+  ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   F_q = ∇u_q + one(∇u_q)
 
   # hardcoded for now
@@ -50,9 +36,19 @@ function energy(physics::SolidMechanics, cell, u_el)
   ψ, Q = ConstitutiveModels.helmholtz_free_energy(
     physics.material_model, props, dt, F_q, θ, Q
   )
-  return JxW * Ψ
+  return JxW * ψ
 end
 
+"""
+$(TYPEDSIGNATURES)
+Gradient method at the quadrature level for
+Lagrangian solid mechanics. This equivalent to
+the quadrature point calculation needed for the 
+following integral
+``
+\\mathbf{f} = \\int_\\Omega\\mathbf{P}:\\delta\\mathbf{F}d\\Omega
+``
+"""
 function gradient(physics::SolidMechanics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
@@ -74,6 +70,9 @@ function gradient(physics::SolidMechanics, cell, u_el)
   return JxW * G * P_v#, state_new_q
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function hessian(physics::SolidMechanics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
