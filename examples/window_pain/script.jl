@@ -1,8 +1,8 @@
 using ConstitutiveModels
 using Cthonios
-using Enzyme
+using Exodus
 using FiniteElementContainers
-using LinearSolve
+using LinearAlgebra
 
 # file management
 mesh_file = Base.source_dir() * "/window_pain_tri3.g"
@@ -28,38 +28,44 @@ traction_bcs = [
 # sections
 sections = TotalLagrangeSection[
   TotalLagrangeSection(
-    "unnamed_block_1", PlaneStrain(), NeoHookean(), 2,
-    Dict{String, Any}(
-      "bulk modulus" => 0.833,
-      "shear modulus" => 0.3846
-    )
+    Cthonios.SolidMechanics(NeoHookean(), PlaneStrain()),
+    "unnamed_block_1", 2
   )
 ]
+domain = Domain(mesh_file, times, sections, disp_bcs, 2)
+objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian)
+solver = NewtonSolver(objective, DirectSolver)
 
-# domain setup
-domain = Domain(
-  mesh_file, times, 
-  sections, disp_bcs, traction_bcs, 
-  n_dofs
-)
+Uu = Cthonios.create_unknowns(solver)
+p = nothing
 
-# solver
-solver = NewtonSolver(domain, DirectSolver)
-# solver = NewtonSolver(domain, MatrixFreeSolver)
-pp = PostProcessor(
-  domain, "output.e",
-  ["displacement"],
-  String[],
-  String[]
-)
+# pp
+U = Cthonios.create_fields(domain)
+pp = Cthonios.ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
 
-# objective of problem
-obj = Objective(
-  Cthonios.internal_energy!,
-  Cthonios.internal_force!,
-  Cthonios.stiffness
-)
+try 
+  # pp
+  Cthonios.update_bcs!(U, solver.objective.domain)
+  Cthonios.update_fields!(U, domain, Uu)
+  Cthonios.write_time(pp, 1, 0.0)
+  Cthonios.write_fields(pp, U, 1)
 
-# type of problem we want to solve
-prob = Cthonios.QuasiStaticProblem(solver, obj, domain, pp)
-Uu = Cthonios.solve(prob)
+  # loop over steps
+  for n in 1:80
+    # load step
+    Cthonios.step!(solver.objective.domain)
+    Cthonios.update_bcs!(solver.linear_solver.U, solver.objective.domain)
+    Cthonios.solve!(solver, Uu, p)
+
+    # pp
+    Cthonios.update_bcs!(U, solver.objective.domain)
+    Cthonios.update_fields!(U, domain, Uu)
+    Cthonios.write_time(pp, n + 1, solver.objective.domain.t.current_time)
+    Cthonios.write_fields(pp, U, n + 1)
+  end
+catch e
+  Cthonios.close(pp)
+  throw(e)
+end
+
+Cthonios.close(pp)
