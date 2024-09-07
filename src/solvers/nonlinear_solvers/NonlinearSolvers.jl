@@ -24,56 +24,23 @@ function create_unknowns(solver::AbstractNonlinearSolver)
 end
 
 function objective(solver::AbstractNonlinearSolver, Uu, p)
-  o = solver.o
-  # U = solver.linear_solver.U
-  U = solver.U
-  func = solver.objective.value
-  o .= zero(eltype(o))
-  domain_iterator!(o, U, func, solver.objective.domain, Uu, p)
-  return @views o[1]
+  return objective!(solver.o, solver.objective, Uu, p)
 end
 
 function gradient(solver::AbstractNonlinearSolver, Uu, p)
-  g = solver.g
-  # U = solver.linear_solver.U
-  U = solver.U
-  func = solver.objective.gradient
-  g .= zero(eltype(g))
-  domain_iterator!(g, U, func, solver.objective.domain, Uu, p)
-  return @views g[solver.objective.domain.dof.unknown_dofs]
+  return gradient!(solver.g, solver.objective, Uu, p)
 end
 
 function hvp(solver::AbstractNonlinearSolver, Uu, p, Vv)
-  @unpack V, Hv = solver
-  # U = solver.linear_solver.U
-  U = solver.U
-  func = solver.objective.hessian
-  Hv .= zero(eltype(Hv))
-  domain_iterator!(Hv, U, V, func, solver.objective.domain, Uu, p, Vv)
-  return @views Hv[solver.objective.domain.dof.unknown_dofs]
+  return hvp!(solver.Hv, solver.objective, Uu, p, Vv)
 end
 
 """
 $(TYPEDSIGNATURES)
-Computes the residual and in-place updates
-the appropriate storage in the linear solver.
-This method assumes solver.U has already been updated
-so ``update_fields!`` should be called prior to calling
-this.
-"""
-function residual!(solver::AbstractNonlinearSolver, p)
-  residual!(solver.linear_solver, solver.objective, p)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
+Generic method to fall back on if step! is defined
 """
 function solve!(solver::AbstractNonlinearSolver, Uu, p)
-  # calculate initial residual for logging and 
-  # convergence check purposes
-  update_fields!(solver, Uu)
-  residual!(solver, p)
+  gradient!(solver.linear_solver, solver.objective, Uu, p)
   norm_R0 = residual_norm(solver.linear_solver)
 
   # loop over nonlinear iterations
@@ -90,33 +57,10 @@ function solve!(solver::AbstractNonlinearSolver, Uu, p)
   return nothing
 end
 
-"""
-$(TYPEDSIGNATURES)
-Computes the tangents and in-place updates
-the appropriate storage in the linear solver.
-This method assumes solver.U has already been updated
-so ``update_fields!`` should be called prior to calling
-this.
-
-This method may not be defined for all linear solvers.
-"""
-function tangent!(solver::AbstractNonlinearSolver, p)
-  tangent!(solver.linear_solver, solver.objective, p)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-Wraps update_fields! for the linear solver to
-update the unknowns in solver.linear_solver.U
-with the values in Uu
-"""
-function update_fields!(solver::AbstractNonlinearSolver, Uu)
-  # update_fields!(solver.linear_solver, solver.objective, Uu)
-  update_fields!(solver.U, solver.objective, Uu)
-  return nothing
-end
-
 # nonlinear solvers
 include("NewtonSolver.jl")
 include("TrustRegionSolver.jl")
+
+# exports
+export NewtonSolver
+export TrustRegionSolver

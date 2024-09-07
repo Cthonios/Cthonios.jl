@@ -2,10 +2,9 @@
 $(TYPEDFIELDS)
 Direct linear solver
 """
-struct DirectSolver{A, L, U1} <: AbstractLinearSolver
+struct DirectSolver{A, L} <: AbstractLinearSolver
   assembler::A
   linsolve::L
-  U::U1
 end
 
 """
@@ -18,11 +17,9 @@ function DirectSolver(domain::Domain)
   R = asm.residuals[domain.dof.unknown_dofs]
   K = SparseArrays.sparse!(asm) |> Symmetric
   assumptions = OperatorAssumptions(false)
-  Pl = CholeskyFactorization(; shift=0.0)
-  prob = LinearProblem(K, R; assumptions=assumptions, Pl=Pl)
+  prob = LinearProblem(K, R; assumptions=assumptions)
   linsolve = init(prob)
-  U = create_fields(domain)
-  return DirectSolver(asm, linsolve, U)
+  return DirectSolver(asm, linsolve)
 end
 
 function Base.show(io::IO, sol::DirectSolver)
@@ -36,13 +33,23 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function residual!(solver::DirectSolver, obj, p)
-  domain = obj.domain
+function gradient!(solver::DirectSolver, obj::Objective, Uu, p::ObjectiveParameters)
   R = solver.assembler.residuals
+  # annoying below
+  update_fields!(p.U, obj.domain, Uu)
   R .= zero(eltype(R))
-  domain_iterator!(R, gradient, domain, solver.U, p)
-  R_free = R[domain.dof.unknown_dofs]
-  solver.linsolve.b = R_free
+  domain_iterator!(R, obj.gradient, obj.domain, p.U, p.X)
+  # set filled residual in linear solve init
+  solver.linsolve.b = R[obj.domain.dof.unknown_dofs]
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function hessian!(solver::DirectSolver, obj, Uu, p)
+  K = hessian!(solver.assembler, obj, Uu, p)
+  solver.linsolve.A = K
   return nothing
 end
 
@@ -57,33 +64,9 @@ end
 $(TYPEDSIGNATURES)
 """
 function solve!(ΔUu, solver::DirectSolver, obj, Uu, p)
-  update_fields!(solver.U, obj.domain, Uu)
-  residual!(solver, obj, p)
-  tangent!(solver, obj, p)
+  gradient!(solver, obj, Uu, p)
+  hessian!(solver, obj, Uu, p)
   sol = LinearSolve.solve!(solver.linsolve)  
   ΔUu .= sol.u
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function tangent!(solver::DirectSolver, obj, p)
-  domain = obj.domain
-  K = solver.assembler
-  K.stiffnesses .= zero(eltype(K.stiffnesses))
-  domain_iterator!(K, hessian, domain, solver.U, p)
-  K = SparseArrays.sparse!(K) |> Symmetric
-  solver.linsolve.A = K
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_preconditioner!(solver::DirectSolver, attempt::Int)
-  shift = 10^(-5 + attempt)
-  P = CholeskyFactorization(; shift=shift)
-  solver.linsolve.Pl = P
   return nothing
 end

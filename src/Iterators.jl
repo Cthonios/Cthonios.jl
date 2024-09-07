@@ -1,6 +1,6 @@
 """
 $(TYPEDSIGNATURES)
-Move to FiniteElementContainers
+TODO Move to FiniteElementContainers
 """
 function assemble!(
   global_val::Vector, 
@@ -12,7 +12,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
-Move to FiniteElementContainers
+TODO Move to FiniteElementContainers
 """
 function assemble!(
   global_val::NodalField, 
@@ -25,7 +25,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
-Move to FiniteElementContainers
+TODO Move to FiniteElementContainers
 """
 function assemble!(
   global_val::FiniteElementContainers.StaticAssembler, 
@@ -84,31 +84,13 @@ end
 
 """
 $(TYPEDSIGNATURES)
-"""
-function domain_iterator!(global_val, U::NodalField, f, domain, Uu::T, p) where T <: AbstractVector
-  update_fields!(U, domain, Uu)
-  domain_iterator!(global_val, f, domain, U, p)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function domain_iterator!(global_val, U::NodalField, V::NodalField, f, domain, Uu, p, Vv)
-  update_fields!(U, domain, Uu)
-  update_fields!(V, domain, Vv)
-  domain_iterator!(global_val, f, domain, U, p, V)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
 Iterator over a domain ```domain``` to fill a global value
 ```global_val``` based on a quadrature level function 
 ```f``` provided a nodal field ```U``` and set of
-paramaters ```p```
+paramaters ```p```. This method is useful for filling
+quantities such as objectives, gradients, or hessians.
 """
-function domain_iterator!(global_val, f, domain, U, p)
+function domain_iterator!(global_val, f, domain, U, X)
   # sections = domain.sections
   # loop over sections
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
@@ -120,7 +102,7 @@ function domain_iterator!(global_val, f, domain, U, p)
       local_val = scratch_variable(global_val, section)
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
-        interps = getindex(fspace, domain.X, q, e)
+        interps = getindex(fspace, X, q, e)
         local_val += f(physics, interps, U_el)
       end
 
@@ -135,16 +117,11 @@ end
 $(TYPEDSIGNATURES)
 Iterator over a domain ```domain``` to fill a global value
 ```global_val``` based on a quadrature level function 
-```f``` provided a nodal field ```U``` and set of
-paramaters ```p```
+```f``` provided a nodal field ```U```, a set of
+paramaters ```p```, and a vector ```V```. This method
+is useful for quantities such as hessian vector productions.
 """
-function domain_iterator!(global_val, f, domain, U::NodalField, p, V::NodalField)
-  # sections = domain.sections
-  # loop over sections
-  # TODO remove below
-  # V = create_fields(domain)
-  # update_fields!(V, domain, Vv)
-  # TODO remove above
+function domain_iterator!(global_val, f, domain, U::NodalField, X, V::NodalField)
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
     fspace, physics = section.fspace, section.physics
     # loop over elements
@@ -154,11 +131,10 @@ function domain_iterator!(global_val, f, domain, U::NodalField, p, V::NodalField
       dof_conn = dof_connectivity(fspace, e)
       U_el = element_fields(section, U, dof_conn)
       V_el = element_fields(section, V, dof_conn)
-      # local_val = scratch_variable(global_val, section)
       local_val = zeros(SMatrix{NN * NF, NN * NF, eltype(global_val), NN * NF * NN * NF})
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
-        interps = getindex(fspace, domain.X, q, e)
+        interps = getindex(fspace, X, q, e)
         local_val += f(physics, interps, U_el)
       end
       local_val = local_val * vec(V_el)

@@ -14,7 +14,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function NewtonSolver(objective::Objective, linear_solver_type)
+function NewtonSolver(objective::Objective, p, linear_solver_type)
   linear_solver = linear_solver_type(objective.domain)
   ΔUu = create_unknowns(objective.domain)
   return NewtonSolver(
@@ -58,7 +58,6 @@ end
 $(TYPEDSIGNATURES)
 """
 function step!(solver::NewtonSolver, Uu, p)
-  update_fields!(solver, Uu)
   solve!(solver.ΔUu, solver.linear_solver, solver.objective, Uu, p)
   return nothing
 end

@@ -5,17 +5,13 @@ mutable struct CholeskyPreconditioner{A, P} <: AbstractPreconditioner
   preconditioner::P
 end
 
-function CholeskyPreconditioner(obj::Objective)
+function CholeskyPreconditioner(obj::Objective, p)
   asm = StaticAssembler(obj.domain)
-  # update_unknown_dofs!(obj.domain)
   update_unknown_dofs!(obj.domain, asm)
-  Uu = create_unknowns(obj.domain)
-  U = create_fields(obj.domain)
   # TODO need stuff here
-  p = nothing
-  update_fields!(U, obj.domain, Uu)
-  domain_iterator!(asm, hessian, obj.domain, U, p)
-  H = SparseArrays.sparse!(asm) |> Symmetric
+  # inefficiency here by creating these copies
+  Uu = create_unknowns(obj.domain)
+  H = hessian!(asm, obj, Uu, p)
   P = cholesky(H)
   return CholeskyPreconditioner(asm, P)
 end
@@ -26,13 +22,7 @@ function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
 end
 
 function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p)
-  P.assembler.stiffnesses .= zero(eltype(P.assembler.stiffnesses))
-  U = create_fields(obj.domain)
-  update_bcs!(U, obj.domain)
-  update_fields!(U, obj.domain, Uu)
-  domain_iterator!(P.assembler, hessian, obj.domain, U, p)
-  H = SparseArrays.sparse!(P.assembler) |> Symmetric
-
+  H = hessian!(P.assembler, obj, Uu, p)
   attempt = 1
   while attempt < 10
     @info "Updating preconditioner, attempt = $attempt"
@@ -52,4 +42,3 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p)
   end
   return nothing
 end
-

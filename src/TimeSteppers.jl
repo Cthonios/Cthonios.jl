@@ -58,16 +58,6 @@ function ConstantTimeStepper(start_time::T, end_time::T, Δt::T) where T <: Numb
   return ConstantTimeStepper(start_time, end_time, start_time, 1, Δt)
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function ConstantTimeStepper(inputs::Dict{Symbol, Any})
-  start_time = input_with_default(inputs, "start time", 0.0)
-  end_time = inputs[Symbol("end time")]
-  Δt = inputs[Symbol("time step")]
-  return ConstantTimeStepper(start_time, end_time, Δt)
-end
-
 function Base.show(io::IO, time::ConstantTimeStepper)
   println(io, "ConstantTimeStepper:")
   println(io, "  Start time = $(time.start_time)")

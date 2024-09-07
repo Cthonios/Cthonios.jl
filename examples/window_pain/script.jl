@@ -7,7 +7,6 @@ using LinearAlgebra
 # file management
 mesh_file = Base.source_dir() * "/window_pain_tri3.g"
 
-# function main()
 # global setup
 times = ConstantTimeStepper(0.0, 1.0, 0.0125)
 n_dofs = 2
@@ -32,36 +31,37 @@ sections = TotalLagrangeSection[
     "unnamed_block_1", 2
   )
 ]
-domain = Domain(mesh_file, times, sections, disp_bcs, 2)
+domain = Domain(mesh_file, sections, disp_bcs, 2)
 objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian)
-solver = NewtonSolver(objective, DirectSolver)
+p = ObjectiveParameters(objective, times)
+# solver = NewtonSolver(objective, p, DirectSolver)
+solver = TrustRegionSolver(objective, p)
 
 Uu = Cthonios.create_unknowns(solver)
-p = nothing
+Cthonios.update_bcs!(p, objective)
 
 # pp
-U = Cthonios.create_fields(domain)
 pp = Cthonios.ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
 
 try 
   # pp
-  Cthonios.update_bcs!(U, solver.objective.domain)
-  Cthonios.update_fields!(U, domain, Uu)
+  Cthonios.update_bcs!(p, objective)
+  Cthonios.update_fields!(p.U, domain, Uu)
   Cthonios.write_time(pp, 1, 0.0)
-  Cthonios.write_fields(pp, U, 1)
+  Cthonios.write_fields(pp, p.U, 1)
 
   # loop over steps
   for n in 1:80
     # load step
-    Cthonios.step!(solver.objective.domain)
-    Cthonios.update_bcs!(solver.linear_solver.U, solver.objective.domain)
+    Cthonios.step!(p)
+    Cthonios.update_bcs!(p, objective)
     Cthonios.solve!(solver, Uu, p)
+    # return
 
     # pp
-    Cthonios.update_bcs!(U, solver.objective.domain)
-    Cthonios.update_fields!(U, domain, Uu)
-    Cthonios.write_time(pp, n + 1, solver.objective.domain.t.current_time)
-    Cthonios.write_fields(pp, U, n + 1)
+    Cthonios.update_fields!(p.U, domain, Uu)
+    Cthonios.write_time(pp, n + 1, p.t.current_time)
+    Cthonios.write_fields(pp, p.U, n + 1)
   end
 catch e
   Cthonios.close(pp)

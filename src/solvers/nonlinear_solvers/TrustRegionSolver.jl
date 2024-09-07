@@ -35,19 +35,15 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 """
 struct TrustRegionSolver{
-  # L <: AbstractLinearSolver,
   L,
   O,
   U <: AbstractVector,
   F <: NodalField,
   S <: TrustRegionSolverSettings
 } <: AbstractNonlinearSolver{L, O, U}
-  # linear_solver::L
   preconditioner::L
   objective::O
   ΔUu::U
-  U::F
-  V::F
   o::U
   g::F
   Hv::F
@@ -66,14 +62,12 @@ end
 $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
-function TrustRegionSolver(objective; use_warm_start=true)
+function TrustRegionSolver(objective, p; use_warm_start=true)
   domain = objective.domain
   settings       = TrustRegionSolverSettings() # TODO add non-defaults
   # TODO eventually write a custom linear solver for this one
-  preconditioner = CholeskyPreconditioner(objective)
+  preconditioner = CholeskyPreconditioner(objective, p)
   ΔUu            = create_unknowns(domain)
-  U              = create_fields(domain)
-  V              = create_fields(domain)
   o              = zeros(1)
   g              = create_fields(domain) # gradient
   Hv             = create_fields(domain) # hessian-vector product
@@ -88,7 +82,7 @@ function TrustRegionSolver(objective; use_warm_start=true)
   use_warm_start = false
   return TrustRegionSolver(
     preconditioner, objective,
-    ΔUu, U, V,
+    ΔUu,
     o, g, Hv,
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,

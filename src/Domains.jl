@@ -7,9 +7,11 @@ abstract type AbstractDomain end
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct Domain{C, T, D, S, DBCs} <: AbstractDomain
-  X::C
-  t::T
+# struct Domain{C, T, D, S, DBCs} <: AbstractDomain
+struct Domain{M, D, S, DBCs} <: AbstractDomain
+  # X::C
+  # t::T
+  mesh::M
   dof::D
   sections::S
   dirichlet_bcs::DBCs
@@ -18,7 +20,8 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function Domain(mesh_file::String, times, sections_in, dbcs_in, n_dofs::Int)
+# function Domain(mesh_file::String, times, sections_in, dbcs_in, n_dofs::Int)
+function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   mesh = FileMesh(ExodusDatabase, mesh_file)
   coords = coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
@@ -33,7 +36,8 @@ function Domain(mesh_file::String, times, sections_in, dbcs_in, n_dofs::Int)
   # setup bcs
   dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
 
-  return Domain(coords, times, dof, sections, dbcs)
+  # return Domain(coords, times, dof, sections, dbcs)
+  return Domain(mesh, dof, sections, dbcs)
 end
 
 """
@@ -60,29 +64,41 @@ function dirichlet_dofs(domain::Domain)
   return dbcs
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function step!(domain::Domain)
-  step!(domain.t)
-  return nothing
-end
+# """
+# $(TYPEDSIGNATURES)
+# """
+# function step!(domain::Domain)
+#   step!(domain.t)
+#   return nothing
+# end
 
 """
 $(TYPEDSIGNATURES)
 """
-function update_bcs!(U, domain::Domain)
-  t = domain.t.current_time
+function update_bcs!(U, domain::Domain, X, t)
+  t = t.current_time
   for bc in domain.dirichlet_bcs
     for (node, dof) in zip(bc.nodes, bc.dofs)
-      X = @views domain.X[:, node]
+      X_temp = @views X[:, node]
       # TODO need time updated here
-      val = bc.func(X, t)
+      val = bc.func(X_temp, t)
       U[dof] = val
     end
   end
   return nothing
 end
+# function update_bcs!(U, domain::Domain)
+#   t = domain.t.current_time
+#   for bc in domain.dirichlet_bcs
+#     for (node, dof) in zip(bc.nodes, bc.dofs)
+#       X = @views domain.X[:, node]
+#       # TODO need time updated here
+#       val = bc.func(X, t)
+#       U[dof] = val
+#     end
+#   end
+#   return nothing
+# end
 
 """
 $(TYPEDSIGNATURES)

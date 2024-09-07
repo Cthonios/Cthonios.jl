@@ -13,14 +13,6 @@ p is the set of parameters
 """
 abstract type AbstractLinearSolver end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_fields!(solver::AbstractLinearSolver, obj, Uu)
-  update_fields!(solver.U, obj.domain, Uu)
-  return nothing
-end
-
 # linear solvers
 include("DirectSolver.jl")
 include("Preconditioners.jl")

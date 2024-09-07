@@ -33,7 +33,7 @@ function gradient(physics::Poisson, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
   R_q = ∇u_q * ∇N_X' - N' * physics.func(X_q, 0.0)
-  return JxW * R_q
+  return JxW * R_q[:]
 end
 
 """

@@ -13,6 +13,7 @@ using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
 using TimerOutputs
+using YAML
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
