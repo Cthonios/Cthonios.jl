@@ -2,210 +2,78 @@ module CthoniosEnzymeExt
 
 using Cthonios
 using Enzyme
-using FiniteElementContainers
 using LinearAlgebra
-using LinearSolve
-using UnPack
+using Parameters
+using SparseArrays
 
-# was using Enzyme 11.20
-
-# helpers
-function setup_ddomain(::ReverseMode, domain::Cthonios.Domain)
-  ddomain = similar(domain)
-  ddomain.X .= zero(eltype(ddomain.X))
-  ddomain.U .= zero(eltype(ddomain.U))
-  ddomain.U_bc .= zero(eltype(ddomain.U_bc))
-  ddomain.props .= zero(eltype(ddomain.props))
-  # ddomain.state_old .= zero(eltype(ddomain.state_old))
-  # ddomain.state_new .= zero(eltype(ddomain.state_new))
-  ddomain.solver_cache.Π .= one(eltype(ddomain.solver_cache.Π))
-  ddomain.solver_cache.Πs .= zero(eltype(ddomain.solver_cache.Πs))
-  ddomain.solver_cache.assembler.residuals .= 
-    zero(eltype(ddomain.solver_cache.assembler.residuals))
-  ddomain.solver_cache.assembler.stiffnesses .= 
-    zero(eltype(ddomain.solver_cache.assembler.stiffnesses))
-  return ddomain
-end
-
-function setup_dUu(::ForwardMode, Uu)
-  dUu = similar(Uu)
-  dUu .= one(eltype(dUu))
-  return dUu
-end
-
-function setup_dUu(::ReverseMode, Uu)
-  dUu = similar(Uu)
-  dUu .= zero(eltype(dUu))
-  return dUu
-end
-
-# first order methods
-function Cthonios.gradient!(domain, ddomain, Uu, dUu)
+function gradient_deferred!(::ReverseMode, dΠ, dUu, dp, objective, Π, Uu, p)
   autodiff_deferred(
-    Reverse, Cthonios.internal_energy!,
-    Duplicated(domain, ddomain),
-    Duplicated(Uu, dUu)
-  )
-  return nothing
-end
-
-function Cthonios.gradient(mode::ReverseMode, domain::Domain, Uu)
-  ddomain = setup_ddomain(mode, domain)
-  dUu = setup_dUu(mode, Uu)
-  Cthonios.gradient!(domain, ddomain, Uu, dUu)
-  return ddomain, dUu
-end
-
-function Cthonios.gradient(mode::ReverseMode, prob::P, Uu) where P <: Cthonios.AbstractProblem
-  Cthonios.gradient(mode, prob.domain, Uu)
-end
-
-# attempt at AD over single nonlinear step
-function grad_over_solve!(Uu, dUu, objective, solver, dsolver, domain, ddomain)
-  autodiff(
-    Reverse, Cthonios.solve!,
-    Duplicated(solver, dsolver),
+    Reverse, Cthonios.objective!, 
+    Duplicated(Π, dΠ),
     Const(objective),
-    Duplicated(domain, ddomain),
-    Duplicated(Uu, dUu)
-    # linear_solver_alg = Const(CHOLMODFactorization())
-  )
-  return nothing
-end 
-
-function Cthonios.solve(mode::ReverseMode, prob::P, Uu) where P <: Cthonios.AbstractProblem
-  @unpack solver, objective, domain = prob
-  solver = solver.linear_solver
-  Cthonios.step!(domain)
-  ddomain = setup_ddomain(mode, domain)
-  dUu = setup_dUu(mode, Uu)
-  dsolver = similar(solver)
-  grad_over_solve!(Uu, dUu, objective, solver, dsolver, domain, ddomain)
-  return ddomain, dUu
-end
-
-# TOOD LLVM barf for all below
-# second order methods
-function residual_dot_v!(r_dot_v, domain, ddomain, Uu, dUu, Vv)
-  Cthonios.gradient!(domain, ddomain, Uu, dUu)
-  r_dot_v[1] = dot(domain.solver_cache.assembler.residuals[domain.dof.unknown_dofs], Vv)
-  return nothing
-end
-
-function Cthonios.hvp(::ReverseMode, prob::P, Uu, Vv) where P <: Cthonios.AbstractProblem
-  # @unpack static, cache = prob.domain
-  domain = prob.domain
-  # dcache = setup_dcache(Reverse, cache)
-  bdomain = setup_ddomain(Reverse, domain)
-  bUu = setup_dUu(Reverse, Uu)
-  dUu = setup_dUu(Forward, Uu)
-  dbUu = setup_dUu(Reverse, Uu)
-  r_dot_v = zeros(Float64, 1)
-  dr_dot_v = ones(Float64, 1)
-  autodiff(
-    # Forward, residual_dot_v!,
-    # Duplicated(r_dot_v, dr_dot_v),
-    Forward, Cthonios.gradient!,
-    Const(domain),
-    Const(bdomain),
     Duplicated(Uu, dUu),
-    Duplicated(bUu, Vv),
-    # Const(Vv)
+    Duplicated(p, dp)
   )
-  # dcache, dUu
+  return nothing
 end
 
-# function Cthonios.residual!(dcache, dUu, ::ReverseMode, static, cache, Uu)
-#   autodiff(
-#     Reverse, Cthonios.internal_energy!, 
-#     Const(static), 
-#     Duplicated(cache, dcache),
-#     Duplicated(Uu, dUu)
-#   )
-#   return nothing
-# end
+function Cthonios.gradient(::ReverseMode, solver, Uu, p)
+  dUu = make_zero(Uu)
+  dp = make_zero(p)
+  Π = solver.o
+  dΠ = make_zero(Π)
+  dΠ .= one(eltype(dΠ))
+  gradient_deferred!(Reverse, dΠ, dUu, dp, solver.objective, Π, Uu, p)
+  return dUu, dp
+end
 
-# function Cthonios.residual(::ReverseMode, prob::P, Uu) where P <: Cthonios.AbstractProblem
-#   @unpack static, cache = prob.domain
-#   dcache = setup_dcache(Reverse, cache)
-#   dUu = setup_dUu(Reverse, Uu)
-#   Cthonios.residual!(dcache, dUu, Reverse, static, cache, Uu)
-#   return dUu
-# end
+function Cthonios.solve!(warm_start::Cthonios.WarmStart, solver, objective, Uu, p)
+  @info "Warm start"
+  @unpack Uu_old, U_old = warm_start
+  Uu_old .= zero(eltype(Uu_old))
+  U_old .= zero(eltype(U_old))
+  U = p.U
 
-# # general methods helpers
-# # function grad!(dcache, dUu, Reverse, obj, static, cache, Uu)
-# function grad!(obj, static, cache, dcache, Uu, dUu)
-#   autodiff_deferred(
-#     Reverse, obj.value,
-#     Const(static),
-#     Duplicated(cache, dcache),
-#     Duplicated(Uu, dUu)
-#   )
-#   return nothing
-# end
+  # field unknowns, same for both
+  Cthonios.update_field_unknowns!(U_old, objective.domain, Uu)
+  Cthonios.update_field_unknowns!(U, objective.domain, Uu)
 
-# # function residual_dot_v!(r_dot_v, static, cache, Uu, Vv)
-#   # Cthonios.internal_force!(static, cache, Uu)
-# # function grad_dot_v!(r_dot_v, dcache, dUu, ::ReverseMode, obj, static, cache, Uu, Vv)
-# function grad_dot_v!(obj, static, r_dot_v, cache, dcache, Uu, dUu, Vv)
-#   # grad!(dcache, dUu, Reverse, obj, static, cache, Uu)
-#   grad!(obj, static, cache, dcache, Uu, dUu)
-#   # r_dot_v[1] = dot(cache.solver_cache.assembler.residuals[static.dof.unknown_dofs], Vv)
-#   r_dot_v[1] = dot(dUu, Vv)
-#   return nothing
-# end
+  Cthonios.update_field_bcs!(U_old, objective.domain, p.Ubc)
+  Cthonios.step!(p)
+  Cthonios.update_dirichlet_vals!(p, objective)
+  Cthonios.update_field_bcs!(U, objective.domain, p.Ubc)
 
-# function Cthonios.grad(::ReverseMode, prob::P, Uu) where P <: Cthonios.AbstractProblem
-#   @unpack static, cache = prob.domain
-#   dcache = setup_dcache(Reverse, cache)
-#   dUu = setup_dUu(Reverse, Uu)
-#   grad!(prob.objective, static, cache, dcache, Uu, dUu)
-#   dcache, dUu
-# end
+  # get bc increment
+  dU = similar(U)
+  dU .= zero(eltype(dU))
+  @. dU = U_old - p.U
 
-# # fix below to not have reverse
-# function Cthonios.hvp(::ReverseMode, prob::P, Uu, Vv) where P <: Cthonios.AbstractProblem
-#   @unpack static, cache = prob.domain
+  # need stiffness array
+  R = solver.assembler.residuals
+  Cthonios.update_preconditioner!(solver, objective, Uu, p)
 
-#   bcache = setup_dcache(Reverse, cache)
-#   dcache = setup_dcache(Reverse, cache)
-#   dcache.solver_cache.Π .= zeros(Float64, 1)
-#   dbcache = setup_dcache(Reverse, cache)
-#   dbcache.solver_cache.Π .= zeros(Float64, 1)
+  # set up seed arrays
+  dR = make_zero(R)
 
-#   bUu = setup_dUu(Reverse, Uu)
-#   dUu = setup_dUu(Forward, Uu)
-#   dbUu = setup_dUu(Reverse, Uu)
+  # run enzyme
+  autodiff(
+    Reverse, Cthonios.gradient!,
+    Duplicated(R, dR), 
+    Const(objective),
+    Duplicated(U, dU),
+    Const(p.X)
+  )
 
-#   r_dot_v = zeros(Float64, 1)
-#   dr_dot_v = ones(Float64, 1)
+  # a little ugly below
+  solver.assembler.stiffnesses .= zero(eltype(solver.assembler.stiffnesses))
+  Cthonios.domain_iterator!(solver.assembler, objective.hessian, objective.domain, Uu, p)
+  K = SparseArrays.sparse!(solver.assembler) |> Symmetric
 
-#   # puts the grad in bcache and bUu
-#   grad_dot_v!(prob.objective, static, r_dot_v, cache, bcache, Uu, bUu, Vv)
-  
-#   autodiff(
-#     Forward, grad_dot_v!,
-#     Const(prob.objective),
-#     Const(static),
-#     Duplicated(r_dot_v, dr_dot_v),
-#     # Duplicated(cache, dcache),
-#     # Duplicated(bcache, dbcache),
-#     Const(cache),
-#     Const(bcache),
-#     Duplicated(Uu, dUu),
-#     Duplicated(bUu, dbUu),
-#     Const(Vv)
-#   )
-#   # autodiff(
-#   #   Forward, grad_dot_v!,
-#   #   Const(static),
-#   #   Duplicated(r_dot_v, dr_dot_v),
-#   #   Duplicated(x, )
-#   #   # Duplicated()
-#   #   # Duplicated(Duplicated(cache, bcache), Duplicated(dcache, dbcache)),
-#   #   # Duplicated(Duplicated(Uu, bUu), Duplicated(dUu, dbUu))
-#   # )
-# end
+  b = R[objective.domain.dof.unknown_dofs]
+  temp_Uu = K \ b
+
+  @. Uu -= temp_Uu
+  return nothing
+end
 
 end # module

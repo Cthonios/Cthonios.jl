@@ -13,7 +13,8 @@ it needs the following types
 3. an unknown vector
 4. an int called max_iter
 """
-abstract type AbstractNonlinearSolver{L, O, U} end
+abstract type AbstractNonlinearSolver{L, O, U, T} end
+timer(s::AbstractNonlinearSolver) = s.timer
 
 """
 $(TYPEDSIGNATURES)
@@ -40,20 +41,22 @@ $(TYPEDSIGNATURES)
 Generic method to fall back on if step! is defined
 """
 function solve!(solver::AbstractNonlinearSolver, Uu, p)
-  gradient!(solver.linear_solver, solver.objective, Uu, p)
-  norm_R0 = residual_norm(solver.linear_solver)
+  @timeit timer(solver) "AbstractNonlinearSolver - solve!" begin
+    gradient!(solver.linear_solver, solver.objective, Uu, p)
+    norm_R0 = residual_norm(solver.linear_solver)
 
-  # loop over nonlinear iterations
-  for n in 1:solver.max_iter
-    step!(solver, Uu, p)
-    Uu .= Uu .- solver.ΔUu
-    logger(solver, n, norm_R0)
+    # loop over nonlinear iterations
+    for n in 1:solver.max_iter
+      step!(solver, Uu, p)
+      Uu .= Uu .- solver.ΔUu
+      logger(solver, n, norm_R0)
 
-    if check_convergence(solver, norm_R0)
-      return nothing
+      if check_convergence(solver, norm_R0)
+        return nothing
+      end
     end
+    @info "Maximum iterations reached"
   end
-  @info "Maximum iterations reached"
   return nothing
 end
 

@@ -38,12 +38,16 @@ struct TrustRegionSolver{
   L,
   O,
   U <: AbstractVector,
+  T <: TimerOutput,
+  W,
   F <: NodalField,
   S <: TrustRegionSolverSettings
-} <: AbstractNonlinearSolver{L, O, U}
+} <: AbstractNonlinearSolver{L, O, U, T}
   preconditioner::L
   objective::O
   ΔUu::U
+  timer::T
+  warm_start::W
   o::U
   g::F
   Hv::F
@@ -62,27 +66,30 @@ end
 $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
-function TrustRegionSolver(objective, p; use_warm_start=true)
-  domain = objective.domain
-  settings       = TrustRegionSolverSettings() # TODO add non-defaults
-  # TODO eventually write a custom linear solver for this one
-  preconditioner = CholeskyPreconditioner(objective, p)
-  ΔUu            = create_unknowns(domain)
-  o              = zeros(1)
-  g              = create_fields(domain) # gradient
-  Hv             = create_fields(domain) # hessian-vector product
-  cauchy_point   = create_unknowns(domain)
-  q_newton_point = create_unknowns(domain)
-  d              = create_unknowns(domain)
-  y_scratch_1    = create_unknowns(domain)
-  y_scratch_2    = create_unknowns(domain)
-  y_scratch_3    = create_unknowns(domain)
-  y_scratch_4    = create_unknowns(domain)
-  # TODO remove this hardcoded thing
-  use_warm_start = false
+function TrustRegionSolver(objective, p, timer; use_warm_start=true)
+  @timeit timer "TrustRegionSolver - setup" begin
+    domain = objective.domain
+    settings       = TrustRegionSolverSettings() # TODO add non-defaults
+    # TODO eventually write a custom linear solver for this one
+    preconditioner = CholeskyPreconditioner(objective, p, timer)
+    ΔUu            = create_unknowns(domain)
+    warm_start     = WarmStart(objective)
+    o              = zeros(1)
+    g              = create_fields(domain) # gradient
+    Hv             = create_fields(domain) # hessian-vector product
+    cauchy_point   = create_unknowns(domain)
+    q_newton_point = create_unknowns(domain)
+    d              = create_unknowns(domain)
+    y_scratch_1    = create_unknowns(domain)
+    y_scratch_2    = create_unknowns(domain)
+    y_scratch_3    = create_unknowns(domain)
+    y_scratch_4    = create_unknowns(domain)
+  end
   return TrustRegionSolver(
     preconditioner, objective,
     ΔUu,
+    timer,
+    warm_start,
     o, g, Hv,
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
@@ -90,12 +97,12 @@ function TrustRegionSolver(objective, p; use_warm_start=true)
     settings
   )
 end
+timer(solver::TrustRegionSolver) = solver.timer
 
 function Base.show(io::IO, solver::TrustRegionSolver)
   print(io, 
     "    TrustRegionSolver\n", 
-    "    $(solver.settings)\n",
-    "    $(solver.linear_solver)\n"
+    "    $(solver.settings)\n"
   )
 end
 
@@ -138,17 +145,19 @@ end
 $(TYPEDSIGNATURES)
 """
 function calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
-  y_scratch_1 = solver.y_scratch_1
-  gHg = dot(g, Hg)
-  if gHg > 0
-    α = -dot(g, g) / gHg
-    @. cauchy_point = α * g
-    ldiv!(y_scratch_1, P, cauchy_point)
-    cauchy_point_norm_squared = dot(cauchy_point, y_scratch_1)
-  else
-    ldiv!(y_scratch_1, P, g)
-    @. cauchy_point = -g * (tr_size / sqrt(dot(g, y_scratch_1)))
-    @info "negative curavture unpreconditioned cauchy point direction found."
+  @timeit timer(solver) "TrustRegionSolver - calculate_cauchy_point!" begin
+    y_scratch_1 = solver.y_scratch_1
+    gHg = dot(g, Hg)
+    if gHg > 0
+      α = -dot(g, g) / gHg
+      @. cauchy_point = α * g
+      ldiv!(y_scratch_1, P, cauchy_point)
+      cauchy_point_norm_squared = dot(cauchy_point, y_scratch_1)
+    else
+      ldiv!(y_scratch_1, P, g)
+      @. cauchy_point = -g * (tr_size / sqrt(dot(g, y_scratch_1)))
+      @info "negative curavture unpreconditioned cauchy point direction found."
+    end
   end
   return cauchy_point_norm_squared
 end
@@ -157,23 +166,24 @@ end
 $(TYPEDSIGNATURES)
 """
 function update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
-  ρ = -model_objective / -real_objective
+  @timeit timer(solver) "TrustRegionSolver - update_tr_size" begin
+    ρ = -model_objective / -real_objective
 
-  if model_objective > 0
-    @warn "found a positive model objective increase. Debug if you see this."
-    ρ = -real_objective / model_objective
+    if model_objective > 0
+      @warn "found a positive model objective increase. Debug if you see this."
+      ρ = -real_objective / model_objective
+    end
+
+    if !(ρ >= solver.settings.η_2)
+      tr_size = tr_size * solver.settings.t_1
+    elseif ρ > solver.settings.η_3 && step_type == :boundary
+      tr_size = tr_size * solver.settings.t_2
+    end
+
+    will_accept = 
+      (ρ >= solver.settings.η_1) || 
+      (ρ >= 0.0 && real_res_norm <= g_norm)
   end
-
-  if !(ρ >= solver.settings.η_2)
-    tr_size = tr_size * solver.settings.t_1
-  elseif ρ > solver.settings.η_3 && step_type == :boundary
-    tr_size = tr_size * solver.settings.t_2
-  end
-
-  will_accept = 
-    (ρ >= solver.settings.η_1) || 
-    (ρ >= 0.0 && real_res_norm <= g_norm)
-
   return tr_size, will_accept
 end
 
@@ -188,76 +198,77 @@ function minimize_trust_region_sub_problem!(
   tr_size::Float64
 ) where V <: AbstractVector
 
-  Pr   = solver.y_scratch_1
-  d    = solver.y_scratch_2
-  r    = solver.y_scratch_3
-  zNp1 = solver.y_scratch_4
+  @timeit timer(solver) "TrustRegionSolver - minimize_trust_region_sub_problem" begin
+    Pr   = solver.y_scratch_1
+    d    = solver.y_scratch_2
+    r    = solver.y_scratch_3
+    zNp1 = solver.y_scratch_4
 
-  # zero some stuff out and make other scratch vars
-  z .= zero(eltype(z))
-  zz = zero(eltype(x))
-  zd = zero(eltype(x))
-  r .= r_in
+    # zero some stuff out and make other scratch vars
+    z .= zero(eltype(z))
+    zz = zero(eltype(x))
+    zd = zero(eltype(x))
+    r .= r_in
 
-  cg_tol_squared = max(
-    solver.settings.cg_inexact_solve_ratio^2 * dot(r, r),
-    solver.settings.cg_tol^2
-  )
-
-  ldiv!(Pr, P, r)
-
-  @. d = -Pr
-
-  rPr = dot(r, Pr)
-
-  dd = rPr
-
-  for i in 1:solver.settings.max_cg_iters
-    Hd = hvp(solver, x, p, d)
-
-    curvature = dot(d, Hd)
-    α = rPr / curvature
-
-    @. zNp1 = z + α * d
-    zzNp1 = zz + 2.0 * α * zd + α * α * dd
-
-    # TODO
-    if curvature <= zero(eltype(x))
-      τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-      @. z = z + τ * d
-      return :negative_curvature, i
-    end
-
-    # TODO
-    if zzNp1 > tr_size^2
-      # @assert false "other edge case not handled"
-      # TODO projec to boundary
-      τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-      @. z = z + τ * d
-      return :boundary, i
-    end
-
-    @. z = zNp1
-
-    @. r = r + α * Hd
+    cg_tol_squared = max(
+      solver.settings.cg_inexact_solve_ratio^2 * dot(r, r),
+      solver.settings.cg_tol^2
+    )
 
     ldiv!(Pr, P, r)
 
-    rPrNp1 = dot(r, Pr)
-    
-    if dot(r, r) < cg_tol_squared
-      return :interior, i
+    @. d = -Pr
+
+    rPr = dot(r, Pr)
+
+    dd = rPr
+
+    for i in 1:solver.settings.max_cg_iters
+      Hd = hvp(solver, x, p, d)
+
+      curvature = dot(d, Hd)
+      α = rPr / curvature
+
+      @. zNp1 = z + α * d
+      zzNp1 = zz + 2.0 * α * zd + α * α * dd
+
+      # TODO
+      if curvature <= zero(eltype(x))
+        τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
+        @. z = z + τ * d
+        return :negative_curvature, i
+      end
+
+      # TODO
+      if zzNp1 > tr_size^2
+        # @assert false "other edge case not handled"
+        # TODO projec to boundary
+        τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
+        @. z = z + τ * d
+        return :boundary, i
+      end
+
+      @. z = zNp1
+
+      @. r = r + α * Hd
+
+      ldiv!(Pr, P, r)
+
+      rPrNp1 = dot(r, Pr)
+      
+      if dot(r, r) < cg_tol_squared
+        return :interior, i
+      end
+
+      β = rPrNp1 / rPr
+      rPr = rPrNp1
+      @. d = -Pr + β * d
+
+      zz = zzNp1
+      zd = β * (zd + α * dd)
+      dd = rPr * β * β * dd
     end
-
-    β = rPrNp1 / rPr
-    rPr = rPrNp1
-    @. d = -Pr + β * d
-
-    zz = zzNp1
-    zd = β * (zd + α * dd)
-    dd = rPr * β * β * dd
   end
-  # end
   return :interior, solver.settings.max_cg_iters
 end
 
@@ -265,42 +276,44 @@ end
 $(TYPEDSIGNATURES)
 """
 function dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
-  y_scratch_1 = solver.y_scratch_1
-  y_scratch_2 = solver.y_scratch_2
+  @timeit timer(solver) "TrustRegionSolver - dog_leg_step!" begin
+    y_scratch_1 = solver.y_scratch_1
+    y_scratch_2 = solver.y_scratch_2
 
-  ldiv!(y_scratch_1, P, cauchy_point)
-  cc = dot(cauchy_point, y_scratch_1)
-  ldiv!(y_scratch_1, P, q_newton_point)
-  nn = dot(q_newton_point, y_scratch_1)
+    ldiv!(y_scratch_1, P, cauchy_point)
+    cc = dot(cauchy_point, y_scratch_1)
+    ldiv!(y_scratch_1, P, q_newton_point)
+    nn = dot(q_newton_point, y_scratch_1)
 
-  tt = tr_size * tr_size
+    tt = tr_size * tr_size
 
-  # return cauchy point if it extends outside the tr
-  if cc >= tt
-    d .= sqrt(tt / cc) * cauchy_point
-    return nothing
+    # return cauchy point if it extends outside the tr
+    if cc >= tt
+      d .= sqrt(tt / cc) * cauchy_point
+      return nothing
+    end
+
+    # return cauchy point? seems the preconditioner was not accurate
+    if cc > nn
+      @warn "cp outside newton, preconditioner likely inaccurate"
+      d .= cauchy_point
+      return nothing
+    end
+
+    # on the dogleg
+    if nn > tt
+      @. y_scratch_2 = q_newton_point - cauchy_point
+      ldiv!(y_scratch_1, P, y_scratch_2)
+      dd = dot(y_scratch_2, y_scratch_1)
+      zd = dot(cauchy_point, y_scratch_1)
+
+      τ  = (sqrt((tr_size^2 - cc) * dd + zd^2) - zd) / dd
+      @. d = cauchy_point + τ * (y_scratch_2)
+      return nothing
+    end
+
+    d .= q_newton_point
   end
-
-  # return cauchy point? seems the preconditioner was not accurate
-  if cc > nn
-    @warn "cp outside newton, preconditioner likely inaccurate"
-    d .= cauchy_point
-    return nothing
-  end
-
-  # on the dogleg
-  if nn > tt
-    @. y_scratch_2 = q_newton_point - cauchy_point
-    ldiv!(y_scratch_1, P, y_scratch_2)
-    dd = dot(y_scratch_2, y_scratch_1)
-    zd = dot(cauchy_point, y_scratch_1)
-
-    τ  = (sqrt((tr_size^2 - cc) * dd + zd^2) - zd) / dd
-    @. d = cauchy_point + τ * (y_scratch_2)
-    return nothing
-  end
-
-  d .= q_newton_point
   return nothing
 end
 
@@ -435,5 +448,4 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     end
   end
   @assert false "Reached maximum number of trust region iterations."
-
 end

@@ -3,9 +3,11 @@ using Cthonios
 using Exodus
 using FiniteElementContainers
 using LinearAlgebra
+using TimerOutputs
 
 # file management
 mesh_file = Base.source_dir() * "/window_pain_tri3.g"
+timer = TimerOutput()
 
 # global setup
 times = ConstantTimeStepper(0.0, 1.0, 0.0125)
@@ -32,40 +34,15 @@ sections = TotalLagrangeSection[
   )
 ]
 domain = Domain(mesh_file, sections, disp_bcs, 2)
-objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian)
+objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
 p = ObjectiveParameters(objective, times)
-# solver = NewtonSolver(objective, p, DirectSolver)
-solver = TrustRegionSolver(objective, p)
+# solver = NewtonSolver(objective, p, DirectSolver, timer)
+solver = TrustRegionSolver(objective, p, timer; use_warm_start=false)
 
 Uu = Cthonios.create_unknowns(solver)
-Cthonios.update_bcs!(p, objective)
 
 # pp
-pp = Cthonios.ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
+pp = ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
 
-try 
-  # pp
-  Cthonios.update_bcs!(p, objective)
-  Cthonios.update_fields!(p.U, domain, Uu)
-  Cthonios.write_time(pp, 1, 0.0)
-  Cthonios.write_fields(pp, p.U, 1)
-
-  # loop over steps
-  for n in 1:80
-    # load step
-    Cthonios.step!(p)
-    Cthonios.update_bcs!(p, objective)
-    Cthonios.solve!(solver, Uu, p)
-    # return
-
-    # pp
-    Cthonios.update_fields!(p.U, domain, Uu)
-    Cthonios.write_time(pp, n + 1, p.t.current_time)
-    Cthonios.write_fields(pp, p.U, n + 1)
-  end
-catch e
-  Cthonios.close(pp)
-  throw(e)
-end
-
-Cthonios.close(pp)
+problem = QuasiStaticProblem(objective, solver, pp, timer)
+Cthonios.solve!(problem, Uu, p)

@@ -2,24 +2,28 @@
 $(TYPEDFIELDS)
 Direct linear solver
 """
-struct DirectSolver{A, L} <: AbstractLinearSolver
+struct DirectSolver{A, L, T} <: AbstractLinearSolver
   assembler::A
   linsolve::L
+  timer::T
 end
+timer(s::DirectSolver) = s.timer
 
 """
 $(TYPEDSIGNATURES)
 Direct linear solver constructor from a Domain
 """
-function DirectSolver(domain::Domain)
-  asm = StaticAssembler(domain)
-  update_unknown_dofs!(domain, asm)
-  R = asm.residuals[domain.dof.unknown_dofs]
-  K = SparseArrays.sparse!(asm) |> Symmetric
-  assumptions = OperatorAssumptions(false)
-  prob = LinearProblem(K, R; assumptions=assumptions)
-  linsolve = init(prob)
-  return DirectSolver(asm, linsolve)
+function DirectSolver(domain::Domain, timer)
+  @timeit timer "DirectSolver - setup" begin
+    asm = StaticAssembler(domain)
+    update_unknown_dofs!(domain, asm)
+    R = asm.residuals[domain.dof.unknown_dofs]
+    K = SparseArrays.sparse!(asm) |> Symmetric
+    assumptions = OperatorAssumptions(false)
+    prob = LinearProblem(K, R; assumptions=assumptions)
+    linsolve = init(prob)
+  end
+  return DirectSolver(asm, linsolve, timer)
 end
 
 function Base.show(io::IO, sol::DirectSolver)
@@ -34,13 +38,15 @@ end
 $(TYPEDSIGNATURES)
 """
 function gradient!(solver::DirectSolver, obj::Objective, Uu, p::ObjectiveParameters)
-  R = solver.assembler.residuals
-  # annoying below
-  update_fields!(p.U, obj.domain, Uu)
-  R .= zero(eltype(R))
-  domain_iterator!(R, obj.gradient, obj.domain, p.U, p.X)
-  # set filled residual in linear solve init
-  solver.linsolve.b = R[obj.domain.dof.unknown_dofs]
+  @timeit timer(solver) "DirectSolver - gradient!" begin
+    R = solver.assembler.residuals
+    # annoying below TODO fix this
+    update_field_unknowns!(p.U, obj.domain, Uu)
+    R .= zero(eltype(R))
+    domain_iterator!(R, obj.gradient, obj.domain, Uu, p)
+    # set filled residual in linear solve init
+    solver.linsolve.b = R[obj.domain.dof.unknown_dofs]
+  end
   return nothing
 end
 
@@ -48,8 +54,10 @@ end
 $(TYPEDSIGNATURES)
 """
 function hessian!(solver::DirectSolver, obj, Uu, p)
-  K = hessian!(solver.assembler, obj, Uu, p)
-  solver.linsolve.A = K
+  @timeit timer(solver) "DirectSolver - hessian!" begin
+    K = hessian!(solver.assembler, obj, Uu, p)
+    solver.linsolve.A = K
+  end
   return nothing
 end
 
@@ -64,9 +72,11 @@ end
 $(TYPEDSIGNATURES)
 """
 function solve!(ΔUu, solver::DirectSolver, obj, Uu, p)
-  gradient!(solver, obj, Uu, p)
-  hessian!(solver, obj, Uu, p)
-  sol = LinearSolve.solve!(solver.linsolve)  
-  ΔUu .= sol.u
+  @timeit timer(solver) "DirectSolver - solve!" begin
+    gradient!(solver, obj, Uu, p)
+    hessian!(solver, obj, Uu, p)
+    sol = LinearSolve.solve!(solver.linsolve)  
+    ΔUu .= sol.u
+  end
   return nothing
 end

@@ -1,6 +1,6 @@
 abstract type AbstractPostProcessor end
 
-mutable struct ExodusPostProcessor{
+struct ExodusPostProcessor{
   Exo <: ExodusDatabase
 } <: AbstractPostProcessor
   exo::Exo
@@ -21,9 +21,8 @@ end
 close(pp::ExodusPostProcessor) = Exodus.close(pp.exo)
 
 function write_fields(pp::ExodusPostProcessor, U, n)
-  @assert size(U, 1) == length(pp.solution_fields)
+  @assert size(U, 1) == length(pp.solution_fields) "Have size(U, 1) = $(size(U, 1)) and length(pp.solution_fields) = $(length(pp.solution_fields))"
 
-  # for n in axes(pp.solution_fields, 1)
   for (i, name) in enumerate(pp.solution_fields)
     write_values(pp.exo, NodalVariable, n, name, U[i, :])
   end
@@ -32,3 +31,5 @@ end
 function write_time(pp::ExodusPostProcessor, n, t)
   Exodus.write_time(pp.exo, n, t)
 end
+
+export ExodusPostProcessor

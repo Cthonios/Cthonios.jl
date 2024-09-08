@@ -1,40 +1,3 @@
-"""
-$(TYPEDSIGNATURES)
-TODO Move to FiniteElementContainers
-"""
-function assemble!(
-  global_val::Vector, 
-  sections, block_num, e, local_val
-)
-  global_val[1] += local_val
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-TODO Move to FiniteElementContainers
-"""
-function assemble!(
-  global_val::NodalField, 
-  sections, block_num, e, local_val
-)
-  dof_conn = dof_connectivity(sections[block_num].fspace, e)
-  FiniteElementContainers.assemble!(global_val, local_val, dof_conn)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-TODO Move to FiniteElementContainers
-"""
-function assemble!(
-  global_val::FiniteElementContainers.StaticAssembler, 
-  sections, block_num, e, local_val
-)
-  FiniteElementContainers.assemble!(global_val, local_val, block_num, e)
-  return nothing
-end
-
 function element_coordinates(section, X, conn)
   ND, NN, _, _ = size(section)
   X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[:, conn])
@@ -63,7 +26,7 @@ $(TYPEDSIGNATURES)
 Setup a scratch variable for a force
 like calculation
 """
-function scratch_variable(global_val::NodalField, section)
+function scratch_variable(global_val::T, section) where T <: Union{Matrix, NodalField}
   ND, NN, NP, NS = size(section)
   NF = num_dofs_per_node(section.fspace)
   # TODO change to SVector
@@ -90,8 +53,27 @@ Iterator over a domain ```domain``` to fill a global value
 paramaters ```p```. This method is useful for filling
 quantities such as objectives, gradients, or hessians.
 """
-function domain_iterator!(global_val, f, domain, U, X)
-  # sections = domain.sections
+function domain_iterator!(global_val, f, domain, Uu, p::ObjectiveParameters)
+  update_field_unknowns!(p.U, domain, Uu)
+  domain_iterator!(global_val, f, domain, p.U, p.Ubc, p.X)
+  return nothing
+end
+
+function domain_iterator!(global_val, f, domain::Domain, U::NodalField, Ubc, X::NodalField)
+  update_field_bcs!(U, domain, Ubc)
+  domain_iterator!(global_val, f, domain, U, X)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+Iterator over a domain ```domain``` to fill a global value
+```global_val``` based on a quadrature level function 
+```f``` provided a nodal field ```U``` and set of
+paramaters ```p```. This method is useful for filling
+quantities such as objectives, gradients, or hessians.
+"""
+function domain_iterator!(global_val, f, domain::Domain, U, X::NodalField)
   # loop over sections
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
     fspace, physics = section.fspace, section.physics
@@ -107,7 +89,7 @@ function domain_iterator!(global_val, f, domain, U, X)
       end
 
       # assembly
-      assemble!(global_val, domain.sections, block_num, e, local_val)
+      assemble!(global_val, fspace, block_num, e, local_val)
     end
   end
   return nothing
@@ -121,7 +103,29 @@ Iterator over a domain ```domain``` to fill a global value
 paramaters ```p```, and a vector ```V```. This method
 is useful for quantities such as hessian vector productions.
 """
-function domain_iterator!(global_val, f, domain, U::NodalField, X, V::NodalField)
+function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters, Vv)
+  update_field_unknowns!(p.U, domain, Uu)
+  update_field_unknowns!(p.hvp_scratch, domain, Vv)
+  domain_iterator!(global_val, f, domain, p.U, p.Ubc, p.X, p.hvp_scratch)
+  return nothing
+end
+
+function domain_iterator!(global_val, f, domain::Domain, U::NodalField, Ubc, X::NodalField, V::NodalField)
+  update_field_bcs!(U, domain, Ubc)
+  domain_iterator!(global_val, f, domain, U, X, V)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+Iterator over a domain ```domain``` to fill a global value
+```global_val``` based on a quadrature level function 
+```f``` provided a nodal field ```U```, a set of
+paramaters ```p```, and a vector ```V```. This method
+is useful for quantities such as hessian vector productions.
+"""
+function domain_iterator!(global_val, f, domain::Domain, U::NodalField, X::NodalField, V::NodalField)
+  # update_field_bcs!(U, domain, Ubc)
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
     fspace, physics = section.fspace, section.physics
     # loop over elements
@@ -140,7 +144,7 @@ function domain_iterator!(global_val, f, domain, U::NodalField, X, V::NodalField
       local_val = local_val * vec(V_el)
 
       # assembly
-      assemble!(global_val, domain.sections, block_num, e, local_val)
+      assemble!(global_val, fspace, block_num, e, local_val)
     end
   end
   return nothing

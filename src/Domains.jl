@@ -7,20 +7,17 @@ abstract type AbstractDomain end
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-# struct Domain{C, T, D, S, DBCs} <: AbstractDomain
-struct Domain{M, D, S, DBCs} <: AbstractDomain
-  # X::C
-  # t::T
+struct Domain{M, D, S, DBCs, DDofs} <: AbstractDomain
   mesh::M
   dof::D
   sections::S
   dirichlet_bcs::DBCs
+  dirichlet_dofs::DDofs
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-# function Domain(mesh_file::String, times, sections_in, dbcs_in, n_dofs::Int)
 function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   mesh = FileMesh(ExodusDatabase, mesh_file)
   coords = coordinates(mesh)
@@ -35,9 +32,8 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   sections = NamedTuple(sections)
   # setup bcs
   dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
-
-  # return Domain(coords, times, dof, sections, dbcs)
-  return Domain(mesh, dof, sections, dbcs)
+  ddofs = Vector{Int}(undef, 0)
+  return Domain(mesh, dof, sections, dbcs, ddofs)
 end
 
 """
@@ -64,46 +60,34 @@ function dirichlet_dofs(domain::Domain)
   return dbcs
 end
 
-# """
-# $(TYPEDSIGNATURES)
-# """
-# function step!(domain::Domain)
-#   step!(domain.t)
-#   return nothing
-# end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_bcs!(U, domain::Domain, X, t)
+function update_dirichlet_vals!(Ubc, domain::Domain, X, t)
   t = t.current_time
+  # inefficiency below TODO
+  resize!(Ubc, 0)
   for bc in domain.dirichlet_bcs
-    for (node, dof) in zip(bc.nodes, bc.dofs)
+    for node in bc.nodes
       X_temp = @views X[:, node]
-      # TODO need time updated here
       val = bc.func(X_temp, t)
-      U[dof] = val
+      push!(Ubc, val)
     end
   end
   return nothing
 end
-# function update_bcs!(U, domain::Domain)
-#   t = domain.t.current_time
-#   for bc in domain.dirichlet_bcs
-#     for (node, dof) in zip(bc.nodes, bc.dofs)
-#       X = @views domain.X[:, node]
-#       # TODO need time updated here
-#       val = bc.func(X, t)
-#       U[dof] = val
-#     end
-#   end
-#   return nothing
-# end
+
+# new method below
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_field_bcs!(U, domain::Domain, Ubc)
+  U[domain.dirichlet_dofs] .= Ubc
+  return nothing
+end
 
 """
 $(TYPEDSIGNATURES)
 """
-function update_fields!(U, domain::Domain, Uu)
+# function update_fields!(U, domain::Domain, Uu)
+function update_field_unknowns!(U, domain::Domain, Uu)
   FiniteElementContainers.update_fields!(U, domain.dof, Uu)
   return nothing
 end
@@ -113,7 +97,15 @@ $(TYPEDSIGNATURES)
 """
 function update_unknown_dofs!(domain::Domain)
   dofs = dirichlet_dofs(domain)
+  # update dof manager
   FiniteElementContainers.update_unknown_dofs!(domain.dof, dofs)
+  # update dirichlet dofs
+  resize!(domain.dirichlet_dofs, 0)
+  for bc in domain.dirichlet_bcs
+    for dof in bc.dofs
+      push!(domain.dirichlet_dofs, dof)
+    end
+  end
   return nothing
 end
 
