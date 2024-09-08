@@ -6,6 +6,9 @@ abstract type AbstractSectionInput end
 $(TYPEDEF)
 """
 abstract type AbstractSectionInternal{P, F} end
+num_fields(section::AbstractSectionInternal) = num_fields(section.physics)
+num_propertie(section::AbstractSectionInternal) = num_properties(section.physics)
+num_states(section::AbstractSectionInternal) = num_states(section.physics)
 
 """
 $(TYPEDSIGNATURES)
@@ -22,7 +25,7 @@ end
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct TotalLagrangeSection{P} <: AbstractSectionInput
+struct Section{P} <: AbstractSectionInput
   physics::P
   block_name::String
   q_order::Int
@@ -32,7 +35,7 @@ end
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct TotalLagrangeSectionInternal{P, F} <: AbstractSectionInternal{P, F}
+struct SectionInternal{P, F} <: AbstractSectionInternal{P, F}
   physics::P
   block_name::String
   fspace::F
@@ -41,13 +44,13 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function TotalLagrangeSectionInternal(mesh, dof, section)
+function SectionInternal(mesh, dof, section)
   conns = convert.(Int64, element_connectivity(mesh, section.block_name))
   conns = Connectivity{size(conns), Vector}(conns)
   elem_type = element_type(mesh, section.block_name)
   fspace = NonAllocatedFunctionSpace(dof, conns, section.q_order, elem_type)
-  return TotalLagrangeSectionInternal(section.physics, section.block_name, fspace)
+  return SectionInternal(section.physics, section.block_name, fspace)
 end
 
 # exports
-export TotalLagrangeSection
+export Section

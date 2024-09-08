@@ -27,7 +27,7 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   # TODO need to check all sections have compatable physics
   sections = Dict{Symbol, Any}()
   for section in sections_in
-    sections[Symbol(section.block_name)] = TotalLagrangeSectionInternal(mesh, dof, section)
+    sections[Symbol(section.block_name)] = SectionInternal(mesh, dof, section)
   end
   sections = NamedTuple(sections)
   # setup bcs
