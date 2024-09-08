@@ -5,9 +5,10 @@
       "unnamed_block_1", 1
     )
   ]
-  @test Cthonios.num_fields(sections[1].physics) == 1
-  @test Cthonios.num_properties(sections[1].physics) == 0
-  @test Cthonios.num_states(sections[1].physics) == 0
+  @show sections
+  @test Cthonios.num_fields(sections[1]) == 1
+  @test Cthonios.num_properties(sections[1]) == 0
+  @test Cthonios.num_states(sections[1]) == 0
 
   sections = Section[
     Section(
@@ -34,9 +35,11 @@
   dof = DofManager{2, size(coords, 2), Vector{Float64}}()
 
   section = Cthonios.SectionInternal(mesh, dof, sections[1])
-  @test Cthonios.num_fields(section.physics) == 2
-  @test Cthonios.num_properties(section.physics) == 2
-  @test Cthonios.num_states(section.physics) == 0
+  @show section
+  @test Cthonios.num_fields(section) == 2
+  @test Cthonios.num_properties(section) == 2
+  @test Cthonios.num_states(section) == 0
   @test section.physics.material_model == NeoHookean()
   @test section.physics.formulation == PlaneStrain()
+  @test size(section) == (2, 3, 2, 0)
 end
