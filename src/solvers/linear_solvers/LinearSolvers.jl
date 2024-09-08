@@ -1,30 +1,18 @@
 """
+$(TYPEDEF)
+A linear solver simply needs to define the
+following methods
+1. residual_norm
+2. solve!
+solve! method which has the following signature
+solve!(ΔUu, solver::DirectSolver, obj, Uu, p)
+where ΔUu is the increment for a nonlinear solver
+solver is the solver, obj is the objective,
+Uu is the current guess of the solution, and
+p is the set of parameters
 """
-abstract type AbstractLinearSolverSettings end
-"""
-"""
-abstract type AbstractLinearSolver{Settings, Assembler} end
+abstract type AbstractLinearSolver end
 
-function solve! end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_unknown_dofs!(assembler::StaticAssembler, d::QuasiStaticDomain)
-  # update the dofs
-  update_unknown_dofs!(d)
-  FiniteElementContainers.update_unknown_dofs!(assembler, d.dof, map(x -> x.fspace, d.sections), d.bc_dofs)
-end
-
-# DirectLinearSolver
-include("DirectLinearSolver.jl")
-# include("IterativeLinearSolver.jl")
-
-# general setup
-"""
-$(TYPEDSIGNATURES)
-"""
-function setup_linear_solver(input_settings, domain, backend)
-  type = Meta.parse(input_settings[:type])
-  return eval(type)(input_settings, domain, backend)
-end
+# linear solvers
+include("DirectSolver.jl")
+include("Preconditioners.jl")

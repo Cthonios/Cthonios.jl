@@ -20,6 +20,4 @@ materials:
 ```
 
 # Useful methods
-```@docs
-setup_material
-```
+TODO

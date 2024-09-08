@@ -29,6 +29,6 @@ where ``\mathbf{P}`` is the first Piola-Kirchoff stress, ``\nabla`` is the gradi
 # Index
 ```@autodocs
 Modules = [Cthonios]
-Pages = ["domains/QuasiStaticDomain.jl"]
+Pages = ["Domains.jl"]
 Order = [:type, :function]
 ```

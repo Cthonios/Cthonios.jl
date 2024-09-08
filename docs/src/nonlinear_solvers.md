@@ -19,23 +19,16 @@ nonlinear solvers:
     warm start: on
 ```
 
+# General methods and abstract types
+```@autodocs
+Modules = [Cthonios]
+Pages = ["solvers/nonlinear_solvers/NonlinearSolvers.jl"]
+Order = [:type, :function]
+```
+
 # Newton Solver
 ```@autodocs
 Modules = [Cthonios]
-Pages = ["solvers/NewtonSolver.jl"]
-Order = [:type, :function]
-```
-
-# Trust Region Solver
-```@autodocs
-Modules = [Cthonios]
-Pages = ["solvers/TrustRegionSolver.jl"]
-Order = [:type, :function]
-```
-
-# General
-```@autodocs
-Modules = [Cthonios]
-Pages = ["solvers/NonlinearSolvers.jl"]
+Pages = ["solvers/nonlinear_solvers/NewtonSolver.jl"]
 Order = [:type, :function]
 ```
