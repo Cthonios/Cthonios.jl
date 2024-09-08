@@ -10,6 +10,7 @@ using TestSetExtensions
 
 include("TestBoundaryConditions.jl")
 include("TestDomains.jl")
+include("TestPostProcessors.jl")
 include("TestSections.jl")
 include("TestTimeSteppers.jl")
 
