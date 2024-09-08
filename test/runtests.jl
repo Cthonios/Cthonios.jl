@@ -11,6 +11,7 @@ using TestSetExtensions
 include("TestBoundaryConditions.jl")
 include("TestDomains.jl")
 include("TestSections.jl")
+include("TestTimeSteppers.jl")
 
 @testset ExtendedTestSet "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false)
