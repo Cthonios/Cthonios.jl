@@ -27,8 +27,8 @@ traction_bcs = [
 ]
 
 # sections
-sections = TotalLagrangeSection[
-  TotalLagrangeSection(
+sections = Section[
+  Section(
     Cthonios.SolidMechanics(NeoHookean(), PlaneStrain()),
     "unnamed_block_1", 2
   )

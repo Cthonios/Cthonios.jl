@@ -4,6 +4,12 @@ abstract type AbstractBCInternal end
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+Base Dirichlet boundary condition type used 
+for inputs either from a script or input file. 
+``nset_name`` corresponds to the name of the 
+node set in the exodus file, ``dofs`` correspond
+to the indexed fields this bc is to be applied to,
+and ``func`` is the function to apply to the fields.
 """
 struct DirichletBC{N, D, F} <: AbstractBCInput
   nset_name::N
@@ -21,6 +27,13 @@ end
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+Base internal Dirichlet boundary condition used for
+internal purposes.
+``nodes`` corresponds to the node ids this BC is to be
+applied to,
+``dofs`` is the set of degrees of freedoms this bc 
+is to be applied to,
+and ``func`` is the function to apply to a field on the dofs.
 """
 struct DirichletBCInternal{N, D, F} <: AbstractBCInternal
   nodes::N
@@ -36,6 +49,10 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Constructor for internal Dirichlet boundary condition.
+``mesh`` is the exodus mesh to read node sets from,
+``bc`` is the ``DirichletBC`` input, and ``n_dofs`` is
+the total number of fields in the problem.
 """
 function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   for dof in bc.dofs
