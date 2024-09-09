@@ -26,3 +26,10 @@ Modules = [Cthonios]
 Pages = ["solvers/linear_solvers/DirectSolver.jl"]
 Order = [:type, :function]
 ```
+
+# Preconditioners
+```@autodocs
+Modules = [Cthonios]
+Pages = ["solvers/linear_solvers/Preconditioners.jl"]
+Order = [:type, :function]
+```

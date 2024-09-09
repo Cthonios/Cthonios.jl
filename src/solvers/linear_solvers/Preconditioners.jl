@@ -1,11 +1,22 @@
+"""
+$(TYPEDEF)
+Abstract base preconditioner type.
+"""
 abstract type AbstractPreconditioner end
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
 mutable struct CholeskyPreconditioner{A, P, T} <: AbstractPreconditioner
   assembler::A
   preconditioner::P
   timer::T
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function CholeskyPreconditioner(obj::Objective, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = StaticAssembler(obj.domain)
@@ -19,8 +30,14 @@ function CholeskyPreconditioner(obj::Objective, p, timer)
   return CholeskyPreconditioner(asm, P, timer)
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 timer(P::CholeskyPreconditioner) = P.timer
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
   @timeit timer(P) "CholeskyPreconditioner - ldiv!" begin
     y .= P.preconditioner \ v
