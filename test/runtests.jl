@@ -7,9 +7,11 @@ using JET
 using StaticArrays
 using Test
 using TestSetExtensions
+using TimerOutputs
 
 include("TestBoundaryConditions.jl")
 include("TestDomains.jl")
+include("TestObjectives.jl")
 include("TestPostProcessors.jl")
 include("TestSections.jl")
 include("TestTimeSteppers.jl")
