@@ -1,11 +1,21 @@
 """
 $(TYPEDEF)
+Abstract base objective type.
 """
 abstract type AbstractObjective end
 
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+Objective type for evaluating objective functions.
+The functions correspond to quadrature level evaluations
+of the objective function, it's gradient, and it's hessian
+respectively.
+```domain``` - A domain object 
+```value``` - A function for the quadrature level objective function evaluation.
+```gradient``` - A function for the quadrature level objective function gradient evaluation.
+```hessian``` - A function for the quadrature level objective hessian evaluation.
+```timer``` - A timer that's already setup.
 """
 struct Objective{D, F1, F2, F3, T}
   domain::D
@@ -19,12 +29,16 @@ timer(o::Objective) = o.timer
 
 """
 $(TYPEDEF)
+Abstract base type for objective function parameters.
 """
 abstract type AbstractObjectiveParameters end
 
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+Type for objective function parameters for design parameters
+such as coordinates, time, bc values, properties
+state variables, and some scratch arrays.
 """
 struct ObjectiveParameters{U1, T, B, U2, U3} <: AbstractObjectiveParameters
   # design parameters
@@ -36,6 +50,12 @@ struct ObjectiveParameters{U1, T, B, U2, U3} <: AbstractObjectiveParameters
   hvp_scratch::U3
 end
 
+"""
+$(TYPEDSIGNATURES)
+Constructor for a ```ObjectiveParameters``` type.
+```o``` - Objective function object.
+```times``` - Times object.
+"""
 function ObjectiveParameters(o::Objective, times)
   X = coordinates(o.domain.mesh)
   X = NodalField{size(X), Vector}(X)
@@ -52,14 +72,22 @@ function ObjectiveParameters(o::Objective, times)
   return params
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
-  g .= zero(eltype(g))
-  update_field_unknowns!(p.U, o.domain, Uu)
-  domain_iterator!(g, o.gradient, o.domain, Uu, p)
-  return @views g[o.domain.dof.unknown_dofs]
+  @timeit timer(o) "Objectives - gradient!" begin
+    g .= zero(eltype(g))
+    update_field_unknowns!(p.U, o.domain, Uu)
+    domain_iterator!(g, o.gradient, o.domain, Uu, p)
+    return @views g[o.domain.dof.unknown_dofs]
+  end
 end
 
 # used in EnzymeExt
+"""
+$(TYPEDSIGNATURES)
+"""
 function gradient!(g, o::Objective, U, X::NodalField)
   @timeit timer(o) "Objective - gradient!" begin
     g .= zero(eltype(g))
@@ -68,6 +96,9 @@ function gradient!(g, o::Objective, U, X::NodalField)
   return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function hessian!(asm::FiniteElementContainers.StaticAssembler, o::Objective, Uu, p::ObjectiveParameters)
   @timeit timer(o) "Objective - hessian!" begin
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
@@ -77,6 +108,9 @@ function hessian!(asm::FiniteElementContainers.StaticAssembler, o::Objective, Uu
   end
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function hvp!(Hv, o::Objective, Uu, p::ObjectiveParameters, Vv)
   @timeit timer(o) "Objective - hvp!" begin
     Hv .= zero(eltype(Hv))
@@ -87,12 +121,18 @@ function hvp!(Hv, o::Objective, Uu, p::ObjectiveParameters, Vv)
   end
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function objective(o::Objective, U::NodalField, Ubc, X::NodalField)
   val = zeros(1)
   domain_iterator!(val, o.value, o.domain, U, Ubc, X)
   return val
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
   @timeit timer(o) "Objective - objective!" begin
     val .= zero(eltype(val))
@@ -102,11 +142,17 @@ function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
   return @views val[1]
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function step!(p::ObjectiveParameters)
   step!(p.t)
   return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function update_dirichlet_vals!(p::ObjectiveParameters, o::Objective)
   update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
   return nothing

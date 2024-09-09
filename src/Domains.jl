@@ -1,11 +1,23 @@
 """
 $(TYPEDEF)
+Abstract base type for domains.
 """
 abstract type AbstractDomain end
 
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+Domain type to hold information like bcs, sections, etc.
+Note that the ```DofManager``` unknown dofs are not
+automatically set. After setting up a ```Domain```
+you will need to run, ```update_unknown_dofs!```.
+
+```mesh``` - Handle to an open ```FileMesh```.
+```dof``` - ```DofManager``` object.
+```sections``` - A set of ```SectionInternal```s.
+```dirichlet_bcs``` - A set of ```DirichletBCInternal```s.
+```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
+  This is mainly for book-keeping purposes
 """
 struct Domain{M, D, S, DBCs, DDofs} <: AbstractDomain
   mesh::M
@@ -17,6 +29,11 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Constructor for a ```Domain``` type.
+```mesh_file``` - File name of a mesh to read.
+```sections_in``` - A set of ```Section```s.
+```dbcs_in``` - A set of ```DirichletBC```s.
+```n_dofs``` - The number of dofs in the problem.
 """
 function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   mesh = FileMesh(ExodusDatabase, mesh_file)
@@ -38,6 +55,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Create a zero field based on ```domain.dof```.
 """
 function create_fields(domain::Domain)
   return FiniteElementContainers.create_fields(domain.dof)
@@ -45,6 +63,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Creates an unknown vector based on ```domain.dof```
 """
 function create_unknowns(domain::Domain)
   return FiniteElementContainers.create_unknowns(domain.dof)
@@ -52,6 +71,7 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Returns a sorted and unique vector of dirichlet dofs.
 """
 function dirichlet_dofs(domain::Domain)
   dbcs = vcat(map(bc -> bc.dofs, domain.dirichlet_bcs)...)
@@ -60,6 +80,14 @@ function dirichlet_dofs(domain::Domain)
   return dbcs
 end
 
+"""
+$(TYPEDSIGNATURES)
+Updates the values in Ubc with dirichlet boundary conditions in ```domain```.
+```Ubc``` - BC values to fill.
+```domain``` - Domain.
+```X``` - Nodal coordinates.
+```t``` - A scalar time value to use in the BC functions.
+"""
 function update_dirichlet_vals!(Ubc, domain::Domain, X, t)
   t = t.current_time
   # inefficiency below TODO
@@ -77,6 +105,11 @@ end
 # new method below
 """
 $(TYPEDSIGNATURES)
+Updates the Dirichlet BC dofs in ```U``` with the values
+in ```Ubc```.
+```U``` - Nodal field to update.
+```domain``` - Domain.
+```Ubc``` - BC values to fill.
 """
 function update_field_bcs!(U, domain::Domain, Ubc)
   U[domain.dirichlet_dofs] .= Ubc
@@ -85,8 +118,12 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Updates the unknown dofs in ```U``` with the values
+in ```Uu```.
+```U``` - Nodal field to update.
+```domain``` - Domain.
+```Uu``` - Unknown values to fill.
 """
-# function update_fields!(U, domain::Domain, Uu)
 function update_field_unknowns!(U, domain::Domain, Uu)
   FiniteElementContainers.update_fields!(U, domain.dof, Uu)
   return nothing
@@ -94,6 +131,10 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Update the unknown dofs in ```domain.dof``` and
+```domain.dirichlet_dofs```.
+TODO maybe move ```domain.dirichlet_dofs```` to the
+```DofManager``` in ```FiniteElementContainers```.
 """
 function update_unknown_dofs!(domain::Domain)
   dofs = dirichlet_dofs(domain)
@@ -111,6 +152,12 @@ end
 
 """
 $(TYPEDSIGNATURES)
+Update the unknown dofs in ```domain.dof```, 
+```domain.dirichlet_dofs```, and ```asm```.
+TODO maybe move ```domain.dirichlet_dofs```` to the
+```DofManager``` in ```FiniteElementContainers```.
+```domain``` - Domain object.
+```asm``` - Assembly object.
 """
 function update_unknown_dofs!(domain::Domain, asm)
   update_unknown_dofs!(domain)

@@ -1,9 +1,15 @@
+"""
+$(TYPEDSIGNATURES)
+"""
 function element_coordinates(section, X, conn)
   ND, NN, _, _ = size(section)
   X_el = SMatrix{ND, NN, eltype(X), ND * NN}(@views X[:, conn])
   return X_el
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function element_fields(section, U, dof_conn)
   _, NN, _, _ = size(section)
   # NF = FiniteElementContainers.num_fields(U)

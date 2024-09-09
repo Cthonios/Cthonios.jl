@@ -32,3 +32,10 @@ Modules = [Cthonios]
 Pages = ["solvers/nonlinear_solvers/NewtonSolver.jl"]
 Order = [:type, :function]
 ```
+
+# Trust Region Solver
+```@autodocs
+Modules = [Cthonios]
+Pages = ["solvers/nonlinear_solvers/TrustRegionSolver.jl"]
+Order = [:type, :function]
+```
