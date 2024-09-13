@@ -53,6 +53,18 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   return Domain(mesh, dof, sections, dbcs, ddofs)
 end
 
+function Domain(inputs::Dict{Symbol, Any})
+  mesh_file = inputs[Symbol("mesh file")]
+  dbcs = inputs[Symbol("dirichlet boundary conditions")]
+  dbcs = map(bc -> eval(Symbol(bc[:type]))(bc), dbcs)
+  sections = inputs[:sections]
+  # TODO seperate physics and sections
+  sections = map(section -> eval(Symbol(section[:type]))(section), sections)
+  n_dofs = map(s -> num_fields(s.physics), sections)
+  @assert all(n_dofs .== n_dofs[1])
+  return Domain(mesh_file, sections, dbcs, n_dofs[1])
+end
+
 """
 $(TYPEDSIGNATURES)
 Create a zero field based on ```domain.dof```.

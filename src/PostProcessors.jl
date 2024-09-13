@@ -38,6 +38,12 @@ function ExodusPostProcessor(
   return ExodusPostProcessor(exo, solution_fields)
 end
 
+function ExodusPostProcessor(inputs::Dict{Symbol, Any}, mesh_file)
+  output_file = inputs[Symbol("output file")]
+  field_vars = inputs[Symbol("field variables")]
+  return ExodusPostProcessor(mesh_file, output_file, field_vars)
+end
+
 """
 $(TYPEDSIGNATURES)
 Closes an ```ExodusPostProcessor```

@@ -63,6 +63,15 @@ struct Section{P} <: AbstractSectionInput
   q_order::Int
 end
 
+# TODO seperate physics and sections
+function Section(inputs::Dict{Symbol, Any})
+  block_name = inputs[:block]
+  quadrature_order = inputs[Symbol("quadrature order")]
+  physics = inputs[:physics]
+  physics = eval(Symbol(physics[:type]))(physics)
+  return Section(physics, block_name, quadrature_order)
+end
+
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)

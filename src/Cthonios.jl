@@ -1,15 +1,19 @@
 module Cthonios
 
+using ArgParse
 using ComponentArrays
 using ConstitutiveModels
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
+using LimitedLDLFactorizations
+using LDLFactorizations
 using LinearAlgebra
 using LinearSolve
 using Parameters
 using Printf
 using RuntimeGeneratedFunctions
+using SciMLOperators
 using SparseArrays
 using StaticArrays
 using TimerOutputs
@@ -30,5 +34,7 @@ include("Iterators.jl")
 include("solvers/Solvers.jl")
 
 include("Problems.jl")
+
+include("Main.jl")
 
 end # module

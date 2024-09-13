@@ -1,0 +1,51 @@
+problems:
+- type: QuasiStaticProblem
+  domain:
+    type: Domain
+    mesh file: examples/window_pain/window_pain_tri3.g
+    dirichlet boundary conditions:
+    - type: DirichletBC
+      nodeset: nset_outer_bottom
+      dofs: [1, 2]
+      function: (x, t) -> 0.0
+    - type: DirichletBC
+      nodeset: nset_outer_top
+      dofs: [1]
+      function: (x, t) -> 0.0
+    - type: DirichletBC
+      nodeset: nset_outer_top
+      dofs: [2]
+      function: (x, t) -> -0.5 * t
+    sections:
+    - type: Section
+      block: unnamed_block_1
+      quadrature order: 2
+      physics:
+        type: SolidMechanics
+        material:
+          type: NeoHookean
+          properties:
+            bulk modulus: 50.0
+            shear modulus: 1.0
+        formulation:
+          type: PlaneStrain
+  time:
+    type: ConstantTimeStepper
+    start time: 0.0
+    end time: 1.0
+    time increment: 0.0125
+  objective:
+    type: Objective
+    value: energy
+    gradient: gradient
+    hessian: hessian
+  nonlinear solver:
+    type: TrustRegionSolver
+    preconditioner: 
+      type: CholeskyPreconditioner
+  postprocessor:
+    type: ExodusPostProcessor
+    output file: output.e
+    field variables:
+    - displ_x
+    - displ_y

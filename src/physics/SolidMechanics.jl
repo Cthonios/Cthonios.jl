@@ -11,6 +11,15 @@ struct SolidMechanics{
   formulation::Form
 end
 
+function SolidMechanics(inputs::Dict{Symbol, Any})
+  material_inputs = inputs[:material]
+  model_name = material_inputs[:type]
+  model = eval(Meta.parse(model_name))(material_inputs[:properties])
+  formulation_inputs = inputs[:formulation]
+  formulation = eval(Symbol(formulation_inputs[:type]))()
+  return SolidMechanics(model, formulation)
+end
+
 """
 $(TYPEDSIGNATURES)
 Energy method at the quadrature level for

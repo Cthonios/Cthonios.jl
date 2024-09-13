@@ -15,4 +15,14 @@ abstract type AbstractLinearSolver end
 
 # linear solvers
 include("DirectSolver.jl")
+# include("KrylovSolver.jl")
 include("Preconditioners.jl")
+
+# preconditioners
+export CholeskyPreconditioner
+export LimitedLDLPreconditioner
+export LDLPreconditioner
+
+# solvers
+export DirectSolver
+# export KrylovSolver

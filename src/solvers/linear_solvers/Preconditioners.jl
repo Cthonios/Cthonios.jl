@@ -4,6 +4,10 @@ Abstract base preconditioner type.
 """
 abstract type AbstractPreconditioner end
 
+# fall back methods
+LinearAlgebra.ldiv!(y, P::AbstractPreconditioner, x) = ldiv!(y, P.preconditioner, x)
+timer(P::T) where T <: AbstractPreconditioner = P.timer
+
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -29,11 +33,6 @@ function CholeskyPreconditioner(obj::Objective, p, timer)
   end
   return CholeskyPreconditioner(asm, P, timer)
 end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-timer(P::CholeskyPreconditioner) = P.timer
 
 """
 $(TYPEDSIGNATURES)
@@ -65,6 +64,79 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p)
         attempt += 1 
       end
     end
+  end
+  return nothing
+end
+
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
+mutable struct LimitedLDLPreconditioner{A, P, T} <: AbstractPreconditioner
+  assembler::A
+  preconditioner::P
+  timer::T
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function LimitedLDLPreconditioner(obj::Objective, p, timer)
+  @timeit timer "CholeskyPreconditioner - setup" begin
+    asm = StaticAssembler(obj.domain)
+    update_unknown_dofs!(obj.domain, asm)
+    # TODO need stuff here
+    # inefficiency here by creating these copies
+    Uu = create_unknowns(obj.domain)
+    hessian!(asm, obj, Uu, p)
+    H = SparseArrays.sparse!(asm)
+    P = lldl(H; α=1e-5, α_increase_factor=10)
+  end
+  return LimitedLDLPreconditioner(asm, P, timer)
+end
+
+function update_preconditioner!(P::LimitedLDLPreconditioner, obj, Uu, p)
+  @timeit timer(P) "CholeskyPreconditioner - update_preconditioner!" begin
+    hessian!(P.assembler, obj, Uu, p)
+    H = SparseArrays.sparse!(P.assembler) #|> Symmetric
+    attempt = 1
+    @info "Updating preconditioner, attempt = $attempt"
+    P.preconditioner = lldl(H; α=1e-5, α_increase_factor=10)
+  end
+  return nothing
+end
+
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
+struct LDLPreconditioner{A, P, T} <: AbstractPreconditioner
+  assembler::A
+  preconditioner::P
+  timer::T
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function LDLPreconditioner(obj::Objective, p, timer)
+  @timeit timer "CholeskyPreconditioner - setup" begin
+    asm = StaticAssembler(obj.domain)
+    update_unknown_dofs!(obj.domain, asm)
+    # TODO need stuff here
+    # inefficiency here by creating these copies
+    Uu = create_unknowns(obj.domain)
+    H = hessian!(asm, obj, Uu, p)
+    P = ldl(SparseArrays.sparse!(asm))
+  end
+  return LDLPreconditioner(asm, P, timer)
+end
+
+# TODO figure out how to apply shift here
+function update_preconditioner!(P::LDLPreconditioner, obj, Uu, p)
+  @timeit timer(P) "LDLPreconditioner - update_preconditioner!" begin
+    H = hessian!(P.assembler, obj, Uu, p)
+    ldl_factorize!(SparseArrays.sparse!(P.assembler), P.preconditioner)
   end
   return nothing
 end

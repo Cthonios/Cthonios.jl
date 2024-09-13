@@ -13,11 +13,11 @@ timer(s::DirectSolver) = s.timer
 $(TYPEDSIGNATURES)
 Direct linear solver constructor from a Domain
 """
-function DirectSolver(domain::Domain, timer)
+function DirectSolver(obj::Objective, p, timer)
   @timeit timer "DirectSolver - setup" begin
-    asm = StaticAssembler(domain)
-    update_unknown_dofs!(domain, asm)
-    R = asm.residuals[domain.dof.unknown_dofs]
+    asm = StaticAssembler(obj.domain)
+    update_unknown_dofs!(obj.domain, asm)
+    R = asm.residuals[obj.domain.dof.unknown_dofs]
     K = SparseArrays.sparse!(asm) |> Symmetric
     assumptions = OperatorAssumptions(false)
     prob = LinearProblem(K, R; assumptions=assumptions)
@@ -64,7 +64,8 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function residual_norm(solver::DirectSolver)
+function residual_norm(solver::DirectSolver, obj, Uu, p)
+  # gradient!(solver, obj, Uu, p)
   return norm(solver.linsolve.b)
 end
 

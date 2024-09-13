@@ -18,20 +18,20 @@ $(TYPEDSIGNATURES)
 """
 function NewtonSolver(objective::Objective, p, linear_solver_type, timer)
   @timeit timer "NewtonSolver - setup" begin
-    linear_solver = linear_solver_type(objective.domain, timer)
+    linear_solver = linear_solver_type(objective, p, timer)
     ΔUu = create_unknowns(objective.domain)
   end
   return NewtonSolver(
     linear_solver, objective, ΔUu, timer,
-    10, 1e-8, 1e-10, false
+    100, 1e-8, 1e-10, false
   )
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function check_convergence(solver::NewtonSolver, R0_norm)
-  R_norm = residual_norm(solver.linear_solver)
+function check_convergence(solver::NewtonSolver, Uu, p, R0_norm)
+  R_norm = residual_norm(solver.linear_solver, solver.objective, Uu, p)
   U_norm = norm(solver.ΔUu)
 
   if R_norm / R0_norm < solver.rel_tol || 
@@ -52,8 +52,8 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function logger(solver::NewtonSolver, n::Int, norm_R0)
-  norm_R = residual_norm(solver.linear_solver)
+function logger(solver::NewtonSolver, Uu, p, n::Int, norm_R0)
+  norm_R = residual_norm(solver.linear_solver, solver.objective, Uu, p)
   norm_U = norm(solver.ΔUu)
   @info @sprintf "  Iteration %5i: ||R|| = %1.6e    ||R/R0|| = %1.6e    ||ΔUu|| = %1.6e" n norm_R (norm_R / norm_R0) norm_U
 end
