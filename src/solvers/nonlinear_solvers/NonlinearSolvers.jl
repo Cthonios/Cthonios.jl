@@ -14,7 +14,7 @@ it needs the following types
 4. an int called max_iter
 """
 abstract type AbstractNonlinearSolver{L, O, U, T} end
-timer(s::AbstractNonlinearSolver) = s.timer
+timer(s::T) where T <: AbstractNonlinearSolver = s.timer
 
 """
 $(TYPEDSIGNATURES)
@@ -43,15 +43,15 @@ Generic method to fall back on if step! is defined
 function solve!(solver::AbstractNonlinearSolver, Uu, p)
   @timeit timer(solver) "AbstractNonlinearSolver - solve!" begin
     gradient!(solver.linear_solver, solver.objective, Uu, p)
-    norm_R0 = residual_norm(solver.linear_solver)
+    norm_R0 = residual_norm(solver.linear_solver, solver.objective, Uu, p)
 
     # loop over nonlinear iterations
     for n in 1:solver.max_iter
       step!(solver, Uu, p)
       Uu .= Uu .- solver.ΔUu
-      logger(solver, n, norm_R0)
+      logger(solver, Uu, p, n, norm_R0)
 
-      if check_convergence(solver, norm_R0)
+      if check_convergence(solver, Uu, p, norm_R0)
         return nothing
       end
     end

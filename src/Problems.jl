@@ -19,6 +19,25 @@ struct QuasiStaticProblem{O, S, P, T} <: AbstractProblem{O, S, P, T}
   timer::T
 end
 
+function QuasiStaticProblem(inputs::Dict{Symbol, Any})
+  timer = TimerOutput()
+  @timeit timer "QuasiStaticProblem - setup" begin
+    domain_inputs = inputs[:domain]
+    obj_inputs = inputs[:objective]
+    time_inputs = inputs[:time]
+    solver_inputs = inputs[Symbol("nonlinear solver")]
+    pp_inputs = inputs[:postprocessor]
+
+    domain = eval(Symbol(domain_inputs[:type]))(domain_inputs)
+    obj = eval(Symbol(obj_inputs[:type]))(obj_inputs, domain, timer)
+    time = eval(Symbol(time_inputs[:type]))(time_inputs)
+    p = ObjectiveParameters(obj, time)
+    solver = eval(Symbol(solver_inputs[:type]))(solver_inputs, obj, p, timer)
+    pp = eval(Symbol(pp_inputs[:type]))(pp_inputs, domain_inputs[Symbol("mesh file")])
+    return QuasiStaticProblem(obj, solver, pp, timer), p
+  end
+end
+
 """
 $(TYPEDSIGNATURES)
 """

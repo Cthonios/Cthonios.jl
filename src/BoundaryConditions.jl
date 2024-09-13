@@ -17,6 +17,14 @@ struct DirichletBC{N, D, F} <: AbstractBCInput
   func::F
 end
 
+function DirichletBC(inputs::Dict{Symbol, Any})
+  nodeset = inputs[:nodeset]
+  dofs = inputs[:dofs]
+  func_expr = Meta.parse(inputs[:function])
+  func = @RuntimeGeneratedFunction(func_expr)
+  return DirichletBC(nodeset, dofs, func)
+end
+
 function Base.show(io::IO, bc::DirichletBC)
   println(io, "DirichletBC:")
   println(io, "  Node set = $(bc.nset_name)")

@@ -25,6 +25,13 @@ struct Objective{D, F1, F2, F3, T}
   timer::T
 end
 
+function Objective(inputs::Dict{Symbol, Any}, domain, timer)
+  value_func = eval(Meta.parse(inputs[:value]))
+  grad_func = eval(Meta.parse(inputs[:gradient]))
+  hess_func = eval(Meta.parse(inputs[:hessian]))
+  return Objective(domain, value_func, grad_func, hess_func, timer)
+end
+
 timer(o::Objective) = o.timer
 
 """
@@ -111,7 +118,19 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hvp!(Hv, o::Objective, Uu, p::ObjectiveParameters, Vv)
+function hvp!(Hv::AbstractVector, o::Objective, Uu, p::ObjectiveParameters, Vv)
+  @timeit timer(o) "Objective - hvp!" begin
+    Hv .= zero(eltype(Hv))
+    hvp!(p.hvp_scratch, o, Uu, p, Vv)
+    @views Hv .= p.hvp_scratch[o.domain.dof.unknown_dofs]
+  end
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function hvp!(Hv::NodalField, o::Objective, Uu, p::ObjectiveParameters, Vv)
   @timeit timer(o) "Objective - hvp!" begin
     Hv .= zero(eltype(Hv))
     update_field_unknowns!(p.U, o.domain, Uu)

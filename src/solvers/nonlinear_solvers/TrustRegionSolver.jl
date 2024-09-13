@@ -66,12 +66,16 @@ end
 $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
-function TrustRegionSolver(objective, p, timer; use_warm_start=true)
+function TrustRegionSolver(
+  objective::Objective, p, timer; 
+  preconditioner=CholeskyPreconditioner,
+  use_warm_start=true
+)
   @timeit timer "TrustRegionSolver - setup" begin
     domain = objective.domain
     settings       = TrustRegionSolverSettings() # TODO add non-defaults
     # TODO eventually write a custom linear solver for this one
-    preconditioner = CholeskyPreconditioner(objective, p, timer)
+    precond        = preconditioner(objective, p, timer)
     ΔUu            = create_unknowns(domain)
     warm_start     = WarmStart(objective)
     o              = zeros(1)
@@ -86,7 +90,7 @@ function TrustRegionSolver(objective, p, timer; use_warm_start=true)
     y_scratch_4    = create_unknowns(domain)
   end
   return TrustRegionSolver(
-    preconditioner, objective,
+    precond, objective,
     ΔUu,
     timer,
     warm_start,
@@ -97,6 +101,40 @@ function TrustRegionSolver(objective, p, timer; use_warm_start=true)
     settings
   )
 end
+
+# TODO setup warm start
+function TrustRegionSolver(inputs::Dict{Symbol, Any}, objective, p, timer; use_warm_start=false)
+  @timeit timer "TrustRegionSolver - setup" begin
+    domain = objective.domain
+    settings       = TrustRegionSolverSettings() # TODO add non-defaults
+    precon_inputs = inputs[:preconditioner]
+    precon = eval(Symbol(precon_inputs[:type]))(objective, p, timer)
+    ΔUu            = create_unknowns(domain)
+    warm_start     = WarmStart(objective)
+    o              = zeros(1)
+    g              = create_fields(domain) # gradient
+    Hv             = create_fields(domain) # hessian-vector product
+    cauchy_point   = create_unknowns(domain)
+    q_newton_point = create_unknowns(domain)
+    d              = create_unknowns(domain)
+    y_scratch_1    = create_unknowns(domain)
+    y_scratch_2    = create_unknowns(domain)
+    y_scratch_3    = create_unknowns(domain)
+    y_scratch_4    = create_unknowns(domain)
+  end
+  return TrustRegionSolver(
+    precon, objective,
+    ΔUu,
+    timer,
+    warm_start,
+    o, g, Hv,
+    cauchy_point, q_newton_point, d,
+    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
+    use_warm_start,
+    settings
+  )
+end
+
 timer(solver::TrustRegionSolver) = solver.timer
 
 function Base.show(io::IO, solver::TrustRegionSolver)
@@ -323,129 +361,131 @@ TODO
 Eventually map this to the interface
 """
 function solve!(solver::TrustRegionSolver, Uu, p)
-  @info "TrustRegionSolver"
-  # unpack some stuff
-  ΔUu            = solver.ΔUu
-  cauchy_point   = solver.cauchy_point
-  q_newton_point = solver.q_newton_point
-  d              = solver.d
+  @timeit timer(solver) "TrustRegionSolver - solve!" begin
+    @info "TrustRegionSolver"
+    # unpack some stuff
+    ΔUu            = solver.ΔUu
+    cauchy_point   = solver.cauchy_point
+    q_newton_point = solver.q_newton_point
+    d              = solver.d
 
-  # unpack some solver settings
-  tr_size = solver.settings.tr_size
+    # unpack some solver settings
+    tr_size = solver.settings.tr_size
 
-  # saving initial objective and gradient
-  o = objective(solver, Uu, p)
-  g = gradient(solver, Uu, p)
-  g_norm = norm(g)
+    # saving initial objective and gradient
+    o = objective(solver, Uu, p)
+    g = gradient(solver, Uu, p)
+    g_norm = norm(g)
 
-  @info @sprintf "Initial objective = %1.6e" o[1]
-  @info @sprintf "Initial residual  = %1.6e" g_norm
+    @info @sprintf "Initial objective = %1.6e" o[1]
+    @info @sprintf "Initial residual  = %1.6e" g_norm
 
-  # preconditioner
-  P = solver.preconditioner
-  update_preconditioner!(P, solver.objective, Uu, p)
+    # preconditioner
+    P = solver.preconditioner
+    update_preconditioner!(P, solver.objective, Uu, p)
 
-  # begin loop over tr iters
-  cumulative_cg_iters = 0
-  tried_new_precond = false
+    # begin loop over tr iters
+    cumulative_cg_iters = 0
+    tried_new_precond = false
 
-  for n in 1:solver.settings.max_trust_iters
-    @info "Trust region iter = $n"
-    # need hvp
-    Hg = hvp(solver, Uu, p, g)
+    for n in 1:solver.settings.max_trust_iters
+      @info "Trust region iter = $n"
+      # need hvp
+      Hg = hvp(solver, Uu, p, g)
 
-    # check for negative curvature
-    cauchy_point_norm_squared = calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
+      # check for negative curvature
+      cauchy_point_norm_squared = calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
 
-    # check if outside trust region
-    if cauchy_point_norm_squared >= tr_size * tr_size
-      @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt(cauchy_point_norm_squared))."
-      @. cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
-      cauchy_point_norm_squared = tr_size * tr_size
-      q_newton_point .= cauchy_point
-      step_type = :boundary
-      n_cg_iters = 1
-    else
-      step_type, n_cg_iters = 
-        minimize_trust_region_sub_problem!(q_newton_point, solver, P, Uu, p, g, tr_size)
-    end
-
-    cumulative_cg_iters += n_cg_iters
-
-    happy = false
-    while !happy
-      dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
-
-      Jd = hvp(solver, Uu, p, d)
-      dJd = dot(d, Jd)
-
-      model_objective = dot(g, d) + 0.5 * dJd
-
-      y = solver.y_scratch_1
-      @. y = Uu + d
-
-      real_objective = Cthonios.objective(solver, y, p)
-      gy = Cthonios.gradient(solver, y, p)
-      real_objective = real_objective - o
-
-      if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
-        @info "Converged"
-        @. ΔUu = Uu - solver.y_scratch_1
-        Uu .= solver.y_scratch_1
-        return nothing
-      end
-
-      model_res = solver.y_scratch_2
-      @. model_res = g + Jd
-      model_res_norm = norm(model_res)
-      real_res_norm = norm(gy)
-
-      tr_size, will_accept = update_tr_size(
-        solver, 
-        model_objective, real_objective, 
-        step_type, tr_size, 
-        real_res_norm, g_norm
-      )
-
-      logger(
-        solver, 
-        real_objective, model_objective,
-        real_res_norm, model_res_norm,
-        cumulative_cg_iters, tr_size, will_accept, step_type
-      )
-
-      if will_accept
-        Uu .= y
-        g .= gy
-        o = objective(solver, Uu, p)
-        g_norm = norm(g)
-        happy = true
-      else
+      # check if outside trust region
+      if cauchy_point_norm_squared >= tr_size * tr_size
+        @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt(cauchy_point_norm_squared))."
+        @. cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
+        cauchy_point_norm_squared = tr_size * tr_size
+        q_newton_point .= cauchy_point
         step_type = :boundary
-        n_cg_iters = 0
+        n_cg_iters = 1
+      else
+        step_type, n_cg_iters = 
+          minimize_trust_region_sub_problem!(q_newton_point, solver, P, Uu, p, g, tr_size)
       end
 
-      # TODO not sure what to do here
-      if n_cg_iters >= solver.settings.max_cg_iters ||
-         cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
-        update_preconditioner!(P, solver.objective, Uu, p)
-      end
+      cumulative_cg_iters += n_cg_iters
 
-      # TODO still need to do some other stuff with updating preconditioner
-      if tr_size < solver.settings.min_tr_size
-        if !tried_new_precond
-          @info "Updating preconditioner due to small trust region size"
-          update_preconditioner!(P, solver.objective, Uu, p)
-          cumulative_cg_iters = 0
-          tried_new_precond = true
-          happy = true
-          tr_size = solver.settings.tr_size
-        else
-          @info "The trust region is too small. Accepting but be careful."
+      happy = false
+      while !happy
+        dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
+
+        Jd = hvp(solver, Uu, p, d)
+        dJd = dot(d, Jd)
+
+        model_objective = dot(g, d) + 0.5 * dJd
+
+        y = solver.y_scratch_1
+        @. y = Uu + d
+
+        real_objective = Cthonios.objective(solver, y, p)
+        gy = Cthonios.gradient(solver, y, p)
+        real_objective = real_objective - o
+
+        if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
+          @info "Converged"
+          @. ΔUu = Uu - solver.y_scratch_1
+          Uu .= solver.y_scratch_1
           return nothing
+        end
+
+        model_res = solver.y_scratch_2
+        @. model_res = g + Jd
+        model_res_norm = norm(model_res)
+        real_res_norm = norm(gy)
+
+        tr_size, will_accept = update_tr_size(
+          solver, 
+          model_objective, real_objective, 
+          step_type, tr_size, 
+          real_res_norm, g_norm
+        )
+
+        logger(
+          solver, 
+          real_objective, model_objective,
+          real_res_norm, model_res_norm,
+          cumulative_cg_iters, tr_size, will_accept, step_type
+        )
+
+        if will_accept
+          Uu .= y
+          g .= gy
+          o = objective(solver, Uu, p)
+          g_norm = norm(g)
+          happy = true
+        else
+          step_type = :boundary
+          n_cg_iters = 0
+        end
+
+        # TODO not sure what to do here
+        if n_cg_iters >= solver.settings.max_cg_iters ||
+          cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
+          update_preconditioner!(P, solver.objective, Uu, p)
+        end
+
+        # TODO still need to do some other stuff with updating preconditioner
+        if tr_size < solver.settings.min_tr_size
+          if !tried_new_precond
+            @info "Updating preconditioner due to small trust region size"
+            update_preconditioner!(P, solver.objective, Uu, p)
+            cumulative_cg_iters = 0
+            tried_new_precond = true
+            happy = true
+            tr_size = solver.settings.tr_size
+          else
+            @info "The trust region is too small. Accepting but be careful."
+            return nothing
+          end
         end
       end
     end
+    @assert false "Reached maximum number of trust region iterations."
   end
-  @assert false "Reached maximum number of trust region iterations."
 end
