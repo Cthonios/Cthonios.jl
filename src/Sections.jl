@@ -49,6 +49,25 @@ function Base.size(section::AbstractSectionInternal)
   return ND, NN, NP, NS
 end
 
+struct MaterialProperties{T}
+  props::T
+end
+
+# function MaterialProperties(props::Dict{Symbol, Any})
+
+# end
+
+function MaterialProperties(props...)
+  props = Dict{String, Any}(props)
+  new_props = Dict{Symbol, Any}()
+  for (k, v) in props
+    new_props[Symbol(k)] = v
+  end
+  return MaterialProperties{typeof(new_props)}(new_props)
+end
+
+# function MaterialProperties
+
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -57,19 +76,23 @@ Section inputs.
 ```block_name``` - Name of exodus block to construct section from.
 ```q_order``` - Quadrature Order to use
 """
-struct Section{P} <: AbstractSectionInput
-  physics::P
+struct Section{P, M} <: AbstractSectionInput
   block_name::String
   q_order::Int
+  physics::P
+  props::M
 end
 
 # TODO seperate physics and sections
+# TODO add properties here
 function Section(inputs::Dict{Symbol, Any})
   block_name = inputs[:block]
   quadrature_order = inputs[Symbol("quadrature order")]
   physics = inputs[:physics]
+  props = physics[:material][:properties]
   physics = eval(Symbol(physics[:type]))(physics)
-  return Section(physics, block_name, quadrature_order)
+  props = eval(Symbol(props[:type]))(props)
+  return Section(block_name, quadrature_order, physics, props)
 end
 
 """
@@ -80,10 +103,11 @@ Section internals.
 ```block_name``` - Name of exodus block to construct section from.
 ```fspace``` - Function space for this element type
 """
-struct SectionInternal{P, F} <: AbstractSectionInternal{P, F}
-  physics::P
+struct SectionInternal{P, F, M} <: AbstractSectionInternal{P, F}
   block_name::String
   fspace::F
+  physics::P
+  props::M
 end
 
 """
@@ -98,8 +122,9 @@ function SectionInternal(mesh, dof, section)
   conns = Connectivity{size(conns), Vector}(conns)
   elem_type = element_type(mesh, section.block_name)
   fspace = NonAllocatedFunctionSpace(dof, conns, section.q_order, elem_type)
-  return SectionInternal(section.physics, section.block_name, fspace)
+  return SectionInternal(section.block_name, fspace, section.physics, section.props)
 end
 
 # exports
+export MaterialProperties
 export Section

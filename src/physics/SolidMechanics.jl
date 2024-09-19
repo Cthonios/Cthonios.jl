@@ -20,6 +20,8 @@ function SolidMechanics(inputs::Dict{Symbol, Any})
   return SolidMechanics(model, formulation)
 end
 
+init_properties(physics::SolidMechanics, props) = ConstitutiveModels.initialize_props(physics.material_model, props)
+
 """
 $(TYPEDSIGNATURES)
 Energy method at the quadrature level for
@@ -30,14 +32,13 @@ following integral
 \\Pi = \\int_\\Omega\\psi\\left(\\mathbf{F}\\right)d\\Omega
 ``
 """
-function energy(physics::SolidMechanics, cell, u_el)
+function energy(physics::SolidMechanics, cell, u_el, props)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   F_q = ∇u_q + one(∇u_q)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
   dt = 0.0
   θ = 0.0
   Q = SVector{0, Float64}()
@@ -58,14 +59,13 @@ following integral
 \\mathbf{f} = \\int_\\Omega\\mathbf{P}:\\delta\\mathbf{F}d\\Omega
 ``
 """
-function gradient(physics::SolidMechanics, cell, u_el)
+function gradient(physics::SolidMechanics, cell, u_el, props)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   F_q = ∇u_q + one(∇u_q)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
   dt = 0.0
   θ = 0.0
   Q = SVector{0, Float64}()
@@ -82,14 +82,13 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hessian(physics::SolidMechanics, cell, u_el)
+function hessian(physics::SolidMechanics, cell, u_el, props)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   F_q = ∇u_q + one(∇u_q)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
   dt = 0.0
   θ = 0.0
   Q = SVector{0, Float64}()

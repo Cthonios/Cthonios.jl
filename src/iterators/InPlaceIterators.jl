@@ -59,39 +59,25 @@ Iterator over a domain ```domain``` to fill a global value
 paramaters ```p```. This method is useful for filling
 quantities such as objectives, gradients, or hessians.
 """
-function domain_iterator!(global_val, f, domain, Uu, p::ObjectiveParameters)
+function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters)
+  update_field_bcs!(p.U, domain, p.Ubc)
   update_field_unknowns!(p.U, domain, Uu)
-  domain_iterator!(global_val, f, domain, p.U, p.Ubc, p.X)
-  return nothing
-end
 
-function domain_iterator!(global_val, f, domain::Domain, U::NodalField, Ubc, X::NodalField)
-  update_field_bcs!(U, domain, Ubc)
-  domain_iterator!(global_val, f, domain, U, X)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-Iterator over a domain ```domain``` to fill a global value
-```global_val``` based on a quadrature level function 
-```f``` provided a nodal field ```U``` and set of
-paramaters ```p```. This method is useful for filling
-quantities such as objectives, gradients, or hessians.
-"""
-function domain_iterator!(global_val, f, domain::Domain, U, X::NodalField)
   # loop over sections
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
+    ND, NN, NP, NS = size(section)
     fspace, physics = section.fspace, section.physics
     # loop over elements
     for e in 1:num_elements(fspace)
       dof_conn = dof_connectivity(fspace, e)
-      U_el = element_fields(section, U, dof_conn)
+      U_el = element_fields(section, p.U, dof_conn)
+      # props_el = element_props(section, p.props, section_name, e)
+      props_el = @views SVector{NP, eltype(p.props)}(p.props[section_name])
       local_val = scratch_variable(global_val, section)
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
-        interps = getindex(fspace, X, q, e)
-        local_val += f(physics, interps, U_el)
+        interps = getindex(fspace, p.X, q, e)
+        local_val += f(physics, interps, U_el, props_el)
       end
 
       # assembly
@@ -109,43 +95,30 @@ Iterator over a domain ```domain``` to fill a global value
 paramaters ```p```, and a vector ```V```. This method
 is useful for quantities such as hessian vector productions.
 """
+# function domain_iterator!(global_val, f, domain::Domain, U::NodalField, X::NodalField, V::NodalField)
 function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters, Vv)
+  update_field_bcs!(p.U, domain, p.Ubc)
   update_field_unknowns!(p.U, domain, Uu)
   update_field_unknowns!(p.hvp_scratch, domain, Vv)
-  domain_iterator!(global_val, f, domain, p.U, p.Ubc, p.X, p.hvp_scratch)
-  return nothing
-end
 
-function domain_iterator!(global_val, f, domain::Domain, U::NodalField, Ubc, X::NodalField, V::NodalField)
-  update_field_bcs!(U, domain, Ubc)
-  domain_iterator!(global_val, f, domain, U, X, V)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-Iterator over a domain ```domain``` to fill a global value
-```global_val``` based on a quadrature level function 
-```f``` provided a nodal field ```U```, a set of
-paramaters ```p```, and a vector ```V```. This method
-is useful for quantities such as hessian vector productions.
-"""
-function domain_iterator!(global_val, f, domain::Domain, U::NodalField, X::NodalField, V::NodalField)
   # update_field_bcs!(U, domain, Ubc)
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
+    ND, NN, NP, NS = size(section)
     fspace, physics = section.fspace, section.physics
+    
     # loop over elements
     for e in 1:num_elements(fspace)
       ND, NN, NP, NS = size(section)
       NF = num_dofs_per_node(section.fspace)
       dof_conn = dof_connectivity(fspace, e)
-      U_el = element_fields(section, U, dof_conn)
-      V_el = element_fields(section, V, dof_conn)
+      U_el = element_fields(section, p.U, dof_conn)
+      V_el = element_fields(section, p.hvp_scratch, dof_conn)
+      props_el = @views SVector{NP, eltype(p.props)}(p.props[section_name])
       local_val = zeros(SMatrix{NN * NF, NN * NF, eltype(global_val), NN * NF * NN * NF})
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
-        interps = getindex(fspace, X, q, e)
-        local_val += f(physics, interps, U_el)
+        interps = getindex(fspace, p.X, q, e)
+        local_val += f(physics, interps, U_el, props_el)
       end
       local_val = local_val * vec(V_el)
 

@@ -9,8 +9,12 @@
   ]
   sections = Section[
     Section(
+      "unnamed_block_1", 2,
       Cthonios.SolidMechanics(NeoHookean(), PlaneStrain()),
-      "unnamed_block_1", 2
+      MaterialProperties(
+        "bulk modulus"  => 0.833,
+        "shear modulus" => 0.3846
+      )
     )
   ]
   domain = Domain("window_pain_tri3.g", sections, bcs, 2)

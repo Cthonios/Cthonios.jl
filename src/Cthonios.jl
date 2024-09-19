@@ -3,6 +3,7 @@ module Cthonios
 using ArgParse
 using ComponentArrays
 using ConstitutiveModels
+using DifferentiationInterface
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
@@ -28,9 +29,12 @@ include("Sections.jl")
 include("TimeSteppers.jl")
 
 include("Domains.jl")
+
+include("contact/Contact.jl")
+
 include("Objectives.jl")
 
-include("Iterators.jl")
+include("iterators/Iterators.jl")
 include("solvers/Solvers.jl")
 
 include("Problems.jl")

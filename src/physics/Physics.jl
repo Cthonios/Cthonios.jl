@@ -25,3 +25,4 @@ include("SolidMechanics.jl")
 
 # exports
 export Poisson
+export SolidMechanics

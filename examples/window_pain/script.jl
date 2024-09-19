@@ -29,8 +29,12 @@ traction_bcs = [
 # sections
 sections = Section[
   Section(
-    Cthonios.SolidMechanics(NeoHookean(), PlaneStrain()),
-    "unnamed_block_1", 2
+    "unnamed_block_1", 2,
+    SolidMechanics(NeoHookean(), PlaneStrain()),
+    MaterialProperties(
+      "bulk modulus" => 0.833,
+      "shear modulus" => 1.0
+    )
   )
 ]
 domain = Domain(mesh_file, sections, disp_bcs, 2)

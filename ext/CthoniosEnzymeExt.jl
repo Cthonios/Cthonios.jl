@@ -1,31 +1,83 @@
 module CthoniosEnzymeExt
 
 using Cthonios
+using DifferentiationInterface
 using Enzyme
 using LinearAlgebra
 using Parameters
 using SparseArrays
 
-function gradient_deferred!(::ReverseMode, dΠ, dUu, dp, objective, Π, Uu, p)
+
+function gradient_deferred!(
+  dval, dUu, dp,
+  val, o, Uu, p
+)
   autodiff_deferred(
-    Reverse, Cthonios.objective!, 
-    Duplicated(Π, dΠ),
-    Const(objective),
+    Reverse, Cthonios.objective!,
+    Duplicated(val, dval),
+    Const(o),
     Duplicated(Uu, dUu),
     Duplicated(p, dp)
   )
   return nothing
 end
 
-function Cthonios.gradient(::ReverseMode, solver, Uu, p)
-  dUu = make_zero(Uu)
-  dp = make_zero(p)
-  Π = solver.o
-  dΠ = make_zero(Π)
-  dΠ .= one(eltype(dΠ))
-  gradient_deferred!(Reverse, dΠ, dUu, dp, solver.objective, Π, Uu, p)
-  return dUu, dp
+function Cthonios.grad_u(o::Objective, Uu, p)
+  val, dval = zeros(1), zeros(1)
+  dUu, dp = make_zero(Uu), make_zero(p)
+  gradient_deferred!(dval, dUu, dp, val, o, Uu, p)
+  dUu
 end
+
+function Cthonios.grad_p(o::Objective, Uu, p)
+  val, dval = zeros(1), zeros(1)
+  dUu, dp = make_zero(Uu), make_zero(p)
+  gradient_deferred!(dval, dUu, dp, val, o, Uu, p)
+  dp
+end
+
+function Cthonios.hvp_u(o::Objective, Uu, p, Vv)
+  val, dval = zeros(1), zeros(1)
+  grad_u, grad_p = make_zero(Uu), make_zero(p)
+  autodiff(
+    Forward, gradient_deferred!, Const(Reverse),
+    Duplicated(),
+    Const(o),
+    Duplicated(),
+    Duplicated()
+  )
+end
+
+# out of place objective methods
+# function Cthonios.grad_u(o::Objective, Uu, p)
+# # function Cthonios.grad_u(f, domain, Uu, p)
+#   backend = AutoEnzyme(Reverse)
+#   func = x -> Cthonios.objective(o, x, p)
+#   # func = x -> Cthonios.domain_iterator(f, domain, x, p)
+#   DifferentiationInterface.gradient(func, backend, Uu)
+# end
+
+
+# function gradient_deferred!(::ReverseMode, dΠ, dUu, dp, objective, Π, Uu, p)
+#   autodiff_deferred(
+#     Reverse, Cthonios.objective!, 
+#     Duplicated(Π, dΠ),
+#     Const(objective),
+#     Duplicated(Uu, dUu),
+#     Duplicated(p, dp)
+#   )
+#   return nothing
+# end
+
+# function Cthonios.gradient(::ReverseMode, solver, Uu, p)
+#   dUu = make_zero(Uu)
+#   dp = make_zero(p)
+#   Π = solver.o
+#   dΠ = make_zero(Π)
+#   dΠ .= one(eltype(dΠ))
+#   gradient_deferred!(Reverse, dΠ, dUu, dp, solver.objective, Π, Uu, p)
+#   return dUu, dp
+# end
 
 function Cthonios.solve!(warm_start::Cthonios.WarmStart, solver, objective, Uu, p)
   @info "Warm start"

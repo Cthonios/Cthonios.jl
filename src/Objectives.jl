@@ -32,6 +32,13 @@ function Objective(inputs::Dict{Symbol, Any}, domain, timer)
   return Objective(domain, value_func, grad_func, hess_func, timer)
 end
 
+function grad_u end
+function grad_p end
+function val_and_grad_u end
+function val_and_grad_p end
+function hvp_u end
+function hvp_p end
+
 timer(o::Objective) = o.timer
 
 """
@@ -47,11 +54,12 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, U2, U3} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, P, U2, U3} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
   Ubc::B
+  props::P
   # scratch arrays
   U::U2
   hvp_scratch::U3
@@ -70,10 +78,13 @@ function ObjectiveParameters(o::Objective, times)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
   update_dirichlet_vals!(Ubc, o.domain, X, times)
+  # properties
+  props = map(sec -> init_properties(sec.physics, sec.props.props), o.domain.sections)
+  props = ComponentArray(props)
   # scratch arrays
   hvp_scratch = create_fields(o.domain)
   params = ObjectiveParameters(
-    X, times, Ubc, 
+    X, times, Ubc, props,
     U, hvp_scratch
   )
   return params
@@ -140,8 +151,25 @@ function hvp!(Hv::NodalField, o::Objective, Uu, p::ObjectiveParameters, Vv)
   end
 end
 
+# """
+# $(TYPEDSIGNATURES)
+# """
+# function objective(o::Objective, Uu, p)
+#   # return domain_iterator(o.value, o.domain, Uu, p)
+#   return domain_iterator(energy, o.domain, Uu, p)
+# end
+
+# function grad_u(o::Objective, Uu, p, backend)
+#   # func = x -> objective(o, x, p)
+#   # DifferentiationInterface.gradient(func, backend, Uu)
+#   # DifferentiationInterface.gradient(x -> objective(o, x, p), backend, Uu)
+#   func = x -> domain_iterator(energy, o.domain, x, p)
+#   DifferentiationInterface.gradient(func, backend, Uu)
+# end
+
 """
 $(TYPEDSIGNATURES)
+Used in an ext
 """
 function objective(o::Objective, U::NodalField, Ubc, X::NodalField)
   val = zeros(1)
