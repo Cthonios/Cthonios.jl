@@ -90,6 +90,15 @@ function ObjectiveParameters(o::Objective, times)
   return params
 end
 
+function gradient(o::Objective, Uu, p)
+  @timeit timer(o) "Objective - gradient" begin
+    g = similar(p.hvp_scratch)
+    g .= zero(eltype(g))
+    gradient!(g, o, Uu, p)
+    return g[o.domain.dof.unknown_dofs]
+  end
+end
+
 """
 $(TYPEDSIGNATURES)
 """
@@ -102,18 +111,6 @@ function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
   end
 end
 
-# used in EnzymeExt
-"""
-$(TYPEDSIGNATURES)
-"""
-function gradient!(g, o::Objective, U, X::NodalField)
-  @timeit timer(o) "Objective - gradient!" begin
-    g .= zero(eltype(g))
-    domain_iterator!(g, o.gradient, o.domain, U, X)
-  end
-  return nothing
-end
-
 """
 $(TYPEDSIGNATURES)
 """
@@ -123,6 +120,15 @@ function hessian!(asm::FiniteElementContainers.StaticAssembler, o::Objective, Uu
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(asm, o.hessian, o.domain, Uu, p)
     return SparseArrays.sparse!(asm) |> Symmetric
+  end
+end
+
+function hvp(o::Objective, Uu, p, Vv)
+  @timeit timer(o) "Objective - hvp" begin
+    Hv = similar(p.hvp_scratch)
+    Hv .= zero(eltype(Hv))
+    hvp!(Hv, o, Uu, p, Vv)
+    return Hv[o.domain.dof.unknown_dofs]
   end
 end
 
@@ -167,14 +173,12 @@ end
 #   DifferentiationInterface.gradient(func, backend, Uu)
 # end
 
-"""
-$(TYPEDSIGNATURES)
-Used in an ext
-"""
-function objective(o::Objective, U::NodalField, Ubc, X::NodalField)
-  val = zeros(1)
-  domain_iterator!(val, o.value, o.domain, U, Ubc, X)
-  return val
+function objective(o::Objective, Uu, p)
+  @timeit timer(o) "Objective - objective" begin
+    val = zeros(1)
+    objective!(val, o, Uu, p)
+    return val[1]
+  end
 end
 
 """
@@ -185,8 +189,8 @@ function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
     val .= zero(eltype(val))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(val, o.value, o.domain, Uu, p)
+    return @views val[1]
   end
-  return @views val[1]
 end
 
 """
