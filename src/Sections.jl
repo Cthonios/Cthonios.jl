@@ -30,7 +30,7 @@ Abstract type for section internals.
 ```P``` corresponds to the ```physics```
 ```F``` corresponds to the ```formulation```
 """
-abstract type AbstractSectionInternal{P, F} <: AbstractSection end
+abstract type AbstractSectionInternal{F, P} <: AbstractSection end
 
 """
 $(TYPEDSIGNATURES)
@@ -103,8 +103,7 @@ Section internals.
 ```block_name``` - Name of exodus block to construct section from.
 ```fspace``` - Function space for this element type
 """
-struct SectionInternal{P, F, M} <: AbstractSectionInternal{P, F}
-  block_name::String
+struct SectionInternal{F, P <: AbstractPhysics, M} <: AbstractSectionInternal{F, P}
   fspace::F
   physics::P
   props::M
@@ -117,12 +116,23 @@ Constructor for ```SectionInternal```.
 ```dof``` - ```DofManager``` object.
 ```section``` - ```SectionInput``` object.
 """
-function SectionInternal(mesh, dof, section)
+function SectionInternal(mesh, dof::DofManager, section)
+  # TODO make more efficient somehow
+  elem_id_map = read_id_map(mesh.mesh_obj, ElementMap)
+  elem_range = 1:Exodus.num_elements(mesh.mesh_obj.init)
+  global_to_local = Dict{Int, Int}(zip(elem_id_map, elem_range))
+  block_elem_id_map = read_block_id_map(
+    mesh.mesh_obj, 
+    mesh.mesh_obj.block_name_dict[section.block_name]
+  )
+  block_elem_id_map = map(x -> global_to_local[x], block_elem_id_map)
+  # TODO make more efficient above
   conns = convert.(Int64, element_connectivity(mesh, section.block_name))
   conns = Connectivity{size(conns), Vector}(conns)
   elem_type = element_type(mesh, section.block_name)
-  fspace = NonAllocatedFunctionSpace(dof, conns, section.q_order, elem_type)
-  return SectionInternal(section.block_name, fspace, section.physics, section.props)
+  fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
+  props = init_properties(section.physics, section.props.props)
+  return SectionInternal(fspace, section.physics, props)
 end
 
 # exports

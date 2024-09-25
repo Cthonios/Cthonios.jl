@@ -19,8 +19,8 @@ you will need to run, ```update_unknown_dofs!```.
 ```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
   This is mainly for book-keeping purposes
 """
-struct Domain{M, D, S, DBCs, DDofs} <: AbstractDomain
-  mesh::M
+struct Domain{C, D, S, DBCs, DDofs} <: AbstractDomain
+  coords::C
   dof::D
   sections::S
   dirichlet_bcs::DBCs
@@ -50,7 +50,7 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   # setup bcs
   dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
   ddofs = Vector{Int}(undef, 0)
-  return Domain(mesh, dof, sections, dbcs, ddofs)
+  return Domain(coords, dof, sections, dbcs, ddofs)
 end
 
 function Domain(inputs::Dict{Symbol, Any})

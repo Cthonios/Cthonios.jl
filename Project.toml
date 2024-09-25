@@ -26,12 +26,17 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [weakdeps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 
 [extensions]
+CthoniosAdaptExt = ["Adapt"]
 CthoniosEnzymeExt = ["Enzyme"]
+CthoniosKernelAbstractionsExt = ["KernelAbstractions"]
 
 [compat]
+Adapt = "3, 4"
 Aqua = "0.8"
 ArgParse = "1"
 ComponentArrays = "0.15"
@@ -42,6 +47,7 @@ Enzyme = "0.12"
 Exodus = "0.13"
 FiniteElementContainers = "0.5"
 JET = "0.8"
+KernelAbstractions = "0.9"
 LDLFactorizations = "0.10"
 LimitedLDLFactorizations = "0.5"
 LinearAlgebra = "1"

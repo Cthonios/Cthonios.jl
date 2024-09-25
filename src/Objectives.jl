@@ -72,14 +72,13 @@ Constructor for a ```ObjectiveParameters``` type.
 ```times``` - Times object.
 """
 function ObjectiveParameters(o::Objective, times)
-  X = coordinates(o.domain.mesh)
-  X = NodalField{size(X), Vector}(X)
+  X = o.domain.coords
   U = create_fields(o.domain)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
   update_dirichlet_vals!(Ubc, o.domain, X, times)
   # properties
-  props = map(sec -> init_properties(sec.physics, sec.props.props), o.domain.sections)
+  props = map(sec -> sec.props, o.domain.sections)
   props = ComponentArray(props)
   # scratch arrays
   hvp_scratch = create_fields(o.domain)

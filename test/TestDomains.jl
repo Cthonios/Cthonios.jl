@@ -19,8 +19,7 @@
   domain = Domain("window_pain_tri3.g", sections, bcs, 2)
   time = ConstantTimeStepper(0.0, 1.0, 0.1)
   # test array setup
-  coords = coordinates(domain.mesh)
-  coords = NodalField{size(coords), Vector}(coords)
+  coords = domain.coords
   Uu = Cthonios.create_unknowns(domain)
   U = Cthonios.create_fields(domain)
   # TODO add size tests

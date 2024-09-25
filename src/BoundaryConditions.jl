@@ -74,7 +74,7 @@ function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   nodes = unique(nset.nodes)
   sort!(nodes)
   new_nodes = repeat(nodes, length(bc.dofs))
-  new_nodes = reshape(new_nodes, length(nodes), length(bc.dofs))' |> vec
+  new_nodes = reshape(new_nodes, length(nodes), length(bc.dofs))' |> vec |> collect 
 
   dofs = Int64[] # Could be an issue on GPU
   for node in nodes

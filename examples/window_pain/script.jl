@@ -40,8 +40,8 @@ sections = Section[
 domain = Domain(mesh_file, sections, disp_bcs, 2)
 objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
 p = ObjectiveParameters(objective, times)
-# solver = NewtonSolver(objective, p, DirectSolver, timer)
-solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=CholeskyPreconditioner)
+solver = NewtonSolver(objective, p, DirectSolver, timer)
+# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=CholeskyPreconditioner)
 # solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LDLPreconditioner)
 # solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LimitedLDLPreconditioner)
 

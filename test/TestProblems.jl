@@ -20,8 +20,7 @@
   domain = Domain("window_pain_tri3.g", sections, bcs, 2)
   asm = Cthonios.StaticAssembler(domain)
   Cthonios.update_unknown_dofs!(domain, asm)
-  coords = coordinates(domain.mesh)
-  coords = NodalField{size(coords), Vector}(coords)
+  coords = domain.coords
   time = ConstantTimeStepper(0.0, 1.0, 0.05)
 
   # constructors
@@ -62,8 +61,7 @@ end
   domain = Domain("window_pain_tri3.g", sections, bcs, 2)
   asm = Cthonios.StaticAssembler(domain)
   Cthonios.update_unknown_dofs!(domain, asm)
-  coords = coordinates(domain.mesh)
-  coords = NodalField{size(coords), Vector}(coords)
+  coords = domain.coords
   time = ConstantTimeStepper(0.0, 1.0, 0.05)
 
   # constructors
