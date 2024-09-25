@@ -17,18 +17,25 @@ Time stepper type with a constant time step.
 ```current_time_step``` - the current index of the time step.
 ```Δt``` - the time step to use for all time steps.
 """
-mutable struct ConstantTimeStepper{T <: Number} <: AbstractTimeStepper{T}
+struct ConstantTimeStepper{T, S <: Array{T, 1}, I <: Array{<:Integer, 1}} <: AbstractTimeStepper{T}
   start_time::T
   end_time::T
-  current_time::T
-  current_time_step::Int
-  Δt::T
+  current_time::S
+  current_time_step::I
+  Δt::S
 end
 
+current_time(t::ConstantTimeStepper) = t.current_time[1]
+end_time(t::ConstantTimeStepper) = t.end_time
+start_time(t::ConstantTimeStepper) = t.start_time
+time_step(t::ConstantTimeStepper) = t.Δt[1]
+
+# function 
+
 function ConstantTimeStepper(inputs::Dict{Symbol, Any})
-  start_time = inputs[Symbol("start time")]
-  end_time = inputs[Symbol("end time")]
-  Δt = inputs[Symbol("time increment")]
+  start_time = [inputs[Symbol("start time")]]
+  end_time = [inputs[Symbol("end time")]]
+  Δt = [inputs[Symbol("time increment")]]
   return ConstantTimeStepper(start_time, end_time, Δt)
 end
 
@@ -37,9 +44,9 @@ $(TYPEDSIGNATURES)
 Method to increment ```time.current_time``` by ```Δt```.
 """
 function step!(time::ConstantTimeStepper) 
-  temp = time.current_time + time.Δt
-  time.current_time = temp
-  time.current_time_step += 1
+  temp = current_time(time) + time_step(time)
+  time.current_time[1] = temp
+  time.current_time_step[1] += 1
   return nothing
 end
 
@@ -51,7 +58,7 @@ Method to construct a ```ConstantTimeStepper```.
 ```Δt``` - the time step to use for all time steps.
 """
 function ConstantTimeStepper(start_time::T, end_time::T, Δt::T) where T <: Number
-  return ConstantTimeStepper(start_time, end_time, start_time, 1, Δt)
+  return ConstantTimeStepper(start_time, end_time, [start_time], [1], [Δt])
 end
 
 function Base.show(io::IO, time::ConstantTimeStepper)

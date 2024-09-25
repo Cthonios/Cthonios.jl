@@ -17,7 +17,7 @@ function Adapt.adapt_structure(to, domain::Cthonios.Domain)
   dof = Adapt.adapt_structure(to, domain.dof)
   sections = Adapt.adapt_structure(to, domain.sections)
   # TODO what do we need to do with the BCs
-  dirichlet_bcs = domain.dirichlet_bcs
+  dirichlet_bcs = Adapt.adapt_structure(to, domain.dirichlet_bcs)
   dirichlet_dofs = Adapt.adapt_structure(to, domain.dirichlet_dofs)
   return Cthonios.Domain(coords, dof, sections, dirichlet_bcs, dirichlet_dofs)
 end
@@ -39,7 +39,8 @@ function Adapt.adapt_structure(to, p::Cthonios.ObjectiveParameters)
   props = Adapt.adapt_structure(to, p.props)
   U = Adapt.adapt_structure(to, p.U)
   hvp_scratch = Adapt.adapt_structure(to, p.hvp_scratch)
-  return ObjectiveParameters(X, t, Ubc, props, U, hvp_scratch)
+  q_vals_scratch = Adapt.adapt_structure(to, p.q_vals_scratch)
+  return ObjectiveParameters(X, t, Ubc, props, U, hvp_scratch, q_vals_scratch)
 end
 
 # problems

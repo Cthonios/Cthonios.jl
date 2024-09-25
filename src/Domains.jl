@@ -48,7 +48,16 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   end
   sections = NamedTuple(sections)
   # setup bcs
-  dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
+  # dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
+  dbcs = Dict{Symbol, Any}()
+  for bc in dbcs_in
+    name = bc.nset_name
+    for dof in bc.dofs
+      name = name * "_$dof"
+    end
+    dbcs[Symbol(name)] = DirichletBCInternal(mesh, bc, n_dofs)
+  end
+  dbcs = NamedTuple(dbcs)
   ddofs = Vector{Int}(undef, 0)
   return Domain(coords, dof, sections, dbcs, ddofs)
 end
@@ -101,7 +110,7 @@ Updates the values in Ubc with dirichlet boundary conditions in ```domain```.
 ```t``` - A scalar time value to use in the BC functions.
 """
 function update_dirichlet_vals!(Ubc, domain::Domain, X, t)
-  t = t.current_time
+  t = current_time(t)
   # inefficiency below TODO
   resize!(Ubc, 0)
   for bc in domain.dirichlet_bcs

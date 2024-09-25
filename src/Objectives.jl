@@ -54,7 +54,7 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, P, U2, U3} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, P, U2, U3, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
@@ -63,6 +63,7 @@ struct ObjectiveParameters{U1, T, B, P, U2, U3} <: AbstractObjectiveParameters
   # scratch arrays
   U::U2
   hvp_scratch::U3
+  q_vals_scratch::Q
 end
 
 """
@@ -82,9 +83,18 @@ function ObjectiveParameters(o::Objective, times)
   props = ComponentArray(props)
   # scratch arrays
   hvp_scratch = create_fields(o.domain)
+  # need a scratch array for calculating q values on gpus
+  # TODO move somewhere else
+  q_vals_scratch = Dict{Symbol, Any}()
+  for (name, sec) in pairs(o.domain.sections)
+    NQ = FiniteElementContainers.num_q_points(sec.fspace)
+    NE = FiniteElementContainers.num_elements(sec.fspace)
+    q_vals_scratch[name] = zeros(eltype(X), NQ, NE)
+  end
+  q_vals_scratch = ComponentArray(q_vals_scratch)
   params = ObjectiveParameters(
     X, times, Ubc, props,
-    U, hvp_scratch
+    U, hvp_scratch, q_vals_scratch
   )
   return params
 end

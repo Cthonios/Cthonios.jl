@@ -71,7 +71,8 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
       # TODO we may want more outputs
       write_fields(post_processor, p.U, 1)
 
-      while p.t.current_time < p.t.end_time
+      # while p.t.current_time < p.t.end_time
+      while current_time(p.t) < end_time(p.t)
         load_step_banner(prob, p.t)
         @timeit timer(prob) "Load step - solve!" begin
           if solver.use_warm_start
@@ -89,7 +90,7 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
         # post processing TODO lots todo
         @timeit timer(prob) "Load step - postprocess" begin
           update_field_unknowns!(p.U, objective.domain, Uu)
-          write_time(post_processor, n + 1, p.t.current_time)
+          write_time(post_processor, n + 1, current_time(p.t))
           write_fields(post_processor, p.U, n + 1)
         end
         n = n + 1

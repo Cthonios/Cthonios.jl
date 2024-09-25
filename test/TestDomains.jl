@@ -53,7 +53,7 @@
   Cthonios.update_dirichlet_vals!(Ubc, domain, coords, time)
 
   for bc in domain.dirichlet_bcs
-    vals = map(x -> bc.func(x, time.current_time), coords[:, bc.nodes])
+    vals = map(x -> bc.func(x, time.current_time[1]), coords[:, bc.nodes])
     for val in vals
       @test val in Ubc
     end
