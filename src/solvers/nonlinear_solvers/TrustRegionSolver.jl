@@ -195,7 +195,7 @@ function update_step_length_squared(alpha, zz, zd, dd)
   return zz + 2 * alpha * zd + alpha * alpha * dd
 end
 
-function solve_trust_region_minimization(x, r, hess_vec_func, P, trSize, settings)
+function solve_trust_region_minimization(solver, x, r, hess_vec_func, P, trSize, settings)
   # minimize r@z + 0.5*z@J@z
   z = 0. * x
   zz = 0.
@@ -207,6 +207,8 @@ function solve_trust_region_minimization(x, r, hess_vec_func, P, trSize, setting
   end
   
   Pr = P \ r
+  # Pr = solver.y_scratch_4
+  # ldiv!(Pr, P, r)
   d = -Pr
   cauchyP = d
   rPr = dot(r, Pr)
@@ -369,6 +371,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         @timeit timer(solver) "TrustRegionSolver - minimization" begin
           qNewtonPoint, _, stepType, cgIters = 
               solve_trust_region_minimization(
+                solver,
                 x, g,
                 hess_vec_func,
                 # objective.apply_precond,

@@ -131,6 +131,7 @@ function SectionInternal(mesh, dof::DofManager, section)
   conns = Connectivity{size(conns), Vector}(conns)
   elem_type = element_type(mesh, section.block_name)
   fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
+  # fspace = NonAllocatedFunctionSpace(dof, conns, section.q_order, elem_type)
   props = init_properties(section.physics, section.props.props)
   return SectionInternal(fspace, section.physics, props)
 end

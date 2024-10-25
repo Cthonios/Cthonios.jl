@@ -18,11 +18,12 @@ Energy method for Poisson equation at a quadrature point
 ``
 """
 function energy(physics::Poisson, cell, u_el, _)
+  u_el = reshape_field(physics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   u_q = u_el * N
   ∇u_q = u_el * ∇N_X
-  Π_q = 0.5 * dot(∇u_q, ∇u_q) - physics.func(X_q, 0.0) * u_q
-  return JxW * Π_q
+  Π_q = 0.5 * dot(∇u_q, ∇u_q) - physics.func(cell.X_q, 0.0) * u_q
+  return cell.JxW * Π_q
 end
 
 """
@@ -33,6 +34,7 @@ g\\left(u, v\\right) = \\int_\\Omega \\left[\\nabla u\\cdot\\nabla v - fv\\right
 ``
 """
 function gradient(physics::Poisson, cell, u_el, _)
+  u_el = reshape_field(physics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   ∇u_q = u_el * ∇N_X
   R_q = ∇u_q * ∇N_X' - N' * physics.func(X_q, 0.0)
@@ -47,6 +49,7 @@ H\\left(u, v\\right) = \\int_\\Omega \\left[\\nabla v\\cdot\\nabla v\\right]d\\O
 ``
 """
 function hessian(::Poisson, cell, u_el, _)
+  u_el = reshape_field(physics, cell, u_el)
   @unpack X_q, N, ∇N_X, JxW = cell
   K_q = ∇N_X * ∇N_X'
   return JxW * K_q

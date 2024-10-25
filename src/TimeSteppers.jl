@@ -17,7 +17,9 @@ Time stepper type with a constant time step.
 ```current_time_step``` - the current index of the time step.
 ```Δt``` - the time step to use for all time steps.
 """
-struct ConstantTimeStepper{T, S <: Array{T, 1}, I <: Array{<:Integer, 1}} <: AbstractTimeStepper{T}
+struct ConstantTimeStepper{
+  T, S <: AbstractArray{T, 1}, I <: AbstractArray{<:Integer, 1}
+} <: AbstractTimeStepper{T}
   start_time::T
   end_time::T
   current_time::S

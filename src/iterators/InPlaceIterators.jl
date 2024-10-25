@@ -12,9 +12,9 @@ $(TYPEDSIGNATURES)
 """
 function element_fields(section, U, dof_conn)
   _, NN, _, _ = size(section)
-  # NF = FiniteElementContainers.num_fields(U)
   NF = num_dofs_per_node(section.fspace)
-  U_el = SMatrix{NF, NN, eltype(U), NF * NN}(@views U[dof_conn])
+  # U_el = SMatrix{NF, NN, eltype(U), NF * NN}(@views U[dof_conn])
+  U_el = SVector{NF * NN, eltype(U)}(@views U[dof_conn])
   return U_el
 end
 
@@ -76,8 +76,10 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       local_val = scratch_variable(global_val, section)
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
+        # TODO need to modify this getindex. We can't trace this
         interps = getindex(fspace, p.X, q, e)
-        local_val += f(physics, interps, U_el, props_el)
+        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e]...)
+        local_val += f(physics, interps, U_el, p.t, state, props_el)
       end
 
       # assembly
@@ -117,8 +119,10 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       local_val = zeros(SMatrix{NN * NF, NN * NF, eltype(global_val), NN * NF * NN * NF})
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
+        # TODO need to modify this getindex. We can't trace this
         interps = getindex(fspace, p.X, q, e)
-        local_val += f(physics, interps, U_el, props_el)
+        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e]...)
+        local_val += f(physics, interps, U_el, p.t, state, props_el)
       end
       local_val = local_val * vec(V_el)
 

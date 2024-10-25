@@ -54,11 +54,13 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, P, U2, U3, Q} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, S, P, U2, U3, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
   Ubc::B
+  state_old::S
+  state_new::S
   props::P
   # scratch arrays
   U::U2
@@ -73,7 +75,7 @@ Constructor for a ```ObjectiveParameters``` type.
 ```times``` - Times object.
 """
 function ObjectiveParameters(o::Objective, times)
-  X = o.domain.coords
+  X = copy(o.domain.coords)
   U = create_fields(o.domain)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
@@ -86,14 +88,20 @@ function ObjectiveParameters(o::Objective, times)
   # need a scratch array for calculating q values on gpus
   # TODO move somewhere else
   q_vals_scratch = Dict{Symbol, Any}()
+  state_old = Dict{Symbol, Any}()
+  state_new = Dict{Symbol, Any}()
   for (name, sec) in pairs(o.domain.sections)
     NQ = FiniteElementContainers.num_q_points(sec.fspace)
     NE = FiniteElementContainers.num_elements(sec.fspace)
     q_vals_scratch[name] = zeros(eltype(X), NQ, NE)
+    state_old[name] = repeat(ConstitutiveModels.initialize_state(sec.physics.material_model), outer=(1, NQ, NE))
+    state_new[name] = repeat(ConstitutiveModels.initialize_state(sec.physics.material_model), outer=(1, NQ, NE))
   end
   q_vals_scratch = ComponentArray(q_vals_scratch)
+  state_old = ComponentArray(state_old)
+  state_new = ComponentArray(state_new)
   params = ObjectiveParameters(
-    X, times, Ubc, props,
+    X, times, Ubc, state_old, state_new, props,
     U, hvp_scratch, q_vals_scratch
   )
   return params

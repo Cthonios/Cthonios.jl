@@ -1,6 +1,7 @@
 module Cthonios
 
 using ArgParse
+using Atomix
 using ComponentArrays
 using ConstitutiveModels
 using DifferentiationInterface

@@ -48,11 +48,11 @@ $(TYPEDSIGNATURES)
 """
 function load_step_banner(::QuasiStaticProblem, times)
   @info "$(repeat('=', 96))"
-  @info "= Load step    $(times.current_time_step)"
-  @info "= Old Time     $(times.current_time)"
-  @info "= New Time     $(times.current_time + times.Δt)"
-  @info "= End Time     $(times.end_time)"
-  @info "= % Completete $(100.0 * (times.current_time + times.Δt) / times.end_time)"
+  @info "= Load step    $(times.current_time_step[1])"
+  @info "= Old Time     $(times.current_time[1])"
+  @info "= New Time     $(times.current_time[1] + times.Δt[1])"
+  @info "= End Time     $(times.end_time[1])"
+  @info "= % Completete $(100.0 * (times.current_time[1] + times.Δt[1]) / times.end_time[1])"
   @info "$(repeat('=', 96))"
 end
 
