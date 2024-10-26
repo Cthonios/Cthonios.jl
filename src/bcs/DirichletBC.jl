@@ -1,6 +1,3 @@
-abstract type AbstractBCInput end
-abstract type AbstractBCInternal end
-
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -85,6 +82,3 @@ function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   bc_internal = DirichletBCInternal(new_nodes, dofs, bc.func)
   return bc_internal
 end
-
-# exports
-export DirichletBC

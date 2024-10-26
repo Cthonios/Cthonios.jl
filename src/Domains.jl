@@ -19,12 +19,13 @@ you will need to run, ```update_unknown_dofs!```.
 ```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
   This is mainly for book-keeping purposes
 """
-struct Domain{C, D, S, DBCs, DDofs} <: AbstractDomain
+struct Domain{C, D, S, DBCs, DDofs, NBCs} <: AbstractDomain
   coords::C
   dof::D
   sections::S
   dirichlet_bcs::DBCs
   dirichlet_dofs::DDofs
+  neumann_bcs::NBCs
 end
 
 """
@@ -35,7 +36,7 @@ Constructor for a ```Domain``` type.
 ```dbcs_in``` - A set of ```DirichletBC```s.
 ```n_dofs``` - The number of dofs in the problem.
 """
-function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
+function Domain(mesh_file::String, sections_in, dbcs_in, nbcs_in, n_dofs::Int)
   mesh = FileMesh(ExodusDatabase, mesh_file)
   coords = coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
@@ -59,19 +60,28 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   end
   dbcs = NamedTuple(dbcs)
   ddofs = Vector{Int}(undef, 0)
-  return Domain(coords, dof, sections, dbcs, ddofs)
+
+  nbcs = Dict{Symbol, Any}()
+  for bc in nbcs_in
+    name = bc.sset_name
+    dbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)
+  end
+
+  return Domain(coords, dof, sections, dbcs, ddofs, nbcs)
 end
 
 function Domain(inputs::Dict{Symbol, Any})
   mesh_file = inputs[Symbol("mesh file")]
   dbcs = inputs[Symbol("dirichlet boundary conditions")]
   dbcs = map(bc -> eval(Symbol(bc[:type]))(bc), dbcs)
+  nbcs = inputs[Symbol("neumann boundary conditions")]
+  nbcs = map(bc -> eval(Symbol(bc[:type]))(bc), nbcs)
   sections = inputs[:sections]
   # TODO seperate physics and sections
   sections = map(section -> eval(Symbol(section[:type]))(section), sections)
   n_dofs = map(s -> num_fields(s.physics), sections)
   @assert all(n_dofs .== n_dofs[1])
-  return Domain(mesh_file, sections, dbcs, n_dofs[1])
+  return Domain(mesh_file, sections, dbcs, nbcs, n_dofs[1])
 end
 
 """

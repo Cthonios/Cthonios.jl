@@ -23,7 +23,7 @@ using YAML
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-include("BoundaryConditions.jl")
+include("bcs/BoundaryConditions.jl")
 include("physics/Physics.jl")
 include("PostProcessors.jl")
 include("Sections.jl")
