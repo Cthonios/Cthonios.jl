@@ -104,6 +104,8 @@ Section internals.
 ```fspace``` - Function space for this element type
 """
 struct SectionInternal{F, P <: AbstractPhysics, M} <: AbstractSectionInternal{F, P}
+  block_id::Int
+  q_order::Int
   fspace::F
   physics::P
   props::M
@@ -117,6 +119,7 @@ Constructor for ```SectionInternal```.
 ```section``` - ```SectionInput``` object.
 """
 function SectionInternal(mesh, dof::DofManager, section)
+  block_id = mesh.mesh_obj.block_name_dict[section.block_name] |> Int
   # TODO make more efficient somehow
   elem_id_map = read_id_map(mesh.mesh_obj, ElementMap)
   elem_range = 1:Exodus.num_elements(mesh.mesh_obj.init)
@@ -131,9 +134,51 @@ function SectionInternal(mesh, dof::DofManager, section)
   conns = Connectivity{size(conns), Vector}(conns)
   elem_type = element_type(mesh, section.block_name)
   fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
-  # fspace = NonAllocatedFunctionSpace(dof, conns, section.q_order, elem_type)
   props = init_properties(section.physics, section.props.props)
-  return SectionInternal(fspace, section.physics, props)
+  return SectionInternal(block_id, section.q_order, fspace, section.physics, props)
+end
+
+# neumann bc section
+function NeumannBCSectionInternal(mesh, dof::DofManager, section, bc)
+  # set up book keeping stuff
+  elem_ids = Vector{Int}(undef, 0)
+  conns = Vector{Int}(undef, 0)
+  num_nodes_per_side = Vector{Int}(undef, 0)
+  for (e, element) in enumerate(bc.elements)
+    # check if element in section
+    if element in section.fspace.elem_id_map
+      push!(elem_ids, element)
+      push!(num_nodes_per_side, bc.num_nodes_per_side[e])
+  
+      # need to collect connectivity
+      for n in 1:bc.num_nodes_per_side[e]
+        k = 2 * (e - 1) + n
+        push!(conns, bc.side_nodes[k])
+      end
+    else
+      continue
+    end
+  end
+
+  # check we gathered all the correct elements
+  @assert all(x -> x == num_nodes_per_side[1], num_nodes_per_side)
+
+  elem_id_map = read_id_map(mesh.mesh_obj, ElementMap)
+  elem_range = 1:Exodus.num_elements(mesh.mesh_obj.init)  
+  global_to_local = Dict{Int, Int}(zip(elem_id_map, elem_range))
+  block_elem_id_map = read_block_id_map(mesh.mesh_obj, section.block_id)
+  block_elem_id_map = map(x -> global_to_local[x], block_elem_id_map)
+
+  # reshape conns and make it a field
+  conns = Connectivity{num_nodes_per_side[1], length(elem_ids), Vector}(conns)
+
+  # TODO fix below
+  elem_type = typeof(section.fspace.ref_fe.surface_element)
+  elem_type = eval(Symbol(String(elem_type.name.name) * "$(num_nodes_per_side[1])"))
+  fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
+  # TODO is a dummy set always the right thing?
+  props = Dict{Symbol, Any}()
+  return SectionInternal(section.block_id, section.q_order, fspace, section.physics, props)
 end
 
 # exports

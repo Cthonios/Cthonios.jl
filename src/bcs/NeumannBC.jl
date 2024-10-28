@@ -23,6 +23,8 @@ end
 struct NeumannBCInternal{E, S, F} <: AbstractBCInternal
   elements::E
   sides::S
+  num_nodes_per_side::S
+  side_nodes::S
   func::F
 end
 
@@ -36,5 +38,7 @@ function NeumannBCInternal(mesh, bc::NeumannBC)
   sset = SideSet(mesh.mesh_obj, bc.sset_name)
   elements = sset.elements
   sides = sset.sides
-  return NeumannBCInternal(elements, sides, bc.func)
+  num_nodes_per_side = sset.num_nodes_per_side
+  side_nodes = sset.side_nodes
+  return NeumannBCInternal(elements, sides, num_nodes_per_side, side_nodes, bc.func)
 end

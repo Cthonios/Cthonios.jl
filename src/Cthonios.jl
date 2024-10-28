@@ -14,6 +14,7 @@ using LinearAlgebra
 using LinearSolve
 using Parameters
 using Printf
+using ReferenceFiniteElements
 using RuntimeGeneratedFunctions
 using SciMLOperators
 using SparseArrays

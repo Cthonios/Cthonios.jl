@@ -19,13 +19,14 @@ you will need to run, ```update_unknown_dofs!```.
 ```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
   This is mainly for book-keeping purposes
 """
-struct Domain{C, D, S, DBCs, DDofs, NBCs} <: AbstractDomain
+struct Domain{C, D, S, DBCs, DDofs, NBCs, NS} <: AbstractDomain
   coords::C
   dof::D
   sections::S
   dirichlet_bcs::DBCs
   dirichlet_dofs::DDofs
   neumann_bcs::NBCs
+  neumann_bc_sections::NS
 end
 
 """
@@ -64,10 +65,18 @@ function Domain(mesh_file::String, sections_in, dbcs_in, nbcs_in, n_dofs::Int)
   nbcs = Dict{Symbol, Any}()
   for bc in nbcs_in
     name = bc.sset_name
-    dbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)
+    nbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)
   end
+  nbcs = NamedTuple(nbcs)
 
-  return Domain(coords, dof, sections, dbcs, ddofs, nbcs)
+  nbc_sections = Dict{Symbol, Any}()
+  for (n, (section, bc)) in enumerate(Iterators.product(sections, nbcs))
+    sec_name = "neumann_bc_section_$n"
+    nbc_sections[Symbol(sec_name)] = NeumannBCSectionInternal(mesh, dof, section, bc)
+  end
+  nbc_sections = NamedTuple(nbc_sections)
+
+  return Domain(coords, dof, sections, dbcs, ddofs, nbcs, nbc_sections)
 end
 
 function Domain(inputs::Dict{Symbol, Any})

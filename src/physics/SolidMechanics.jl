@@ -90,3 +90,11 @@ function hessian(physics::SolidMechanics, u, ∇u, v, ∇v, X, props)
   A = extract_stiffness(physics.formulation, A)
   return ∇v * A * ∇v'
 end
+
+function neumann_bc_energy(physics::SolidMechanics)
+
+end
+
+function neumann_bc_gradient()
+
+end

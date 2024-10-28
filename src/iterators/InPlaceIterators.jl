@@ -85,6 +85,18 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       # assembly
       assemble!(global_val, fspace, block_num, e, local_val)
     end
+
+    # now go over neumann bcs to check if there's anything
+    # in this block. This is likely inefficient and can be re-factored
+    for bc in domain.neumann_bcs
+      # TODO need to fill everything out here
+      # for e in bc.elements
+      #   # TODO need to check if this element is in the block
+      # end
+      for e in bc.elements
+        # Do some work on these
+      end
+    end
   end
   return nothing
 end
