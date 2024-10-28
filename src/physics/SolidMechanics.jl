@@ -32,7 +32,7 @@ following integral
 \\Pi = \\int_\\Omega\\psi\\left(\\mathbf{F}\\right)d\\Omega
 ``
 """
-function energy(physics::SolidMechanics, u, ∇u, X, props)
+function energy(physics::SolidMechanics, u::T, ∇u, X, props) where T <: AbstractArray
   F = ∇u + one(∇u)
 
   # hardcoded for now

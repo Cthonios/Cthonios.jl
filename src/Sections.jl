@@ -49,6 +49,13 @@ function Base.size(section::AbstractSectionInternal)
   return ND, NN, NP, NS
 end
 
+# hack for now
+function num_nodes_per_side(section::AbstractSectionInternal)
+  return ReferenceFiniteElements.num_vertices(
+    section.fspace.ref_fe.surface_element
+  )
+end
+
 struct MaterialProperties{T}
   props::T
 end
@@ -138,6 +145,23 @@ function SectionInternal(mesh, dof::DofManager, section)
   return SectionInternal(block_id, section.q_order, fspace, section.physics, props)
 end
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+Section internals.
+```physics``` - Physics object to use in this section.
+```block_name``` - Name of exodus block to construct section from.
+```fspace``` - Function space for this element type
+"""
+struct NeumannBCSectionInternal{F, P <: AbstractPhysics, M, B} <: AbstractSectionInternal{F, P}
+  block_id::Int
+  q_order::Int
+  fspace::F
+  physics::P
+  props::M
+  bc::B
+end
+
 # neumann bc section
 function NeumannBCSectionInternal(mesh, dof::DofManager, section, bc)
   # set up book keeping stuff
@@ -173,12 +197,13 @@ function NeumannBCSectionInternal(mesh, dof::DofManager, section, bc)
   conns = Connectivity{num_nodes_per_side[1], length(elem_ids), Vector}(conns)
 
   # TODO fix below
-  elem_type = typeof(section.fspace.ref_fe.surface_element)
-  elem_type = eval(Symbol(String(elem_type.name.name) * "$(num_nodes_per_side[1])"))
+  elem_type = typeof(section.fspace.ref_fe.element)
+  # elem_type = eval(Symbol(String(elem_type.name.name) * "$(num_nodes_per_side[1])"))
+  elem_type = eval(elem_type.name.name)
   fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
   # TODO is a dummy set always the right thing?
   props = Dict{Symbol, Any}()
-  return SectionInternal(section.block_id, section.q_order, fspace, section.physics, props)
+  return NeumannBCSectionInternal(section.block_id, section.q_order, fspace, section.physics, props, bc)
 end
 
 # exports
