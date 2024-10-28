@@ -48,10 +48,6 @@ function scratch_variable(global_val::Vector, section)
   return zero(eltype(global_val))
 end
 
-function surface_scratch_variable(global_val::Vector, section)
-  return zero(eltype(global_val))
-end
-
 """
 $(TYPEDSIGNATURES)
 Setup a scratch variable for a force
@@ -65,15 +61,6 @@ function scratch_variable(global_val::T, section) where T <: Union{Matrix, Nodal
   return zeros(SVector{NF * NN, eltype(global_val)})
 end
 
-function surface_scratch_variable(global_val::T, section) where T <: Union{Matrix, NodalField}
-  # ND, NN, NP, NS = size(section)
-  NN = num_nodes_per_side(section)
-  NF = num_dofs_per_node(section.fspace)
-  # TODO change to SVector
-  # return zeros(SMatrix{NF, NN, eltype(global_val), NF * NN})
-  return zeros(SVector{NF * NN, eltype(global_val)})
-end
-
 """
 $(TYPEDSIGNATURES)
 Setup a scratch variable for a stiffness
@@ -81,13 +68,6 @@ like calculation
 """
 function scratch_variable(global_val::FiniteElementContainers.StaticAssembler, section)
   ND, NN, NP, NS = size(section)
-  NF = num_dofs_per_node(section.fspace)
-  return zeros(SMatrix{NF * NN, NF * NN, eltype(global_val.stiffnesses), NF * NN * NF * NN})
-end
-
-function surface_scratch_variable(global_val::FiniteElementContainers.StaticAssembler, section)
-  # ND, NN, NP, NS = size(section)
-  NN = num_nodes_per_side(section)
   NF = num_dofs_per_node(section.fspace)
   return zeros(SMatrix{NF * NN, NF * NN, eltype(global_val.stiffnesses), NF * NN * NF * NN})
 end
@@ -138,15 +118,10 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
     for e in 1:num_elements(fspace)
       X_el = surface_element_coordinates(section, p.X, e)
       U_el = surface_element_fields(section, p.U, e)
-      # props_el = nothing
       local_val = scratch_variable(global_val, section)
-      # for q in 1:num_q_points(fspace)
       for q in 1:ReferenceFiniteElements.num_quadrature_points(fspace.ref_fe.surface_element)
         face = section.bc.sides[e]
         interps = MappedSurfaceInterpolants(fspace.ref_fe, X_el, q, face)
-        # TODO what to do about state? Do we interpolate or just never pass it?
-        # state = nothing
-        # @show size(local_val)
         local_val += f(physics, bc, interps, U_el, p.t)
       end
 

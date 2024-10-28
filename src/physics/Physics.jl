@@ -34,23 +34,10 @@ function reshape_field(physics::AbstractPhysics, cell, U_el)
   return SMatrix{NF, NN, eltype(U_el), NF * NN}(U_el...)
 end
 
-# function reshape_surface_field(physics::AbstractPhysics, cell, U_el)
-#   NF = num_fields(physics)
-#   # NN = length(cell.N)
-#   # NN = num_nodes_per_side(section)
-#   NN = length(U_el) ÷ NF
-#   return SMatrix{NF, NN, eltype(U_el), NF * NN}(U_el...)
-# end
-
 function interpolate_field_values(physics::AbstractPhysics, cell, U_el)
   U_el = reshape_field(physics, cell, U_el)
   return U_el * cell.N
 end
-
-# function interpolate_field_values(physics::AbstractPhysics, cell, U_el)
-#   U_el = reshape_field(physics, cell, U_el)
-#   return U_el * cell.N
-# end
 
 function interpolate_field_gradients(physics::AbstractPhysics, cell, U_el)
   U_el = reshape_field(physics, cell, U_el)
@@ -100,6 +87,7 @@ end
 # e.g. gradient and hessian are not defined out of laziness
 # or difficulty (same thing really)
 
+# Neumann bc methods
 function energy(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
   @unpack X_q, N, N_reduced, JxW, n = cell
   # u_q = interpolate_field_values(physics, cell, u_el)
@@ -118,7 +106,6 @@ function gradient(::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
 end
 
 function hessian(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
-  # N = length(u_el)
   N = length(cell.N) * num_fields(physics)
   return zeros(SMatrix{N, N, eltype(u_el), N * N})
 end

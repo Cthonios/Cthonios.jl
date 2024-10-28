@@ -35,9 +35,9 @@ time_step(t::ConstantTimeStepper) = t.Δt[1]
 # function 
 
 function ConstantTimeStepper(inputs::Dict{Symbol, Any})
-  start_time = [inputs[Symbol("start time")]]
-  end_time = [inputs[Symbol("end time")]]
-  Δt = [inputs[Symbol("time increment")]]
+  start_time = inputs[Symbol("start time")]
+  end_time = inputs[Symbol("end time")]
+  Δt = inputs[Symbol("time increment")]
   return ConstantTimeStepper(start_time, end_time, Δt)
 end
 

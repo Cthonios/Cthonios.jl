@@ -257,8 +257,7 @@ function solve_trust_region_minimization(solver, x, r, hess_vec_func, P, trSize,
     zd, dd = cg_inner_products(alpha, beta, zd, dd, rPr, z, d)
   end 
         
-  return z, cauchyP, interiorString+'_', i+1
-
+  return z, cauchyP, interiorString * "_", settings.max_cg_iters
 end
 
 function dogleg_step(cp, newtonP, trSize, mat_mul)
@@ -353,8 +352,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
           cauchyPoint = alpha * g
           cauchyPointNormSquared = dot(cauchyPoint, mult_by_approx_hessian(cauchyPoint))
         else
-          cauchyPoint =  -g * (trSize / sqrt.(dot(g, mult_by_approx_hessian(g))))
-          cauchyPointNormSquared = trSize * trSize
+          cauchyPoint =  -g * (tr_size / sqrt.(dot(g, mult_by_approx_hessian(g))))
+          cauchyPointNormSquared = tr_size * tr_size
           @info "negative curvature unpreconditioned cauchy point direction found."
         end
       end
@@ -362,7 +361,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
       # solve minimize
       if cauchyPointNormSquared >= tr_size*tr_size
         @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt.(cauchyPointNormSquared))"
-        cauchyPoint *= (tr_Size / sqrt(cauchyPointNormSquared))
+        cauchyPoint *= (tr_size / sqrt(cauchyPointNormSquared))
         cauchyPointNormSquared = tr_size * tr_size
         qNewtonPoint = cauchyPoint
         stepType = boundaryString
@@ -432,7 +431,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         realResNorm = norm(gy)
 
         willAccept = rho >= settings.η_1 || 
-                     (rho >= -0 && realResNorm <= gNorm)
+                     (rho >= -0 && realResNorm <= g_norm)
         print_min_banner(
           realObjective, modelObjective,
           realResNorm, modelResNorm,
@@ -469,7 +468,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
         if tr_size < settings.min_tr_size
 
-          if not triedNewPrecond
+          if !triedNewPrecond
             @info "The trust region is too small, updating precond and trying again."
             update_preconditioner!(solver.preconditioner, solver.objective, x, p)
             P = solver.preconditioner.preconditioner
