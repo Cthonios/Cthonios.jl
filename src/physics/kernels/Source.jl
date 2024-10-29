@@ -8,12 +8,12 @@ end
 
 function energy(physics::Source, u::T, ∇u, X, t, Z, props) where T
   b = physics.func(X, current_time(t))
-  return dot(b, u)
+  return -dot(b, u)
 end
 
 function gradient(physics::Source, u, ∇u, v, ∇v, X, t, Z, props)
   b = physics.func(X, current_time(t))
-  R = b * v'
+  R = -b * v'
   return R
 end
 

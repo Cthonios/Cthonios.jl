@@ -4,16 +4,17 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 # TODO create source term kernel
 """
-struct Poisson{Form, F} <: AbstractPhysics{1, 0, 0}
+struct Poisson{Form, S} <: AbstractPhysics{1, 0, 0}
   formulation::Form
   laplacian::Laplacian{1}
-  func::F
+  source::S
 end
 
 function Poisson(f)
   formulation = ScalarFormulation()
   laplacian = Laplacian{1}()
-  return Poisson{typeof(formulation), typeof(f)}(formulation, laplacian, f)
+  source = Source{1}(f)
+  return Poisson(formulation, laplacian, source)
 end
 
 init_properties(physics::Poisson, props) = zeros(num_properties(physics))
@@ -27,7 +28,8 @@ Energy method for Poisson equation at a quadrature point
 ``
 """
 function energy(physics::Poisson, u::T, ∇u, X, t, Z, props) where T <: AbstractArray
-  Π = 0.5 * dot(∇u, ∇u) - physics.func(X, 0.0) * u
+  Π = energy(physics.laplacian, u, ∇u, X, t, Z, props) + 
+      energy(physics.source, u, ∇u, X, t, Z, props)
   return Π
 end
 
@@ -39,7 +41,8 @@ g\\left(u, v\\right) = \\int_\\Omega \\left[\\nabla u\\cdot\\nabla v - fv\\right
 ``
 """
 function gradient(physics::Poisson, u, ∇u, v, ∇v, X, t, Z, props)
-  R = ∇u * ∇v' - v' * physics.func(X, 0.0)
+  R = gradient(physics.laplacian, u, ∇u, v, ∇v, X, t, Z, props) + 
+      gradient(physics.source, u, ∇u, v, ∇v, X, t, Z, props)
   return R[:]
 end
 
@@ -51,6 +54,7 @@ H\\left(u, v\\right) = \\int_\\Omega \\left[\\nabla v\\cdot\\nabla v\\right]d\\O
 ``
 """
 function hessian(physics::Poisson, u, ∇u, v, ∇v, X, t, Z, props)
-  K = ∇v * ∇v'
+  K = hessian(physics.laplacian, u, ∇u, v, ∇v, X, t, Z, props) + 
+      hessian(physics.source, u, ∇u, v, ∇v, X, t, Z, props)
   return K
 end
