@@ -32,6 +32,13 @@ function Objective(inputs::Dict{Symbol, Any}, domain, timer)
   return Objective(domain, value_func, grad_func, hess_func, timer)
 end
 
+function grad_u end
+function grad_p end
+function val_and_grad_u end
+function val_and_grad_p end
+function hvp_u end
+function hvp_p end
+
 timer(o::Objective) = o.timer
 
 """
@@ -47,14 +54,19 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, U2, U3} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
-  Ubc::B
+  Ubc::B # dirichlet bc design parameters
+  nbc::N # neumann bc design parameters
+  state_old::S
+  state_new::S
+  props::P
   # scratch arrays
   U::U2
   hvp_scratch::U3
+  q_vals_scratch::Q
 end
 
 """
@@ -64,19 +76,47 @@ Constructor for a ```ObjectiveParameters``` type.
 ```times``` - Times object.
 """
 function ObjectiveParameters(o::Objective, times)
-  X = coordinates(o.domain.mesh)
-  X = NodalField{size(X), Vector}(X)
+  X = copy(o.domain.coords)
   U = create_fields(o.domain)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
+  nbc = Vector{SVector{size(X, 1), eltype(X)}}(undef, 0)
   update_dirichlet_vals!(Ubc, o.domain, X, times)
+  update_neumann_vals!(nbc, o.domain, X, times)
+  # properties
+  props = map(sec -> sec.props, o.domain.sections)
+  props = ComponentArray(props)
   # scratch arrays
   hvp_scratch = create_fields(o.domain)
+  # need a scratch array for calculating q values on gpus
+  # TODO move somewhere else
+  q_vals_scratch = Dict{Symbol, Any}()
+  state_old = Dict{Symbol, Any}()
+  state_new = Dict{Symbol, Any}()
+  for (name, sec) in pairs(o.domain.sections)
+    NQ = FiniteElementContainers.num_q_points(sec.fspace)
+    NE = FiniteElementContainers.num_elements(sec.fspace)
+    q_vals_scratch[name] = zeros(eltype(X), NQ, NE)
+    state_old[name] = repeat(ConstitutiveModels.initialize_state(sec.physics.material_model), outer=(1, NQ, NE))
+    state_new[name] = repeat(ConstitutiveModels.initialize_state(sec.physics.material_model), outer=(1, NQ, NE))
+  end
+  q_vals_scratch = ComponentArray(q_vals_scratch)
+  state_old = ComponentArray(state_old)
+  state_new = ComponentArray(state_new)
   params = ObjectiveParameters(
-    X, times, Ubc, 
-    U, hvp_scratch
+    X, times, Ubc, nbc, state_old, state_new, props,
+    U, hvp_scratch, q_vals_scratch
   )
   return params
+end
+
+function gradient(o::Objective, Uu, p)
+  @timeit timer(o) "Objective - gradient" begin
+    g = similar(p.hvp_scratch)
+    g .= zero(eltype(g))
+    gradient!(g, o, Uu, p)
+    return g[o.domain.dof.unknown_dofs]
+  end
 end
 
 """
@@ -91,18 +131,6 @@ function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
   end
 end
 
-# used in EnzymeExt
-"""
-$(TYPEDSIGNATURES)
-"""
-function gradient!(g, o::Objective, U, X::NodalField)
-  @timeit timer(o) "Objective - gradient!" begin
-    g .= zero(eltype(g))
-    domain_iterator!(g, o.gradient, o.domain, U, X)
-  end
-  return nothing
-end
-
 """
 $(TYPEDSIGNATURES)
 """
@@ -112,6 +140,15 @@ function hessian!(asm::FiniteElementContainers.StaticAssembler, o::Objective, Uu
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(asm, o.hessian, o.domain, Uu, p)
     return SparseArrays.sparse!(asm) |> Symmetric
+  end
+end
+
+function hvp(o::Objective, Uu, p, Vv)
+  @timeit timer(o) "Objective - hvp" begin
+    Hv = similar(p.hvp_scratch)
+    Hv .= zero(eltype(Hv))
+    hvp!(Hv, o, Uu, p, Vv)
+    return Hv[o.domain.dof.unknown_dofs]
   end
 end
 
@@ -140,13 +177,28 @@ function hvp!(Hv::NodalField, o::Objective, Uu, p::ObjectiveParameters, Vv)
   end
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function objective(o::Objective, U::NodalField, Ubc, X::NodalField)
-  val = zeros(1)
-  domain_iterator!(val, o.value, o.domain, U, Ubc, X)
-  return val
+# """
+# $(TYPEDSIGNATURES)
+# """
+# function objective(o::Objective, Uu, p)
+#   # return domain_iterator(o.value, o.domain, Uu, p)
+#   return domain_iterator(energy, o.domain, Uu, p)
+# end
+
+# function grad_u(o::Objective, Uu, p, backend)
+#   # func = x -> objective(o, x, p)
+#   # DifferentiationInterface.gradient(func, backend, Uu)
+#   # DifferentiationInterface.gradient(x -> objective(o, x, p), backend, Uu)
+#   func = x -> domain_iterator(energy, o.domain, x, p)
+#   DifferentiationInterface.gradient(func, backend, Uu)
+# end
+
+function objective(o::Objective, Uu, p)
+  @timeit timer(o) "Objective - objective" begin
+    val = zeros(1)
+    objective!(val, o, Uu, p)
+    return val[1]
+  end
 end
 
 """
@@ -157,8 +209,8 @@ function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
     val .= zero(eltype(val))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(val, o.value, o.domain, Uu, p)
+    return @views val[1]
   end
-  return @views val[1]
 end
 
 """
@@ -174,6 +226,14 @@ $(TYPEDSIGNATURES)
 """
 function update_dirichlet_vals!(p::ObjectiveParameters, o::Objective)
   update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_neumann_vals!(p::ObjectiveParameters, o::Objective)
+  update_neumann_vals!(p.nbc, o.domain, p.X, p.t)
   return nothing
 end
 

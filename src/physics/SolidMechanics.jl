@@ -20,6 +20,8 @@ function SolidMechanics(inputs::Dict{Symbol, Any})
   return SolidMechanics(model, formulation)
 end
 
+init_properties(physics::SolidMechanics, props) = ConstitutiveModels.initialize_props(physics.material_model, props)
+
 """
 $(TYPEDSIGNATURES)
 Energy method at the quadrature level for
@@ -30,22 +32,19 @@ following integral
 \\Pi = \\int_\\Omega\\psi\\left(\\mathbf{F}\\right)d\\Omega
 ``
 """
-function energy(physics::SolidMechanics, cell, u_el)
-  @unpack X_q, N, ∇N_X, JxW = cell
-  ∇u_q = u_el * ∇N_X
-  ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-  F_q = ∇u_q + one(∇u_q)
+function energy(physics::SolidMechanics, u::T, ∇u, X, t, Z, props) where T <: AbstractArray
+  F = ∇u + one(∇u)
+  dt = time_step(t)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
-  dt = 0.0
+  # dt = 0.0
   θ = 0.0
-  Q = SVector{0, Float64}()
+  # Q = SVector{0, Float64}()
 
   ψ, Q = ConstitutiveModels.helmholtz_free_energy(
-    physics.material_model, props, dt, F_q, θ, Q
+    physics.material_model, props, dt, F, θ, Z
   )
-  return JxW * ψ
+  return ψ
 end
 
 """
@@ -58,47 +57,39 @@ following integral
 \\mathbf{f} = \\int_\\Omega\\mathbf{P}:\\delta\\mathbf{F}d\\Omega
 ``
 """
-function gradient(physics::SolidMechanics, cell, u_el)
-  @unpack X_q, N, ∇N_X, JxW = cell
-  ∇u_q = u_el * ∇N_X
-  ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-  F_q = ∇u_q + one(∇u_q)
+function gradient(physics::SolidMechanics, u, ∇u, v, ∇v, X, t, Z, props)
+  F = ∇u + one(∇u)
+  dt = time_step(t)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
-  dt = 0.0
+  # dt = 0.0
   θ = 0.0
-  Q = SVector{0, Float64}()
+  # Q = SVector{0, Float64}()
 
   # constitutive
-  P_q, state_new_q = ConstitutiveModels.pk1_stress(
-    physics.material_model, props, dt, F_q, θ, Q
+  P, Q = ConstitutiveModels.pk1_stress(
+    physics.material_model, props, dt, F, θ, Z
   )
-  P_v = extract_stress(physics.formulation, P_q) 
-  G = discrete_gradient(physics.formulation, ∇N_X)
-  return JxW * G * P_v#, state_new_q
+  P = extract_stress(physics.formulation, P)
+  return ∇v * P
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function hessian(physics::SolidMechanics, cell, u_el)
-  @unpack X_q, N, ∇N_X, JxW = cell
-  ∇u_q = u_el * ∇N_X
-  ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-  F_q = ∇u_q + one(∇u_q)
+function hessian(physics::SolidMechanics, u, ∇u, v, ∇v, X, t, Z, props)
+  F = ∇u + one(∇u)
+  dt = time_step(t)
 
   # hardcoded for now
-  props = SVector{2, Float64}((0.833, 0.3846))
-  dt = 0.0
+  # dt = 0.0
   θ = 0.0
-  Q = SVector{0, Float64}()
+  # Q = SVector{0, Float64}()
 
   # constitutive
-  A_q, state_new_q = ConstitutiveModels.material_tangent(
-    physics.material_model, props, dt, F_q, θ, Q
+  A, Q = ConstitutiveModels.material_tangent(
+    physics.material_model, props, dt, F, θ, Z
   )
-  A_v = extract_stiffness(physics.formulation, A_q) 
-  G = discrete_gradient(physics.formulation, ∇N_X)
-  return JxW * G * A_v * G'#, state_new_q
+  A = extract_stiffness(physics.formulation, A)
+  return ∇v * A * ∇v'
 end

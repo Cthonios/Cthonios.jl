@@ -1,8 +1,9 @@
 @testset ExtendedTestSet "Sections" begin
   sections = Section[
     Section(
+      "unnamed_block_1", 1,
       Cthonios.Poisson((x, t) -> 1.0),
-      "unnamed_block_1", 1
+      MaterialProperties()
     )
   ]
   @show sections
@@ -12,8 +13,12 @@
 
   sections = Section[
     Section(
+      "unnamed_block_1", 2,
       Cthonios.SolidMechanics(NeoHookean(), PlaneStrain()),
-      "unnamed_block_1", 2
+      MaterialProperties(
+        "bulk modulus"  => 0.833,
+        "shear modulus" => 0.3846
+      )
     )
   ]
   @test Cthonios.num_fields(sections[1].physics) == 2

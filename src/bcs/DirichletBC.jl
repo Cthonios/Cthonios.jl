@@ -1,6 +1,3 @@
-abstract type AbstractBCInput end
-abstract type AbstractBCInternal end
-
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -74,7 +71,7 @@ function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   nodes = unique(nset.nodes)
   sort!(nodes)
   new_nodes = repeat(nodes, length(bc.dofs))
-  new_nodes = reshape(new_nodes, length(nodes), length(bc.dofs))' |> vec
+  new_nodes = reshape(new_nodes, length(nodes), length(bc.dofs))' |> vec |> collect 
 
   dofs = Int64[] # Could be an issue on GPU
   for node in nodes
@@ -85,6 +82,3 @@ function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   bc_internal = DirichletBCInternal(new_nodes, dofs, bc.func)
   return bc_internal
 end
-
-# exports
-export DirichletBC

@@ -19,12 +19,14 @@ you will need to run, ```update_unknown_dofs!```.
 ```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
   This is mainly for book-keeping purposes
 """
-struct Domain{M, D, S, DBCs, DDofs} <: AbstractDomain
-  mesh::M
+struct Domain{C, D, S, DBCs, DDofs, NBCs, NS} <: AbstractDomain
+  coords::C
   dof::D
   sections::S
   dirichlet_bcs::DBCs
   dirichlet_dofs::DDofs
+  neumann_bcs::NBCs
+  neumann_bc_sections::NS
 end
 
 """
@@ -35,7 +37,7 @@ Constructor for a ```Domain``` type.
 ```dbcs_in``` - A set of ```DirichletBC```s.
 ```n_dofs``` - The number of dofs in the problem.
 """
-function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
+function Domain(mesh_file::String, sections_in, dbcs_in, nbcs_in, n_dofs::Int)
   mesh = FileMesh(ExodusDatabase, mesh_file)
   coords = coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
@@ -48,21 +50,47 @@ function Domain(mesh_file::String, sections_in, dbcs_in, n_dofs::Int)
   end
   sections = NamedTuple(sections)
   # setup bcs
-  dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
+  # dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
+  dbcs = Dict{Symbol, Any}()
+  for bc in dbcs_in
+    name = bc.nset_name
+    for dof in bc.dofs
+      name = name * "_$dof"
+    end
+    dbcs[Symbol(name)] = DirichletBCInternal(mesh, bc, n_dofs)
+  end
+  dbcs = NamedTuple(dbcs)
   ddofs = Vector{Int}(undef, 0)
-  return Domain(mesh, dof, sections, dbcs, ddofs)
+
+  nbcs = Dict{Symbol, Any}()
+  for bc in nbcs_in
+    name = bc.sset_name
+    nbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)
+  end
+  nbcs = NamedTuple(nbcs)
+
+  nbc_sections = Dict{Symbol, Any}()
+  for (n, (section, bc)) in enumerate(Iterators.product(sections, nbcs))
+    sec_name = "neumann_bc_section_$n"
+    nbc_sections[Symbol(sec_name)] = NeumannBCSectionInternal(mesh, dof, section, bc)
+  end
+  nbc_sections = NamedTuple(nbc_sections)
+
+  return Domain(coords, dof, sections, dbcs, ddofs, nbcs, nbc_sections)
 end
 
 function Domain(inputs::Dict{Symbol, Any})
   mesh_file = inputs[Symbol("mesh file")]
   dbcs = inputs[Symbol("dirichlet boundary conditions")]
   dbcs = map(bc -> eval(Symbol(bc[:type]))(bc), dbcs)
+  nbcs = inputs[Symbol("neumann boundary conditions")]
+  nbcs = map(bc -> eval(Symbol(bc[:type]))(bc), nbcs)
   sections = inputs[:sections]
   # TODO seperate physics and sections
   sections = map(section -> eval(Symbol(section[:type]))(section), sections)
   n_dofs = map(s -> num_fields(s.physics), sections)
   @assert all(n_dofs .== n_dofs[1])
-  return Domain(mesh_file, sections, dbcs, n_dofs[1])
+  return Domain(mesh_file, sections, dbcs, nbcs, n_dofs[1])
 end
 
 """
@@ -101,7 +129,7 @@ Updates the values in Ubc with dirichlet boundary conditions in ```domain```.
 ```t``` - A scalar time value to use in the BC functions.
 """
 function update_dirichlet_vals!(Ubc, domain::Domain, X, t)
-  t = t.current_time
+  t = current_time(t)
   # inefficiency below TODO
   resize!(Ubc, 0)
   for bc in domain.dirichlet_bcs
@@ -111,6 +139,23 @@ function update_dirichlet_vals!(Ubc, domain::Domain, X, t)
       push!(Ubc, val)
     end
   end
+  return nothing
+end
+
+function update_neumann_vals!(nbc, domain::Domain, X, t)
+  t = current_time(t)
+  resize!(nbc, 0)
+  for sec in domain.neumann_bc_sections
+    for e in 1:length(sec.bc.elements)
+      X_el = surface_element_coordinates(sec, X, e)
+      for q in 1:ReferenceFiniteElements.num_quadrature_points(sec.fspace.ref_fe.surface_element)
+        interps = MappedSurfaceInterpolants(sec.fspace.ref_fe, X_el, q, sec.bc.sides[e])
+        X_q = interps.X_q
+        val = sec.bc.func(X_q, t)
+        push!(nbc, val)
+      end
+    end
+  end 
   return nothing
 end
 

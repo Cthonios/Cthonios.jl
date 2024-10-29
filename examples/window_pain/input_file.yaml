@@ -25,6 +25,7 @@ problems:
         material:
           type: NeoHookean
           properties:
+            type: MaterialProperties
             bulk modulus: 50.0
             shear modulus: 1.0
         formulation:
@@ -42,7 +43,8 @@ problems:
   nonlinear solver:
     type: TrustRegionSolver
     preconditioner: 
-      type: CholeskyPreconditioner
+      # type: CholeskyPreconditioner
+      type: LDLPreconditioner
   postprocessor:
     type: ExodusPostProcessor
     output file: output.e

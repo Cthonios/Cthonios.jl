@@ -102,390 +102,391 @@ function TrustRegionSolver(
   )
 end
 
-# TODO setup warm start
-function TrustRegionSolver(inputs::Dict{Symbol, Any}, objective, p, timer; use_warm_start=false)
-  @timeit timer "TrustRegionSolver - setup" begin
-    domain = objective.domain
-    settings       = TrustRegionSolverSettings() # TODO add non-defaults
-    precon_inputs = inputs[:preconditioner]
-    precon = eval(Symbol(precon_inputs[:type]))(objective, p, timer)
-    ΔUu            = create_unknowns(domain)
-    warm_start     = WarmStart(objective)
-    o              = zeros(1)
-    g              = create_fields(domain) # gradient
-    Hv             = create_fields(domain) # hessian-vector product
-    cauchy_point   = create_unknowns(domain)
-    q_newton_point = create_unknowns(domain)
-    d              = create_unknowns(domain)
-    y_scratch_1    = create_unknowns(domain)
-    y_scratch_2    = create_unknowns(domain)
-    y_scratch_3    = create_unknowns(domain)
-    y_scratch_4    = create_unknowns(domain)
-  end
-  return TrustRegionSolver(
-    precon, objective,
-    ΔUu,
-    timer,
-    warm_start,
-    o, g, Hv,
-    cauchy_point, q_newton_point, d,
-    y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
-    use_warm_start,
-    settings
-  )
-end
-
 timer(solver::TrustRegionSolver) = solver.timer
 
-function Base.show(io::IO, solver::TrustRegionSolver)
-  print(io, 
-    "    TrustRegionSolver\n", 
-    "    $(solver.settings)\n"
-  )
-end
+negCurveString = "neg curve"
+boundaryString = "boundary"
+interiorString = "interior"
 
-function logger(
-  ::TrustRegionSolver,
-  real_obj, model_obj,
-  real_res, model_res,
-  cg_iters, tr_size, accept, step_type
-)
-
-  str = @sprintf "O = %1.4e  O_M = %1.4e  ||R|| = %1.4e  ||R_R|| = %1.4e  CG = %3i  TR = %1.4e accept = %s %s" real_obj model_obj real_res model_res cg_iters tr_size accept step_type
-  @info str
-end
-
-function is_converged(
-  solver::TrustRegionSolver,
-  real_obj, model_obj,
-  real_res, model_res,
-  cg_iters, tr_size, step_type
-)
-
-  gg = dot(real_res, real_res)
-
-  if gg < solver.settings.tol^2
-    model_res_norm = norm(model_res)
-    real_res_norm  = sqrt(gg)
-    logger(solver, real_obj, model_obj, real_res_norm, model_res_norm, cg_iters, tr_size, true, step_type)
-
-    if solver.settings.check_stability
-      @assert false "not supported yet"
+function is_converged(objective, x, realO, modelO, realRes, modelRes, cgIters, trSize, settings)
+  gg = dot(realRes, realRes)
+  if gg < settings.tol^2
+    modelResNorm = norm(modelRes)
+    realResNorm = sqrt(gg)
+    print_min_banner(
+      realO, modelO,
+      realResNorm,
+      modelResNorm,
+      cgIters,
+      trSize,
+      interiorString,
+      true,
+      settings
+    )
+    @info "Converged"
+    if settings.check_stability
+      @assert false "hook this up"
+      # objective.check_stability(x)
     end
-
+    println("") # a bit of output formatting
+        
     return true
   end
-
   return false
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
-  @timeit timer(solver) "TrustRegionSolver - calculate_cauchy_point!" begin
-    y_scratch_1 = solver.y_scratch_1
-    gHg = dot(g, Hg)
-    if gHg > 0
-      α = -dot(g, g) / gHg
-      @. cauchy_point = α * g
-      ldiv!(y_scratch_1, P, cauchy_point)
-      cauchy_point_norm_squared = dot(cauchy_point, y_scratch_1)
-    else
-      ldiv!(y_scratch_1, P, g)
-      @. cauchy_point = -g * (tr_size / sqrt(dot(g, y_scratch_1)))
-      @info "negative curavture unpreconditioned cauchy point direction found."
-    end
-  end
-  return cauchy_point_norm_squared
+function is_on_boundary(stepType)
+  return stepType==boundaryString || stepType==negCurveString
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_tr_size(solver, model_objective, real_objective, step_type, tr_size, real_res_norm, g_norm)
-  @timeit timer(solver) "TrustRegionSolver - update_tr_size" begin
-    ρ = -model_objective / -real_objective
-
-    if model_objective > 0
-      @warn "found a positive model objective increase. Debug if you see this."
-      ρ = -real_objective / model_objective
-    end
-
-    if !(ρ >= solver.settings.η_2)
-      tr_size = tr_size * solver.settings.t_1
-    elseif ρ > solver.settings.η_3 && step_type == :boundary
-      tr_size = tr_size * solver.settings.t_2
-    end
-
-    will_accept = 
-      (ρ >= solver.settings.η_1) || 
-      (ρ >= 0.0 && real_res_norm <= g_norm)
-  end
-  return tr_size, will_accept
+function cg_inner_products_preconditioned(alpha, beta, zd, dd, rPr, z, d)
+  # recurrence formulas from Gould et al. doi:10.1137/S1052623497322735
+  zd = beta * (zd + alpha * dd)
+  dd = rPr + beta * beta * dd
+  return zd, dd
 end
 
-"""
-$(TYPEDSIGNATURES)
-minimize r * z + 0.5 * z * J * z
-"""
-function minimize_trust_region_sub_problem!(
-  z,
-  solver::TrustRegionSolver, P,#domain, #common::CthoniosCommon,
-  x::V, p, r_in, #cauchy_point, # cauhcy point is really a scratch array to reduce an allocation
-  tr_size::Float64
-) where V <: AbstractVector
+function cg_inner_products_unpreconditioned(alpha, beta, zd, dd, rPr, z, d)
+  zd = dot(z, d)
+  dd = dot(d, d)
+  return zd, dd
+end
 
-  @timeit timer(solver) "TrustRegionSolver - minimize_trust_region_sub_problem" begin
-    Pr   = solver.y_scratch_1
-    d    = solver.y_scratch_2
-    r    = solver.y_scratch_3
-    zNp1 = solver.y_scratch_4
+function preconditioned_project_to_boundary(z, d, trSize, zz, mult_by_approx_hessian)
+  # find tau s.t. (z + tau*d)^2 = trSize^2
+  Pd = mult_by_approx_hessian(d)
+  dd = dot(d, Pd)
+  zd = dot(z, Pd)
+  tau = (sqrt((trSize^2 - zz) * dd + zd^2) - zd) / dd
+  # is it ever better to choose the - sqrt() branch?
+  return z + tau * d
+end
 
-    # zero some stuff out and make other scratch vars
-    z .= zero(eltype(z))
-    zz = zero(eltype(x))
-    zd = zero(eltype(x))
-    r .= r_in
+function print_banner()
+  @info "=============================================================================================================================="
+  @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
+  @info "=============================================================================================================================="
+end
 
-    cg_tol_squared = max(
-      solver.settings.cg_inexact_solve_ratio^2 * dot(r, r),
-      solver.settings.cg_tol^2
-    )
+function print_min_banner(
+  objective, modelObjective, res, modelRes, 
+  cgIters, trSize, onBoundary, willAccept, settings
+)
+  if settings.debug_info == false
+    return
+  end
+  
+  if willAccept
+    will_accept = true
+  else
+    will_accept = false
+  end
+  str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
+  @info str
+end
 
-    ldiv!(Pr, P, r)
+function project_to_boundary_with_coefs(z, d, trSize, zz, zd, dd)
+  # find tau s.t. (z + tau*d)^2 = trSize^2
+  tau = (sqrt((trSize^2 - zz) * dd + zd^2) - zd) / dd
+  return z + tau * d
+end
 
-    @. d = -Pr
+function update_step_length_squared(alpha, zz, zd, dd)
+  return zz + 2 * alpha * zd + alpha * alpha * dd
+end
 
-    rPr = dot(r, Pr)
+function solve_trust_region_minimization(solver, x, r, hess_vec_func, P, trSize, settings)
+  # minimize r@z + 0.5*z@J@z
+  z = 0. * x
+  zz = 0.
 
+  cgInexactRelTol = settings.cg_inexact_solve_ratio
+  cgTolSquared = max(settings.cg_tol^2, cgInexactRelTol*cgInexactRelTol * dot(r, r))
+  if dot(r, r) < cgTolSquared
+    return z, z, interiorString, 0
+  end
+  
+  Pr = P \ r
+  # Pr = solver.y_scratch_4
+  # ldiv!(Pr, P, r)
+  d = -Pr
+  cauchyP = d
+  rPr = dot(r, Pr)
+
+  zz = 0.0
+  zd = 0.0
+  if settings.use_preconditioned_inner_product_for_cg
     dd = rPr
+    cg_inner_products = cg_inner_products_preconditioned
+  else
+    dd = dot(d, d)
+    cg_inner_products = cg_inner_products_unpreconditioned
+  end
 
-    for i in 1:solver.settings.max_cg_iters
-      Hd = hvp(solver, x, p, d)
+  for i in 1:settings.max_cg_iters
+    curvature = dot(d, hess_vec_func(d))
+    alpha = rPr / curvature
+        
+    zNp1 = z + alpha*d
+    zzNp1 = update_step_length_squared(alpha, zz, zd, dd)
 
-      curvature = dot(d, Hd)
-      α = rPr / curvature
-
-      @. zNp1 = z + α * d
-      zzNp1 = zz + 2.0 * α * zd + α * α * dd
-
-      # TODO
-      if curvature <= zero(eltype(x))
-        τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-        @. z = z + τ * d
-        return :negative_curvature, i
-      end
-
-      # TODO
-      if zzNp1 > tr_size^2
-        # @assert false "other edge case not handled"
-        # TODO projec to boundary
-        τ = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
-        @. z = z + τ * d
-        return :boundary, i
-      end
-
-      @. z = zNp1
-
-      @. r = r + α * Hd
-
-      ldiv!(Pr, P, r)
-
-      rPrNp1 = dot(r, Pr)
+    if curvature <= 0
+      zOut = project_to_boundary_with_coefs(z, d, trSize,
+                                            zz, zd, dd)
+      return zOut, cauchyP, negCurveString, i+1
+    end
+    if zzNp1 > trSize^2
+      zOut = project_to_boundary_with_coefs(z, d, trSize,
+                                            zz, zd, dd)
+      return zOut, cauchyP, boundaryString, i+1
+    end
+    z = zNp1 # z + alpha*d
+        
+    r += alpha * hess_vec_func(d)
+    Pr = P \ r
+    rPrNp1 = dot(r, Pr)
       
-      if dot(r, r) < cg_tol_squared
-        return :interior, i
-      end
-
-      β = rPrNp1 / rPr
-      rPr = rPrNp1
-      @. d = -Pr + β * d
-
-      zz = zzNp1
-      zd = β * (zd + α * dd)
-      dd = rPr * β * β * dd
+    if dot(r, r) < cgTolSquared
+      return z, cauchyP, interiorString, i+1
     end
-  end
-  return :interior, solver.settings.max_cg_iters
+    beta = rPrNp1 / rPr
+    rPr = rPrNp1
+    d = -Pr + beta*d
+
+    zz = zzNp1
+    zd, dd = cg_inner_products(alpha, beta, zd, dd, rPr, z, d)
+  end 
+        
+  return z, cauchyP, interiorString * "_", settings.max_cg_iters
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
-  @timeit timer(solver) "TrustRegionSolver - dog_leg_step!" begin
-    y_scratch_1 = solver.y_scratch_1
-    y_scratch_2 = solver.y_scratch_2
-
-    ldiv!(y_scratch_1, P, cauchy_point)
-    cc = dot(cauchy_point, y_scratch_1)
-    ldiv!(y_scratch_1, P, q_newton_point)
-    nn = dot(q_newton_point, y_scratch_1)
-
-    tt = tr_size * tr_size
-
-    # return cauchy point if it extends outside the tr
-    if cc >= tt
-      d .= sqrt(tt / cc) * cauchy_point
-      return nothing
-    end
-
-    # return cauchy point? seems the preconditioner was not accurate
-    if cc > nn
-      @warn "cp outside newton, preconditioner likely inaccurate"
-      d .= cauchy_point
-      return nothing
-    end
-
-    # on the dogleg
-    if nn > tt
-      @. y_scratch_2 = q_newton_point - cauchy_point
-      ldiv!(y_scratch_1, P, y_scratch_2)
-      dd = dot(y_scratch_2, y_scratch_1)
-      zd = dot(cauchy_point, y_scratch_1)
-
-      τ  = (sqrt((tr_size^2 - cc) * dd + zd^2) - zd) / dd
-      @. d = cauchy_point + τ * (y_scratch_2)
-      return nothing
-    end
-
-    d .= q_newton_point
+function dogleg_step(cp, newtonP, trSize, mat_mul)
+  cc = dot(cp, mat_mul(cp))
+  nn = dot(newtonP, mat_mul(newtonP))
+  tt = trSize*trSize
+    
+  if cc >= tt #return cauchy point if it extends outside the tr
+    #print('cp on boundary')
+    return cp * sqrt(tt/cc)
   end
-  return nothing
+
+  if cc > nn # return cauchy point?  seems the preconditioner was not accurate?
+    @info "cp outside newton, preconditioner likely inaccurate"
+    return cp
+  end
+
+  if nn > tt # on the dogleg (we have nn >= cc, and tt >= cc)
+      #print('dogleg')
+    return preconditioned_project_to_boundary(
+      cp,
+      newtonP-cp,
+      trSize,
+      cc,
+      mat_mul
+    )
+  end
+  #print('quasi-newton step')
+  return newtonP
+
 end
 
-"""
-$(TYPEDSIGNATURES)
-TODO
-Eventually map this to the interface
-"""
 function solve!(solver::TrustRegionSolver, Uu, p)
   @timeit timer(solver) "TrustRegionSolver - solve!" begin
-    @info "TrustRegionSolver"
-    # unpack some stuff
-    ΔUu            = solver.ΔUu
-    cauchy_point   = solver.cauchy_point
-    q_newton_point = solver.q_newton_point
-    d              = solver.d
-
     # unpack some solver settings
+    settings = solver.settings
     tr_size = solver.settings.tr_size
 
+    # set up some stuff
+    # TODO clean up later
+    x = Uu
+
     # saving initial objective and gradient
-    o = objective(solver, Uu, p)
-    g = gradient(solver, Uu, p)
+    o = objective(solver.objective, x, p)
+    g = gradient(solver.objective, x, p)
     g_norm = norm(g)
 
     @info @sprintf "Initial objective = %1.6e" o[1]
     @info @sprintf "Initial residual  = %1.6e" g_norm
 
     # preconditioner
-    P = solver.preconditioner
-    update_preconditioner!(P, solver.objective, Uu, p)
+    update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+    P = solver.preconditioner.preconditioner
+    # this could potentially return an unstable solution
+    if is_converged(objective, x, 0.0, 0.0, g, g, 0, tr_size, settings)
+      # if callback
+      #   # callback(x, objective)
+      #   @assert false
+      # end
+      # return x, True
+      @show "converged"
+      return nothing
+    end
 
-    # begin loop over tr iters
-    cumulative_cg_iters = 0
-    tried_new_precond = false
-
-    for n in 1:solver.settings.max_trust_iters
-      @info "Trust region iter = $n"
-      # need hvp
-      Hg = hvp(solver, Uu, p, g)
-
-      # check for negative curvature
-      cauchy_point_norm_squared = calculate_cauchy_point!(cauchy_point, solver, P, g, Hg, tr_size)
-
-      # check if outside trust region
-      if cauchy_point_norm_squared >= tr_size * tr_size
-        @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt(cauchy_point_norm_squared))."
-        @. cauchy_point = (tr_size / sqrt(cauchy_point_norm_squared)) * cauchy_point
-        cauchy_point_norm_squared = tr_size * tr_size
-        q_newton_point .= cauchy_point
-        step_type = :boundary
-        n_cg_iters = 1
-      else
-        step_type, n_cg_iters = 
-          minimize_trust_region_sub_problem!(q_newton_point, solver, P, Uu, p, g, tr_size)
+    cumulativeCgIters=0
+    print_banner()
+    for i in 1:settings.max_trust_iters
+      if i > 1 && i % 25 == 0
+        print_banner()
       end
 
-      cumulative_cg_iters += n_cg_iters
+      # setup some local closures to this iteration
+      if settings.use_incremental_objective
+        @assert false "not implemented yet"
+      else
+        increment_objective = d -> objective(solver.objective, x + d, p) - o
+      end
 
-      happy = false
-      while !happy
-        dog_leg_step!(d, solver, P, cauchy_point, q_newton_point, tr_size)
+      hess_vec_func = v -> hvp(solver.objective, x, p, v)
+      # TODO need to fix below
+      # K = hessian!(solver.preconditioner.assembler, solver.objective, x, p)
+      # mult_by_approx_hessian = v -> (K + 0.0 * I) * v
+      # mult_by_approx_hessian = v -> K \ v
+      # mult_by_approx_hessian = v -> hvp(solver.objective, x, p, v)
+      mult_by_approx_hessian = v -> v
 
-        Jd = hvp(solver, Uu, p, d)
+      # calculate cauchy point
+      @timeit timer(solver) "TrustRegionSolver - cauchy point" begin
+        gKg = dot(g, hess_vec_func(g))
+        if gKg > 0
+          alpha = -dot(g, g) / gKg
+          cauchyPoint = alpha * g
+          cauchyPointNormSquared = dot(cauchyPoint, mult_by_approx_hessian(cauchyPoint))
+        else
+          cauchyPoint =  -g * (tr_size / sqrt.(dot(g, mult_by_approx_hessian(g))))
+          cauchyPointNormSquared = tr_size * tr_size
+          @info "negative curvature unpreconditioned cauchy point direction found."
+        end
+      end
+
+      # solve minimize
+      if cauchyPointNormSquared >= tr_size*tr_size
+        @info "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt.(cauchyPointNormSquared))"
+        cauchyPoint *= (tr_size / sqrt(cauchyPointNormSquared))
+        cauchyPointNormSquared = tr_size * tr_size
+        qNewtonPoint = cauchyPoint
+        stepType = boundaryString
+        cgIters = 1
+      else
+        @timeit timer(solver) "TrustRegionSolver - minimization" begin
+          qNewtonPoint, _, stepType, cgIters = 
+              solve_trust_region_minimization(
+                solver,
+                x, g,
+                hess_vec_func,
+                # objective.apply_precond,
+                P,
+                tr_size, settings
+              )
+        end
+      end
+
+      # line 411 in optimism EquationSolver next below
+      cumulativeCgIters += cgIters
+      trSizeUsed = tr_size
+      happyAboutTrSize = false
+
+      while !happyAboutTrSize
+        d = dogleg_step(cauchyPoint, qNewtonPoint, tr_size, mult_by_approx_hessian)
+        Jd = hess_vec_func(d)
         dJd = dot(d, Jd)
-
-        model_objective = dot(g, d) + 0.5 * dJd
-
-        y = solver.y_scratch_1
-        @. y = Uu + d
-
-        real_objective = Cthonios.objective(solver, y, p)
-        gy = Cthonios.gradient(solver, y, p)
-        real_objective = real_objective - o
-
-        if is_converged(solver, real_objective, model_objective, gy, g + Jd, n_cg_iters, tr_size, step_type)
-          @info "Converged"
-          @. ΔUu = Uu - solver.y_scratch_1
-          Uu .= solver.y_scratch_1
+        modelObjective = dot(g, d) + 0.5 * dJd
+        
+        y = x + d
+        realObjective = increment_objective(d)
+        gy = gradient(solver.objective, y, p)
+        
+        if is_converged(
+          solver.objective, y, realObjective, modelObjective,
+          gy, g + Jd, cgIters, trSizeUsed, settings
+        )
+          # if callback
+          #   @assert false
+          #   callback(y, objective)
+          # end
+          # return y, true
+          Uu .= y
           return nothing
         end
 
-        model_res = solver.y_scratch_2
-        @. model_res = g + Jd
-        model_res_norm = norm(model_res)
-        real_res_norm = norm(gy)
+        modelImprove = -modelObjective
+        realImprove = -realObjective
 
-        tr_size, will_accept = update_tr_size(
-          solver, 
-          model_objective, real_objective, 
-          step_type, tr_size, 
-          real_res_norm, g_norm
+        rho = realImprove / modelImprove
+
+        if modelObjective > 0
+          @info "Found a positive model objective increase.  Debug if you see this."
+          @info "modelObjective = $modelObjective"
+          @info "realObjective = $realObjective"
+          rho = realImprove / -modelImprove
+        end
+
+        if !(rho >= settings.η_2)  # write it this way to handle NaNs
+          tr_size *= settings.t_1
+        elseif rho > settings.η_3 && is_on_boundary(stepType)
+          tr_size *= settings.t_2
+        end
+
+        modelRes = g + Jd
+        modelResNorm = norm(modelRes)
+        realResNorm = norm(gy)
+
+        willAccept = rho >= settings.η_1 || 
+                     (rho >= -0 && realResNorm <= g_norm)
+        print_min_banner(
+          realObjective, modelObjective,
+          realResNorm, modelResNorm,
+          cgIters, trSizeUsed, stepType,
+          willAccept,
+          settings
         )
 
-        logger(
-          solver, 
-          real_objective, model_objective,
-          real_res_norm, model_res_norm,
-          cumulative_cg_iters, tr_size, will_accept, step_type
-        )
+        if willAccept
+          x = y
+          g = gy
+          o = objective(solver.objective, x, p)
+          g_norm = realResNorm
+          triedNewPrecond = false
+          happyAboutTrSize = true
+          # if callback
 
-        if will_accept
-          Uu .= y
-          g .= gy
-          o = objective(solver, Uu, p)
-          g_norm = norm(g)
-          happy = true
+          # end
         else
-          step_type = :boundary
-          n_cg_iters = 0
+          # set these for output
+          # trust region will continue to strink until we find a solution on the boundary
+          stepType=boundaryString
+          cgIters = 0
         end
 
-        # TODO not sure what to do here
-        if n_cg_iters >= solver.settings.max_cg_iters ||
-          cumulative_cg_iters >= solver.settings.max_cumulative_cg_iters
-          update_preconditioner!(P, solver.objective, Uu, p)
+        if cgIters >= settings.max_cg_iters || cumulativeCgIters >= settings.max_cumulative_cg_iters
+          # objective.update_precond(x)
+          update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+          P = solver.preconditioner.preconditioner
+          cumulativeCgIters=0
         end
 
-        # TODO still need to do some other stuff with updating preconditioner
-        if tr_size < solver.settings.min_tr_size
-          if !tried_new_precond
-            @info "Updating preconditioner due to small trust region size"
-            update_preconditioner!(P, solver.objective, Uu, p)
-            cumulative_cg_iters = 0
-            tried_new_precond = true
-            happy = true
-            tr_size = solver.settings.tr_size
+        trSizeUsed = tr_size
+
+        if tr_size < settings.min_tr_size
+
+          if !triedNewPrecond
+            @info "The trust region is too small, updating precond and trying again."
+            update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+            P = solver.preconditioner.preconditioner
+            cumulativeCgIters = 0
+            triedNewPrecond = true
+            happyAboutTrSize = true
+            tr_size = settings.tr_size                    
           else
-            @info "The trust region is too small. Accepting but be careful."
+            @info "The trust region is still too small.  Accepting, but be careful."
+            # if callback: callback(x, objective)
+            # return x, False
             return nothing
           end
         end
+        # @assert false
       end
     end
-    @assert false "Reached maximum number of trust region iterations."
   end
+
+  @assert false "reached maximum tr iterations"
 end

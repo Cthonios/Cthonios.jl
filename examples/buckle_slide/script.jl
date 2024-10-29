@@ -2,26 +2,27 @@ using ConstitutiveModels
 using Cthonios
 using Exodus
 using FiniteElementContainers
-using LinearAlgebra
 using TimerOutputs
 
 # file management
-mesh_file = Base.source_dir() * "/window_pain_tri3.g"
+mesh_file = Base.source_dir() * "/mesh.e"
 timer = TimerOutput()
 
 # global setup
-times = ConstantTimeStepper(0.0, 1.0, 0.0125)
+times = ConstantTimeStepper(0.0, 1.0, 0.05)
 n_dofs = 2
 
 # functions
-func_1(x, t) = -0.5 * t
-func_2(x, t) = 0.0
+func_1(x, t) = 0.1 * t
+func_2(x, t) = -0.1 * t
+func_3(x, t) = 0.0
 
 # bcs
 disp_bcs = [
-  DirichletBC("nset_outer_bottom", [1, 2], func_2)
-  DirichletBC("nset_outer_top", [1], func_2)
-  DirichletBC("nset_outer_top", [2], func_1)
+  DirichletBC("nset_left", [2], func_3),
+  DirichletBC("nset_right", [2], func_3),
+  DirichletBC("nset_left", [1], func_1),
+  DirichletBC("nset_right", [1], func_2)
 ]
 traction_bcs = [
 ]
@@ -33,19 +34,21 @@ sections = Section[
     SolidMechanics(NeoHookean(), PlaneStrain()),
     MaterialProperties(
       "bulk modulus" => 0.833,
-      "shear modulus" => 1.0
+      "shear modulus" => 0.3846
     )
   )
 ]
+
 domain = Domain(mesh_file, sections, disp_bcs, 2)
 objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
 p = ObjectiveParameters(objective, times)
-solver = NewtonSolver(objective, p, DirectSolver, timer)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=CholeskyPreconditioner)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LDLPreconditioner)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LimitedLDLPreconditioner)
+solver = TrustRegionSolver(
+  objective, p, timer; 
+  use_warm_start=false, 
+  preconditioner=CholeskyPreconditioner
+)
+# solver = NewtonSolver(objective, p, DirectSolver, timer)
 
-# solver = NewtonSolver(objective, p, KrylovSolver, timer)
 
 Uu = Cthonios.create_unknowns(solver)
 

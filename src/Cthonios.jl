@@ -1,8 +1,10 @@
 module Cthonios
 
 using ArgParse
+using Atomix
 using ComponentArrays
 using ConstitutiveModels
+using DifferentiationInterface
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
@@ -12,6 +14,7 @@ using LinearAlgebra
 using LinearSolve
 using Parameters
 using Printf
+using ReferenceFiniteElements
 using RuntimeGeneratedFunctions
 using SciMLOperators
 using SparseArrays
@@ -21,16 +24,19 @@ using YAML
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-include("BoundaryConditions.jl")
+include("bcs/BoundaryConditions.jl")
 include("physics/Physics.jl")
 include("PostProcessors.jl")
 include("Sections.jl")
 include("TimeSteppers.jl")
 
 include("Domains.jl")
+
+include("contact/Contact.jl")
+
 include("Objectives.jl")
 
-include("Iterators.jl")
+include("iterators/Iterators.jl")
 include("solvers/Solvers.jl")
 
 include("Problems.jl")
