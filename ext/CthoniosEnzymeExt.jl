@@ -106,14 +106,17 @@ function Cthonios.solve!(warm_start::Cthonios.WarmStart, solver, objective, Uu, 
 
   # set up seed arrays
   dR = make_zero(R)
+  dp = make_zero(p)
 
   # run enzyme
   autodiff(
     Reverse, Cthonios.gradient!,
     Duplicated(R, dR), 
     Const(objective),
-    Duplicated(U, dU),
-    Const(p.X)
+    # Duplicated(U, dU),
+    Duplicated(p, dp)
+    # Duplicated(U, dU),
+    # Const(p.X)
   )
 
   # a little ugly below

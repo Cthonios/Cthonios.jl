@@ -66,6 +66,7 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
       # write initial conditions as step 1
       n = 1
       update_dirichlet_vals!(p, objective)
+      update_neumann_vals!(p, objective)
       update_field_unknowns!(p.U, objective.domain, Uu)
       write_time(post_processor, 1, 0.0) # TODO init time might not be zero
       # TODO we may want more outputs
@@ -83,6 +84,7 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
           else
             step!(p)
             update_dirichlet_vals!(p, objective)
+            update_neumann_vals!(p, objective)
           end
           solve!(solver, Uu, p)
         end

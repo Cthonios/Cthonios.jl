@@ -98,7 +98,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       # loop over quadrature points
       for q in 1:num_q_points(fspace)
         interps = MappedInterpolants(fspace.ref_fe, X_el, q)
-        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e]...)
+        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e])
         local_val += f(physics, interps, U_el, p.t, state, props_el)
       end
 
@@ -112,6 +112,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
   # assembling a zero matrix for each side a traction
   # acts on. Maybe the compiler is smart enough to compile this away?
   # Maybe we should break this method up?
+  bc_index = 1
   for (block_num, (section_name, section)) in enumerate(pairs(domain.neumann_bc_sections))
     ND, NN, NP, NS = size(section)
     bc, fspace, physics = section.bc, section.fspace, section.physics
@@ -120,9 +121,11 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       U_el = surface_element_fields(section, p.U, e)
       local_val = scratch_variable(global_val, section)
       for q in 1:ReferenceFiniteElements.num_quadrature_points(fspace.ref_fe.surface_element)
+        bc_val = p.nbc[bc_index]
         face = section.bc.sides[e]
         interps = MappedSurfaceInterpolants(fspace.ref_fe, X_el, q, face)
-        local_val += f(physics, bc, interps, U_el, p.t)
+        local_val += f(physics, bc, interps, U_el, p.t, bc_val)
+        bc_index = bc_index + 1
       end
 
       # assembly
@@ -164,7 +167,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       for q in 1:num_q_points(fspace)
         # TODO need to modify this getindex. We can't trace this
         interps = MappedInterpolants(fspace.ref_fe, X_el, q)
-        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e]...)
+        state = @views SVector{num_states(section.physics), Float64}(p.state_old[section_name][:, q, e])
         local_val += f(physics, interps, U_el, p.t, state, props_el)
       end
       local_val = local_val * vec(V_el)

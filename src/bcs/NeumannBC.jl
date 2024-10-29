@@ -36,9 +36,9 @@ end
 
 function NeumannBCInternal(mesh, bc::NeumannBC)
   sset = SideSet(mesh.mesh_obj, bc.sset_name)
-  elements = sset.elements
-  sides = sset.sides
-  num_nodes_per_side = sset.num_nodes_per_side
-  side_nodes = sset.side_nodes
+  elements = convert.(Int64, sset.elements)
+  sides = convert.(Int64, sset.sides)
+  num_nodes_per_side = convert.(Int64, sset.num_nodes_per_side)
+  side_nodes = convert.(Int64, sset.side_nodes)
   return NeumannBCInternal(elements, sides, num_nodes_per_side, side_nodes, bc.func)
 end

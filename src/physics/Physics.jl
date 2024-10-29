@@ -19,8 +19,6 @@ $(TYPEDSIGNATURES)
 """
 num_states(::AbstractPhysics{NF, NP, NS}) where {NF, NP, NS} = NS
 
-
-
 # helper methods
 """
 comes in as (N_nodes x n_fields) vector
@@ -61,7 +59,7 @@ function energy(physics::AbstractPhysics, cell, u_el, times, state, props)
   @unpack X_q, N, ∇N_X, JxW = cell
   u_q, ∇u_q = interpolate_field_values_and_gradients(physics, cell, u_el)
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-  val = energy(physics, u_q, ∇u_q, X_q, props)
+  val = energy(physics, u_q, ∇u_q, X_q, times, state, props)
   return JxW * val
 end
 
@@ -70,7 +68,7 @@ function gradient(physics::AbstractPhysics, cell, u_el, times, state, props)
   u_q, ∇u_q = interpolate_field_values_and_gradients(physics, cell, u_el)
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   G = discrete_gradient(physics.formulation, ∇N_X)
-  val = gradient(physics, u_q, ∇u_q, N, G, X_q, props)
+  val = gradient(physics, u_q, ∇u_q, N, G, X_q, times, state, props)
   return JxW * val
 end
 
@@ -79,7 +77,7 @@ function hessian(physics::AbstractPhysics, cell, u_el, times, state, props)
   u_q, ∇u_q = interpolate_field_values_and_gradients(physics, cell, u_el)
   ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
   G = discrete_gradient(physics.formulation, ∇N_X)
-  val = hessian(physics, u_q, ∇u_q, N, G, X_q, props)
+  val = hessian(physics, u_q, ∇u_q, N, G, X_q, times, state, props)
   return JxW * val
 end
 
@@ -88,24 +86,24 @@ end
 # or difficulty (same thing really)
 
 # Neumann bc methods
-function energy(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
+function energy(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times, bc_val)
   @unpack X_q, N, N_reduced, JxW, n = cell
-  # u_q = interpolate_field_values(physics, cell, u_el)
   u_el = reshape_field(physics, cell, u_el)
-  # return U_el * cell.N
   u_q = u_el * cell.N_reduced
-  t_q = bc.func(X_q, times.current_time)
+  # t_q = bc.func(X_q, current_time(times)) # allocations here
+  t_q = bc_val
   return -JxW * dot(u_q, t_q)
 end
 
-function gradient(::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
+function gradient(::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times, bc_val)
   @unpack X_q, N, JxW, n = cell
-  t_q = bc.func(X_q, current_time(times))
+  # t_q = bc.func(X_q, current_time(times)) # allocations here
+  t_q = bc_val
   f_q = t_q * N'
   return -JxW * f_q[:]
 end
 
-function hessian(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times)
+function hessian(physics::AbstractPhysics, bc::NeumannBCInternal, cell, u_el, times, bc_val)
   N = length(cell.N) * num_fields(physics)
   return zeros(SMatrix{N, N, eltype(u_el), N * N})
 end

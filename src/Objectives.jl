@@ -54,11 +54,12 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, S, P, U2, U3, Q} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
-  Ubc::B
+  Ubc::B # dirichlet bc design parameters
+  nbc::N # neumann bc design parameters
   state_old::S
   state_new::S
   props::P
@@ -79,7 +80,9 @@ function ObjectiveParameters(o::Objective, times)
   U = create_fields(o.domain)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
+  nbc = Vector{SVector{size(X, 1), eltype(X)}}(undef, 0)
   update_dirichlet_vals!(Ubc, o.domain, X, times)
+  update_neumann_vals!(nbc, o.domain, X, times)
   # properties
   props = map(sec -> sec.props, o.domain.sections)
   props = ComponentArray(props)
@@ -101,7 +104,7 @@ function ObjectiveParameters(o::Objective, times)
   state_old = ComponentArray(state_old)
   state_new = ComponentArray(state_new)
   params = ObjectiveParameters(
-    X, times, Ubc, state_old, state_new, props,
+    X, times, Ubc, nbc, state_old, state_new, props,
     U, hvp_scratch, q_vals_scratch
   )
   return params
@@ -223,6 +226,14 @@ $(TYPEDSIGNATURES)
 """
 function update_dirichlet_vals!(p::ObjectiveParameters, o::Objective)
   update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_neumann_vals!(p::ObjectiveParameters, o::Objective)
+  update_neumann_vals!(p.nbc, o.domain, p.X, p.t)
   return nothing
 end
 
