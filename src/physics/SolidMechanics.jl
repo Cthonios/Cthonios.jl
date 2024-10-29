@@ -3,24 +3,36 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 """
 struct SolidMechanics{
-  NF, NP, NS,
-  Mat <: ConstitutiveModel{NP, NS}, 
-  Form <: AbstractMechanicsFormulation{NF}
+  NF, NP, NS, Mat, Form,
+  P <: StressDivergence{NF, NP, NS, Mat, Form}
 } <: AbstractPhysics{NF, NP, NS}
+  # TODO redundant fields below since
+  # material model and formulation are both in
+  # stress divergence
   material_model::Mat
   formulation::Form
+  stress_divergence::P
 end
 
+# script constructor
+function SolidMechanics(model::ConstitutiveModel, form::AbstractMechanicsFormulation)
+  stress_divergence = StressDivergence(model, form)
+  return SolidMechanics(model, form, stress_divergence)
+end
+
+# input file constructor
 function SolidMechanics(inputs::Dict{Symbol, Any})
   material_inputs = inputs[:material]
   model_name = material_inputs[:type]
   model = eval(Meta.parse(model_name))(material_inputs[:properties])
   formulation_inputs = inputs[:formulation]
   formulation = eval(Symbol(formulation_inputs[:type]))()
-  return SolidMechanics(model, formulation)
+  stress_divergence = StressDivergence(model, formulation)
+  return SolidMechanics(formulation, model, stress_divergence)
 end
 
-init_properties(physics::SolidMechanics, props) = ConstitutiveModels.initialize_props(physics.material_model, props)
+init_properties(physics::SolidMechanics, props) = init_properties(physics.stress_divergence, props)
+init_state(physics::SolidMechanics) = init_state(physics.stress_divergence)
 
 """
 $(TYPEDSIGNATURES)
@@ -33,18 +45,8 @@ following integral
 ``
 """
 function energy(physics::SolidMechanics, u::T, ∇u, X, t, Z, props) where T <: AbstractArray
-  F = ∇u + one(∇u)
-  dt = time_step(t)
-
-  # hardcoded for now
-  # dt = 0.0
-  θ = 0.0
-  # Q = SVector{0, Float64}()
-
-  ψ, Q = ConstitutiveModels.helmholtz_free_energy(
-    physics.material_model, props, dt, F, θ, Z
-  )
-  return ψ
+  internal_energy = energy(physics.stress_divergence, u, ∇u, X, t, Z, props)
+  return internal_energy
 end
 
 """
@@ -58,38 +60,14 @@ following integral
 ``
 """
 function gradient(physics::SolidMechanics, u, ∇u, v, ∇v, X, t, Z, props)
-  F = ∇u + one(∇u)
-  dt = time_step(t)
-
-  # hardcoded for now
-  # dt = 0.0
-  θ = 0.0
-  # Q = SVector{0, Float64}()
-
-  # constitutive
-  P, Q = ConstitutiveModels.pk1_stress(
-    physics.material_model, props, dt, F, θ, Z
-  )
-  P = extract_stress(physics.formulation, P)
-  return ∇v * P
+  internal_force = gradient(physics.stress_divergence, u, ∇u, v, ∇v, X, t, Z, props)
+  return internal_force
 end
 
 """
 $(TYPEDSIGNATURES)
 """
 function hessian(physics::SolidMechanics, u, ∇u, v, ∇v, X, t, Z, props)
-  F = ∇u + one(∇u)
-  dt = time_step(t)
-
-  # hardcoded for now
-  # dt = 0.0
-  θ = 0.0
-  # Q = SVector{0, Float64}()
-
-  # constitutive
-  A, Q = ConstitutiveModels.material_tangent(
-    physics.material_model, props, dt, F, θ, Z
-  )
-  A = extract_stiffness(physics.formulation, A)
-  return ∇v * A * ∇v'
+  stiffness = hessian(physics.stress_divergence, u, ∇u, v, ∇v, X, t, Z, props)
+  return stiffness
 end

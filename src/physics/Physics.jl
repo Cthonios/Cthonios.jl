@@ -47,7 +47,12 @@ function interpolate_field_values_and_gradients(physics::AbstractPhysics, cell, 
   return U_el * cell.N, U_el * cell.∇N_X
 end
 
-# implementations
+# implementations as small kernels
+include("kernels/Laplacian.jl")
+include("kernels/StressDivergence.jl")
+include("kernels/Source.jl")
+
+# useful combinations of kernels
 include("Poisson.jl")
 include("SolidMechanics.jl")
 

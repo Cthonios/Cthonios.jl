@@ -2,9 +2,18 @@
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
+# TODO create source term kernel
 """
-struct Poisson{F} <: AbstractPhysics{1, 0, 0}
+struct Poisson{Form, F} <: AbstractPhysics{1, 0, 0}
+  formulation::Form
+  laplacian::Laplacian{1}
   func::F
+end
+
+function Poisson(f)
+  formulation = ScalarFormulation()
+  laplacian = Laplacian{1}()
+  return Poisson{typeof(formulation), typeof(f)}(formulation, laplacian, f)
 end
 
 init_properties(physics::Poisson, props) = zeros(num_properties(physics))
@@ -31,7 +40,7 @@ g\\left(u, v\\right) = \\int_\\Omega \\left[\\nabla u\\cdot\\nabla v - fv\\right
 """
 function gradient(physics::Poisson, u, ∇u, v, ∇v, X, t, Z, props)
   R = ∇u * ∇v' - v' * physics.func(X, 0.0)
-  return R
+  return R[:]
 end
 
 """
