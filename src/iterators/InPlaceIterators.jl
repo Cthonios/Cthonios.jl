@@ -67,7 +67,7 @@ $(TYPEDSIGNATURES)
 Setup a scratch variable for a stiffness
 like calculation
 """
-function scratch_variable(global_val::FiniteElementContainers.StaticAssembler, section)
+function scratch_variable(global_val::FiniteElementContainers.Assembler, section)
   ND, NN, NP, NS = size(section)
   NF = num_dofs_per_node(section.fspace)
   return zeros(SMatrix{NF * NN, NF * NN, eltype(global_val.stiffnesses), NF * NN * NF * NN})

@@ -1,15 +1,5 @@
 """
 $(TYPEDEF)
-Abstract base problem type.
-```O``` - ```Objective````
-```S``` - ```Solver```
-```P``` - ```PostProcessor```
-```T``` - ```TimerOutput```
-"""
-abstract type AbstractProblem{O, S, P, T} end
-
-"""
-$(TYPEDEF)
 $(TYPEDFIELDS)
 """
 struct QuasiStaticProblem{O, S, P, T} <: AbstractProblem{O, S, P, T}
@@ -37,11 +27,6 @@ function QuasiStaticProblem(inputs::Dict{Symbol, Any})
     return QuasiStaticProblem(obj, solver, pp, timer), p
   end
 end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-timer(prob::QuasiStaticProblem) = prob.timer
 
 """
 $(TYPEDSIGNATURES)
@@ -107,6 +92,3 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
   # show(merge(merge(solver), objective.timer))
   show(prob.timer)
 end
-
-# exports
-export QuasiStaticProblem

@@ -48,12 +48,14 @@ function interpolate_field_values_and_gradients(physics::AbstractPhysics, cell, 
 end
 
 # implementations as small kernels
+include("kernels/Dynamics.jl")
 include("kernels/Laplacian.jl")
 include("kernels/StressDivergence.jl")
 include("kernels/Source.jl")
 
 # useful combinations of kernels
 include("Poisson.jl")
+include("SolidDynamics.jl")
 include("SolidMechanics.jl")
 
 # top level energy, etc.
@@ -86,6 +88,16 @@ function hessian(physics::AbstractPhysics, cell, u_el, times, state, props)
   return JxW * val
 end
 
+function mass_matrix(physics::AbstractPhysics, cell, u_el, times, state, props)
+  @unpack X_q, N, ∇N_X, JxW = cell
+  u_q, ∇u_q = interpolate_field_values_and_gradients(physics, cell, u_el)
+  ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
+  N = FiniteElementContainers.discrete_values(physics.formulation, N)
+  G = discrete_gradient(physics.formulation, ∇N_X)
+  val = mass_matrix(physics, u_q, ∇u_q, N, G, X_q, times, state, props)
+  return JxW * val
+end
+
 # TODO how to overload so we can fall back to AD methods when
 # e.g. gradient and hessian are not defined out of laziness
 # or difficulty (same thing really)
@@ -115,4 +127,5 @@ end
 
 # exports
 export Poisson
+export SolidDynamics
 export SolidMechanics

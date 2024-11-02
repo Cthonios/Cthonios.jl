@@ -134,7 +134,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hessian!(asm::FiniteElementContainers.StaticAssembler, o::Objective, Uu, p::ObjectiveParameters)
+function hessian!(asm::FiniteElementContainers.Assembler, o::Objective, Uu, p::ObjectiveParameters)
   @timeit timer(o) "Objective - hessian!" begin
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(p.U, o.domain, Uu)
@@ -192,6 +192,16 @@ end
 #   func = x -> domain_iterator(energy, o.domain, x, p)
 #   DifferentiationInterface.gradient(func, backend, Uu)
 # end
+
+function mass_matrix!(asm, o::Objective, Uu, p::ObjectiveParameters)
+  @timeit timer(o) "Objectives - mass_matrix!" begin
+    # asm.masses .= zero(eltype(asm.masses))
+    asm.stiffnesses .= zero(eltype(asm.stiffnesses))
+    update_field_unknowns!(p.U, o.domain, Uu)
+    domain_iterator!(asm, mass_matrix, o.domain, Uu, p)
+    return SparseArrays.sparse!(asm) |> Symmetric
+  end
+end
 
 function objective(o::Objective, Uu, p)
   @timeit timer(o) "Objective - objective" begin

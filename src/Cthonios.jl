@@ -8,6 +8,7 @@ using DifferentiationInterface
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
+using IterativeSolvers
 using LimitedLDLFactorizations
 using LDLFactorizations
 using LinearAlgebra
@@ -39,7 +40,7 @@ include("Objectives.jl")
 include("iterators/Iterators.jl")
 include("solvers/Solvers.jl")
 
-include("Problems.jl")
+include("problems/Problems.jl")
 
 include("Main.jl")
 

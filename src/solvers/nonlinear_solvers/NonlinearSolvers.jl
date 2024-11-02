@@ -13,28 +13,8 @@ it needs the following types
 3. an unknown vector
 4. an int called max_iter
 """
-abstract type AbstractNonlinearSolver{L, O, U, T} end
+abstract type AbstractNonlinearSolver{L, O, U, T} <: AbstractSolver end
 timer(s::T) where T <: AbstractNonlinearSolver = s.timer
-
-"""
-$(TYPEDSIGNATURES)
-Creates a set of unknowns for the nonlinear solver
-"""
-function create_unknowns(solver::AbstractNonlinearSolver)
-  return create_unknowns(solver.objective.domain)
-end
-
-function objective(solver::AbstractNonlinearSolver, Uu, p)
-  return objective!(solver.o, solver.objective, Uu, p)
-end
-
-function gradient(solver::AbstractNonlinearSolver, Uu, p)
-  return gradient!(solver.g, solver.objective, Uu, p)
-end
-
-function hvp(solver::AbstractNonlinearSolver, Uu, p, Vv)
-  return hvp!(solver.Hv, solver.objective, Uu, p, Vv)
-end
 
 """
 $(TYPEDSIGNATURES)
