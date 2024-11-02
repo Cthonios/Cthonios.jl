@@ -114,9 +114,14 @@ $(TYPEDSIGNATURES)
 Returns a sorted and unique vector of dirichlet dofs.
 """
 function dirichlet_dofs(domain::Domain)
-  dbcs = vcat(map(bc -> bc.dofs, domain.dirichlet_bcs)...)
-  unique!(dbcs)
-  sort!(dbcs)
+  if length(domain.dirichlet_bcs) == 0
+    dbcs = Int[]
+  else
+    dbcs = vcat(map(bc -> bc.dofs, domain.dirichlet_bcs)...)
+    unique!(dbcs)
+    sort!(dbcs)
+  end
+  # display(dbcs)
   return dbcs
 end
 
@@ -224,6 +229,17 @@ function update_unknown_dofs!(domain::Domain, asm)
     dirichlet_dofs(domain)
   )
   return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+some FEMContainers abuse
+"""
+function DynamicAssembler(domain::Domain)
+  asm = FiniteElementContainers.DynamicAssembler(
+    domain.dof, map(x -> x.fspace, domain.sections)
+  )
+  return asm
 end
 
 """
