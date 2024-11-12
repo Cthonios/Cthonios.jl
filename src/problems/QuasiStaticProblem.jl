@@ -67,10 +67,15 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
             # interfaces
             solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
           else
-            step!(p)
-            update_dirichlet_vals!(p, objective)
-            update_neumann_vals!(p, objective)
+            # step!(p)
+            # update_dirichlet_vals!(p, objective)
+            # update_neumann_vals!(p, objective)
           end
+
+          step!(p)
+          update_dirichlet_vals!(p, objective)
+          update_neumann_vals!(p, objective)
+
           solve!(solver, Uu, p)
         end
 

@@ -28,7 +28,12 @@
   time = ConstantTimeStepper(0.0, 1.0, 0.0125)
 
   # constructors
-  objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, TimerOutput())
+  objective = Objective(
+    domain, 
+    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    TimerOutput()
+  )
   Uu = Cthonios.create_unknowns(objective.domain)
   p = ObjectiveParameters(objective, time)
 

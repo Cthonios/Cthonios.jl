@@ -1,6 +1,5 @@
 using ConstitutiveModels
 using Cthonios
-# using Enzyme
 using Exodus
 using FiniteElementContainers
 using LinearAlgebra
@@ -12,7 +11,7 @@ mesh_file = Base.source_dir() * "/hole_array.exo"
 timer = TimerOutput()
 
 # global setup
-times = ConstantTimeStepper(0.0, 1.0, 1. / 80)
+times = ConstantTimeStepper(0.0, 1.0, 1. / 20)
 n_dofs = 2
 
 # functions
@@ -42,14 +41,15 @@ sections = Section[
   )
 ]
 domain = Domain(mesh_file, sections, disp_bcs, traction_bcs, 2)
-objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
+objective = Objective(
+  domain, 
+  Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+  Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+  timer
+)
+# objective = Objective(domain, Cthonios.energy, Cthonios.neumann_energy, timer)
 p = ObjectiveParameters(objective, times)
-solver = NewtonSolver(objective, p, DirectSolver, timer)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=CholeskyPreconditioner)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LDLPreconditioner)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=false, preconditioner=LimitedLDLPreconditioner)
-
-# solver = NewtonSolver(objective, p, KrylovSolver, timer)
+solver = TrustRegionSolver(objective, p, timer; use_warm_start=true, preconditioner=CholeskyPreconditioner)
 
 Uu = Cthonios.create_unknowns(solver)
 

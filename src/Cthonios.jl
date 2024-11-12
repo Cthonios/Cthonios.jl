@@ -8,6 +8,7 @@ using DifferentiationInterface
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers
+using ForwardDiff
 using IterativeSolvers
 using LimitedLDLFactorizations
 using LDLFactorizations
@@ -22,6 +23,9 @@ using SparseArrays
 using StaticArrays
 using TimerOutputs
 using YAML
+
+# import to avoid name conflicts with gradient, hvp
+import Enzyme: Const, Duplicated, Forward, Reverse, autodiff, make_zero
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
