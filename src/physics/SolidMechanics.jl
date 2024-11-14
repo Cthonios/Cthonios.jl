@@ -28,7 +28,7 @@ function SolidMechanics(inputs::Dict{Symbol, Any})
   formulation_inputs = inputs[:formulation]
   formulation = eval(Symbol(formulation_inputs[:type]))()
   stress_divergence = StressDivergence(model, formulation)
-  return SolidMechanics(formulation, model, stress_divergence)
+  return SolidMechanics(model, formulation, stress_divergence)
 end
 
 init_properties(physics::SolidMechanics, props) = init_properties(physics.stress_divergence, props)

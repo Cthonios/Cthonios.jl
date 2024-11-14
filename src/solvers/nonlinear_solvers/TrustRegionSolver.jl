@@ -102,6 +102,15 @@ function TrustRegionSolver(
   )
 end
 
+function TrustRegionSolver(
+  inputs::Dict{Symbol, Any},
+  objective::Objective, p, timer
+)
+  preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
+  warm_start = inputs[Symbol("warm start")]
+  return TrustRegionSolver(objective, p, timer; preconditioner=preconditioner, use_warm_start=warm_start)
+end
+
 timer(solver::TrustRegionSolver) = solver.timer
 
 negCurveString = "neg curve"

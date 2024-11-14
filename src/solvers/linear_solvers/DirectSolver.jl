@@ -26,6 +26,15 @@ function DirectSolver(obj::Objective, p, timer)
   return DirectSolver(asm, linsolve, timer)
 end
 
+"""
+$(TYPEDSIGNATURES)
+Direct linear solver constructor from a Domain
+"""
+function DirectSolver(inputs::Dict{Symbol, Any}, obj::Objective, p, timer)
+  # TODO need to hook up inputs and what not
+  return DirectSolver(obj, p, timer)
+end
+
 function Base.show(io::IO, sol::DirectSolver)
   println(io, "DirectSolver:")
   println(io, "  Algorithm            = $(sol.linsolve.alg)")

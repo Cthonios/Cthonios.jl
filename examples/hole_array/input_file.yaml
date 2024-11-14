@@ -2,24 +2,24 @@ problems:
 - type: QuasiStaticProblem
   domain:
     type: Domain
-    mesh file: examples/window_pain/window_pain_tri3.g
+    mesh file: examples/hole_array/hole_array.exo
     dirichlet boundary conditions:
     - type: DirichletBC
-      nodeset: nset_outer_bottom
+      nodeset: yminus_nodeset
       dofs: [1, 2]
       function: (x, t) -> 0.0
     - type: DirichletBC
-      nodeset: nset_outer_top
+      nodeset: yplus_nodeset
       dofs: [1]
       function: (x, t) -> 0.0
     - type: DirichletBC
-      nodeset: nset_outer_top
+      nodeset: yplus_nodeset
       dofs: [2]
-      function: (x, t) -> -0.5 * t
+      function: (x, t) -> -7.5 * t
     neumann boundary conditions: []
     sections:
     - type: Section
-      block: unnamed_block_1
+      block: Block1
       quadrature order: 2
       physics:
         type: SolidMechanics
@@ -27,15 +27,17 @@ problems:
           type: NeoHookean
           properties:
             type: MaterialProperties
-            bulk modulus: 50.0
-            shear modulus: 1.0
+            # bulk modulus: 1000.0
+            # shear modulus: 1.0
+            bulk modulus: 8.333
+            shear modulus: 0.3378
         formulation:
           type: PlaneStrain
   time:
     type: ConstantTimeStepper
     start time: 0.0
     end time: 1.0
-    time increment: 0.0125
+    time increment: 0.025
   objective:
     type: Objective
     value: energy
@@ -53,7 +55,6 @@ problems:
     preconditioner: 
       type: CholeskyPreconditioner
     warm start: true
-    #   # type: LDLPreconditioner
   postprocessor:
     type: ExodusPostProcessor
     output file: output.e

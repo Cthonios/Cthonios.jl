@@ -30,6 +30,21 @@ end
 """
 $(TYPEDSIGNATURES)
 """
+function NewtonSolver(inputs::Dict{Symbol, Any}, objective::Objective, p, timer)
+  @timeit timer "NewtonSolver - setup" begin
+    linear_solver_inputs = inputs[Symbol("linear solver")]
+    linear_solver = eval(Symbol(linear_solver_inputs[:type]))(linear_solver_inputs[:parameters], objective, p, timer)
+    ΔUu = create_unknowns(objective.domain)
+  end
+  return NewtonSolver(
+    linear_solver, objective, ΔUu, timer,
+    100, 1e-8, 1e-10, false
+  )
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
 function check_convergence(solver::NewtonSolver, Uu, p, R0_norm)
   R_norm = residual_norm(solver.linear_solver, solver.objective, Uu, p)
   U_norm = norm(solver.ΔUu)

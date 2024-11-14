@@ -6,6 +6,7 @@
 /docs/build/
 *.e
 *.log
+*.so
 build/
 *.aprepro
 cubit*.jou
