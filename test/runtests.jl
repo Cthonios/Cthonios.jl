@@ -18,7 +18,7 @@ include("TestSections.jl")
 include("TestTimeSteppers.jl")
 
 @testset ExtendedTestSet "Aqua.jl" begin
-  Aqua.test_all(Cthonios; ambiguities=false)
+  Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)
 end
 
 @testset ExtendedTestSet "JET.jl" begin

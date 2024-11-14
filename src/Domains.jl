@@ -150,9 +150,13 @@ end
 function update_neumann_vals!(nbc, domain::Domain, X, t)
   t = current_time(t)
   resize!(nbc, 0)
+
+  ND = size(X, 1)
+
   for sec in domain.neumann_bc_sections
     for e in 1:length(sec.bc.elements)
       X_el = surface_element_coordinates(sec, X, e)
+      X_el = SMatrix{length(X_el) ÷ ND, ND, eltype(X_el), length(X_el)}(X_el...)
       for q in 1:ReferenceFiniteElements.num_quadrature_points(sec.fspace.ref_fe.surface_element)
         interps = MappedSurfaceInterpolants(sec.fspace.ref_fe, X_el, q, sec.bc.sides[e])
         X_q = interps.X_q

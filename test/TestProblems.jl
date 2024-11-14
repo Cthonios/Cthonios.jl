@@ -28,7 +28,12 @@
 
   # constructors
   timer = TimerOutput()
-  objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
+  objective = Objective(
+    domain, 
+    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    timer
+  )
   Uu = Cthonios.create_unknowns(objective.domain)
   p = ObjectiveParameters(objective, time)
   solver = NewtonSolver(objective, p, DirectSolver, timer)
@@ -72,7 +77,12 @@ end
 
   # constructors
   timer = TimerOutput()
-  objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
+  objective = Objective(
+    domain, 
+    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    timer
+  )  
   Uu = Cthonios.create_unknowns(objective.domain)
   p = ObjectiveParameters(objective, time)
 
@@ -117,7 +127,12 @@ end
 
   # constructors
   timer = TimerOutput()
-  objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
+  objective = Objective(
+    domain, 
+    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    timer
+  )  
   Uu = Cthonios.create_unknowns(objective.domain)
   p = ObjectiveParameters(objective, time)
 
@@ -143,7 +158,12 @@ end
     )
   ]
   domain = Domain("window_pain_tri3.g", sections, dbcs, nbcs, 2)
-  objective = Objective(domain, Cthonios.energy, Cthonios.gradient, Cthonios.hessian, timer)
+  objective = Objective(
+    domain, 
+    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    timer
+  )  
   p = ObjectiveParameters(objective, time)
   solver = EigenSolver(objective, p, timer, 10)
   pp = ExodusPostProcessor("window_pain_tri3.g", "eigen_output.e", ["displ_x", "displ_y"])

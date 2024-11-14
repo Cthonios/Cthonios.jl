@@ -4,10 +4,13 @@ function edges(domain::Domain)
   es = Matrix{Int}[]
   for section in domain.sections
     e_edges = section.fspace.ref_fe.edge_nodes
+    display(e_edges)
     for e in 1:num_elements(section.fspace)
       conn = connectivity(section.fspace, e)
-      edges_temp = conn[e_edges]
-      push!(es, edges_temp)
+      display(conn)
+      
+      # edges_temp = conn[e_edges]
+      # push!(es, edges_temp)
     end
   end
   return es

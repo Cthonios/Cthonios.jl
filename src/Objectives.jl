@@ -17,19 +17,43 @@ respectively.
 ```hessian``` - A function for the quadrature level objective hessian evaluation.
 ```timer``` - A timer that's already setup.
 """
-struct Objective{D, F1, F2, F3, T}
+struct Objective{D, F1, F2, F3, F4, F5, F6, T}
   domain::D
   value::F1
   gradient::F2
   hessian::F3
+  neumann_value::F4
+  neumann_gradient::F5
+  neumann_hessian::F6
   timer::T
+end
+
+function Objective(domain::Domain, value_func::F1, neumann_value_func::F2, timer::TimerOutput) where {F1 <: Function, F2 <: Function}
+  grad_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, z, x, state, props, t), u)
+  hess_func(phys, cell, u, x, state, props, t) = ForwardDiff.hessian(z -> value_func(phys, cell, z, x, state, props, t), u)
+  neumann_grad_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+  neumann_hess_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.hessian(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+  return Objective(
+    domain, 
+    value_func, grad_func, hess_func, 
+    neumann_value_func, neumann_grad_func, neumann_hess_func,
+    timer
+  )
 end
 
 function Objective(inputs::Dict{Symbol, Any}, domain, timer)
   value_func = eval(Meta.parse(inputs[:value]))
   grad_func = eval(Meta.parse(inputs[:gradient]))
   hess_func = eval(Meta.parse(inputs[:hessian]))
-  return Objective(domain, value_func, grad_func, hess_func, timer)
+  neumann_value_func = eval(Meta.parse(inputs[Symbol("neumann value")]))
+  neumann_grad_func = eval(Meta.parse(inputs[Symbol("neumann gradient")]))
+  neumann_hess_func = eval(Meta.parse(inputs[Symbol("neumann hessian")]))
+  return Objective(
+    domain, 
+    value_func, grad_func, hess_func, 
+    neumann_value_func, neumann_grad_func, neumann_hess_func, 
+    timer
+  )
 end
 
 function grad_u end
@@ -127,8 +151,20 @@ function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
     g .= zero(eltype(g))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(g, o.gradient, o.domain, Uu, p)
+    surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
     return @views g[o.domain.dof.unknown_dofs]
   end
+end
+
+function gradient_for_ad!(g, o::Objective, Uu, p::ObjectiveParameters)
+  # @timeit timer(o) "Objectives - gradient!" begin
+    g .= zero(eltype(g))
+    update_field_unknowns!(p.U, o.domain, Uu)
+    domain_iterator!(g, o.gradient, o.domain, Uu, p)
+    # surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
+    # return @views g[o.domain.dof.unknown_dofs]
+    return nothing
+  # end
 end
 
 """
@@ -139,6 +175,7 @@ function hessian!(asm::FiniteElementContainers.Assembler, o::Objective, Uu, p::O
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(asm, o.hessian, o.domain, Uu, p)
+    # surface_iterator!(asm, o.neumann_hessian, o.domain, Uu, p) # Don't even need this except for maybe some cases?
     return SparseArrays.sparse!(asm) |> Symmetric
   end
 end
@@ -148,7 +185,7 @@ function hvp(o::Objective, Uu, p, Vv)
     Hv = similar(p.hvp_scratch)
     Hv .= zero(eltype(Hv))
     hvp!(Hv, o, Uu, p, Vv)
-    return Hv[o.domain.dof.unknown_dofs]
+    return @views Hv[o.domain.dof.unknown_dofs]
   end
 end
 
@@ -173,6 +210,7 @@ function hvp!(Hv::NodalField, o::Objective, Uu, p::ObjectiveParameters, Vv)
     update_field_unknowns!(p.U, o.domain, Uu)
     update_field_unknowns!(p.hvp_scratch, o.domain, Vv)
     domain_iterator!(Hv, o.hessian, o.domain, Uu, p, Vv)
+    # TODO do we need a surface iterator for more general neumann bcs?
     return @views Hv[o.domain.dof.unknown_dofs]
   end
 end
@@ -219,6 +257,7 @@ function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
     val .= zero(eltype(val))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(val, o.value, o.domain, Uu, p)
+    surface_iterator!(val, o.neumann_value, o.domain, Uu, p)
     return @views val[1]
   end
 end
