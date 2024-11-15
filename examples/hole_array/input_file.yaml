@@ -34,7 +34,7 @@ problems:
         formulation:
           type: PlaneStrain
   time:
-    type: ConstantTimeStepper
+    type: QuasiStatic
     start time: 0.0
     end time: 1.0
     time increment: 0.025
