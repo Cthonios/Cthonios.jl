@@ -8,11 +8,6 @@ using TimerOutputs
 
 # file management
 mesh_file = Base.source_dir() * "/hole_array.exo"
-timer = TimerOutput()
-
-# global setup
-integrator = QuasiStatic(0.0, 1.0, 1. / 20)
-n_dofs = 2
 
 # functions
 func_1(x, t) = -5. * t#(0., -5. * t)
@@ -23,7 +18,7 @@ func_3(x, t) = @SVector [0., -0.025 * t]
 disp_bcs = [
   DirichletBC("yminus_nodeset", [1, 2], func_2)
   DirichletBC("yplus_nodeset", [1], func_2)
-  # DirichletBC("yplus_nodeset", [2], func_1)
+  DirichletBC("yplus_nodeset", [2], func_1)
 ]
 traction_bcs = [
   NeumannBC("yplus_sideset", func_3)
@@ -40,21 +35,15 @@ sections = Section[
     )
   )
 ]
-domain = Domain(mesh_file, sections, disp_bcs, traction_bcs, 2)
-objective = Objective(
-  domain, 
-  Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
-  Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
-  timer
-)
-# objective = Objective(domain, Cthonios.energy, Cthonios.neumann_energy, timer)
-p = ObjectiveParameters(objective, integrator)
-# solver = TrustRegionSolver(objective, p, timer; use_warm_start=true, preconditioner=CholeskyPreconditioner)
-solver = NewtonSolver(objective, p, DirectSolver, timer)
-Uu = Cthonios.create_unknowns(solver)
 
-# pp
+# problem setup
+# domain = Domain(mesh_file, sections, disp_bcs, traction_bcs)
+domain = Domain(mesh_file, sections, disp_bcs)
+objective = Objective(domain, Cthonios.energy)
+integrator = QuasiStatic(0.0, 1.0, 1. / 20)
 pp = ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
+problem = Problem(objective, integrator, TrustRegionSolver, pp)
 
-problem = QuasiStaticProblem(objective, solver, pp, timer)
+# solve problem
+Uu, p = Cthonios.create_unknowns_and_parameters(problem)
 Cthonios.solve!(problem, Uu, p)

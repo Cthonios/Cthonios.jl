@@ -41,6 +41,15 @@ function Objective(domain::Domain, value_func::F1, neumann_value_func::F2, timer
   )
 end
 
+function Objective(domain::Domain, ::typeof(energy))
+  return Objective(
+    domain,
+    energy, gradient, hessian,
+    neumann_energy, neumann_gradient, neumann_hessian,
+    TimerOutput()
+  )
+end
+
 function Objective(inputs::Dict{Symbol, Any}, domain, timer)
   value_func = eval(Meta.parse(inputs[:value]))
   grad_func = eval(Meta.parse(inputs[:gradient]))
@@ -159,6 +168,11 @@ end
 function gradient_for_ad!(g, o::Objective, Uu, p::ObjectiveParameters)
   # @timeit timer(o) "Objectives - gradient!" begin
     g .= zero(eltype(g))
+
+    # TTRYING BELOW OUT
+    update_neumann_vals!(p, o)
+    # TRYING ABOVE out
+
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(g, o.gradient, o.domain, Uu, p)
     # surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
@@ -267,6 +281,13 @@ $(TYPEDSIGNATURES)
 """
 function step!(p::ObjectiveParameters)
   step!(p.t)
+  return nothing
+end
+
+function step_new!(p::ObjectiveParameters, o::Objective)
+  step!(p.t)
+  update_dirichlet_vals!(p, o)
+  update_neumann_vals!(p, o)
   return nothing
 end
 

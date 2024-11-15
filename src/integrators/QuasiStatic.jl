@@ -20,6 +20,19 @@ end
 
 """
 $(TYPEDSIGNATURES)
+"""
+function integration_step_header(times::QuasiStatic)
+  @info "$(repeat('=', 96))"
+  @info "= Load step    $(times.current_time_step[1])"
+  @info "= Old Time     $(times.current_time[1])"
+  @info "= New Time     $(times.current_time[1] + times.Δt[1])"
+  @info "= End Time     $(times.end_time[1])"
+  @info "= % Completete $(100.0 * (times.current_time[1] + times.Δt[1]) / times.end_time[1])"
+  @info "$(repeat('=', 96))"
+end
+
+"""
+$(TYPEDSIGNATURES)
 Method to increment ```time.current_time``` by ```Δt```.
 """
 function step!(time::QuasiStatic) 
