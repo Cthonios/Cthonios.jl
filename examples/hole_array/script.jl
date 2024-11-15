@@ -11,7 +11,6 @@ mesh_file = Base.source_dir() * "/hole_array.exo"
 timer = TimerOutput()
 
 # global setup
-# times = ConstantTimeStepper(0.0, 1.0, 1. / 20)
 integrator = QuasiStatic(0.0, 1.0, 1. / 20)
 n_dofs = 2
 
@@ -50,8 +49,8 @@ objective = Objective(
 )
 # objective = Objective(domain, Cthonios.energy, Cthonios.neumann_energy, timer)
 p = ObjectiveParameters(objective, integrator)
-solver = TrustRegionSolver(objective, p, timer; use_warm_start=true, preconditioner=CholeskyPreconditioner)
-
+# solver = TrustRegionSolver(objective, p, timer; use_warm_start=true, preconditioner=CholeskyPreconditioner)
+solver = NewtonSolver(objective, p, DirectSolver, timer)
 Uu = Cthonios.create_unknowns(solver)
 
 # pp

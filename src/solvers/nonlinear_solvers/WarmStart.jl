@@ -15,12 +15,10 @@ function solve!(::WarmStart, solver, objective, Uu, p)
   # need scratch arrays
   R = solver.assembler.residuals
   R .= zero(eltype(R))
-
   
   dR = make_zero(R)
   dUu = make_zero(Uu)
   dp = make_zero(p)
-  # dp = deepcopy(p)
 
   # need to set time step
   dp.t.current_time[1] = p.t.current_time[1]

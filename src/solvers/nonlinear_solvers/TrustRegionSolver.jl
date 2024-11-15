@@ -38,16 +38,16 @@ struct TrustRegionSolver{
   L,
   O,
   U <: AbstractVector,
-  T <: TimerOutput,
   W,
+  T <: TimerOutput,
   F <: NodalField,
   S <: TrustRegionSolverSettings
-} <: AbstractNonlinearSolver{L, O, U, T}
+} <: AbstractNonlinearSolver{L, O, U, W, T}
   preconditioner::L
   objective::O
   ΔUu::U
-  timer::T
   warm_start::W
+  timer::T
   o::U
   g::F
   Hv::F
@@ -92,8 +92,8 @@ function TrustRegionSolver(
   return TrustRegionSolver(
     precond, objective,
     ΔUu,
-    timer,
     warm_start,
+    timer,
     o, g, Hv,
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
@@ -301,6 +301,12 @@ end
 
 function solve!(solver::TrustRegionSolver, Uu, p)
   @timeit timer(solver) "TrustRegionSolver - solve!" begin
+    if solver.use_warm_start
+      @timeit timer(solver) "TrustRegionSolver - warm start" begin
+        solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
+      end
+    end
+
     # unpack some solver settings
     settings = solver.settings
     tr_size = solver.settings.tr_size

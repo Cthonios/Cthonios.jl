@@ -2,10 +2,11 @@
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct NewtonSolver{L, O, U, T} <: AbstractNonlinearSolver{L, O, U, T}
+struct NewtonSolver{L, O, U, W, T} <: AbstractNonlinearSolver{L, O, U, W, T}
   linear_solver::L
   objective::O
   ΔUu::U
+  warm_start::W
   timer::T
   max_iter::Int
   abs_tol::Float64
@@ -20,9 +21,10 @@ function NewtonSolver(objective::Objective, p, linear_solver_type, timer)
   @timeit timer "NewtonSolver - setup" begin
     linear_solver = linear_solver_type(objective, p, timer)
     ΔUu = create_unknowns(objective.domain)
+    warm_start = WarmStart(objective)
   end
   return NewtonSolver(
-    linear_solver, objective, ΔUu, timer,
+    linear_solver, objective, ΔUu, warm_start, timer,
     100, 1e-8, 1e-10, false
   )
 end
@@ -78,6 +80,11 @@ $(TYPEDSIGNATURES)
 """
 function step!(solver::NewtonSolver, Uu, p)
   @timeit timer(solver) "NewtonSolver - step!" begin
+    if solver.use_warm_start
+      @timeit timer(solver) "TrustRegionSolver - warm start" begin
+        solve!(solver.warm_start, solver.linear_solver.assembler, solver.objective, Uu, p)
+      end
+    end
     solve!(solver.ΔUu, solver.linear_solver, solver.objective, Uu, p)
   end
   return nothing

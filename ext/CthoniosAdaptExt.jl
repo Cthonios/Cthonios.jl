@@ -91,13 +91,13 @@ function Adapt.adapt_structure(to, solver::Cthonios.NewtonSolver)
 end
 
 # time steppers
-function Adapt.adapt_structure(to, ts::T) where T <: Cthonios.ConstantTimeStepper
+function Adapt.adapt_structure(to, ts::T) where T <: Cthonios.QuasiStatic
   start_time = Adapt.adapt_structure(to, ts.start_time)
   end_time = Adapt.adapt_structure(to, ts.end_time)
   current_time = Adapt.adapt_structure(to, ts.current_time)
   current_time_step = Adapt.adapt_structure(to, ts.current_time_step)
   Δt = Adapt.adapt_structure(to, ts.Δt)
-  return ConstantTimeStepper(start_time, end_time, current_time, current_time_step, Δt)
+  return QuasiStatic(start_time, end_time, current_time, current_time_step, Δt)
 end
 
 end # module
