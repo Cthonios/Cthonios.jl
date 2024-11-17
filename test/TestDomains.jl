@@ -19,8 +19,8 @@
       )
     )
   ]
-  domain = Domain("window_pain_tri3.g", sections, dbcs, nbcs, 2)
-  time = ConstantTimeStepper(0.0, 1.0, 0.1)
+  domain = Domain("window_pain_tri3.g", sections, dbcs, nbcs)
+  time = QuasiStatic(0.0, 1.0, 0.1)
   # test array setup
   coords = domain.coords
   Uu = Cthonios.create_unknowns(domain)

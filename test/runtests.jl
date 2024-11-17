@@ -11,11 +11,11 @@ using TimerOutputs
 
 include("TestBoundaryConditions.jl")
 include("TestDomains.jl")
+include("TestIntegrators.jl")
 include("TestObjectives.jl")
 include("TestPostProcessors.jl")
 include("TestProblems.jl")
 include("TestSections.jl")
-include("TestTimeSteppers.jl")
 
 @testset ExtendedTestSet "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)

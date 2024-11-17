@@ -7,7 +7,8 @@ using StaticArrays
 using TimerOutputs
 
 # file management
-mesh_file = Base.source_dir() * "/hole_array.exo"
+# mesh_file = Base.source_dir() * "/hole_array.exo"
+mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
 
 # functions
 func_1(x, t) = -5. * t#(0., -5. * t)
@@ -21,7 +22,7 @@ disp_bcs = [
   DirichletBC("yplus_nodeset", [2], func_1)
 ]
 traction_bcs = [
-  NeumannBC("yplus_sideset", func_3)
+  # NeumannBC("yplus_sideset", func_3)
 ]
 
 # sections
@@ -37,10 +38,10 @@ sections = Section[
 ]
 
 # problem setup
-# domain = Domain(mesh_file, sections, disp_bcs, traction_bcs)
-domain = Domain(mesh_file, sections, disp_bcs)
+domain = Domain(mesh_file, sections, disp_bcs, traction_bcs)
+# domain = Domain(mesh_file, sections, disp_bcs)
 objective = Objective(domain, Cthonios.energy)
-integrator = QuasiStatic(0.0, 1.0, 1. / 20)
+integrator = QuasiStatic(0.0, 1.0, 1. / 80)
 pp = ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
 problem = Problem(objective, integrator, TrustRegionSolver, pp)
 

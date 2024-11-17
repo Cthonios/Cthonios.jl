@@ -35,12 +35,12 @@ Constructor for a ```Domain``` type.
 ```mesh_file``` - File name of a mesh to read.
 ```sections_in``` - A set of ```Section```s.
 ```dbcs_in``` - A set of ```DirichletBC```s.
-```n_dofs``` - The number of dofs in the problem.
+```nbcs_in``` - A set of ```NeumannBC```s
 """
 function Domain(
   mesh_file::String, 
   sections_in, 
-  dbcs_in = DirchletBC[], 
+  dbcs_in = DirichletBC[], 
   nbcs_in = NeumannBC[]
 )
   # get number of dofs based on physics
@@ -102,7 +102,7 @@ function Domain(inputs::Dict{Symbol, Any})
   sections = map(section -> eval(Symbol(section[:type]))(section), sections)
   n_dofs = map(s -> num_fields(s.physics), sections)
   @assert all(n_dofs .== n_dofs[1])
-  return Domain(mesh_file, sections, dbcs, nbcs, n_dofs[1])
+  return Domain(mesh_file, sections, dbcs, nbcs)
 end
 
 """

@@ -4,7 +4,6 @@ using ArgParse
 using Atomix
 using ComponentArrays
 using ConstitutiveModels
-using DifferentiationInterface
 using DocStringExtensions
 using Exodus
 using FiniteElementContainers

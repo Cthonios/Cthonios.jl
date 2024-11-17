@@ -1,5 +1,5 @@
 @testset ExtendedTestSet "TimeSteppers" begin
-  time = ConstantTimeStepper(0.0, 1.0, 0.1)
+  time = QuasiStatic(0.0, 1.0, 0.1)
   @show time
   @test time.start_time[1] ≈ 0.0
   @test time.end_time[1] ≈ 1.0

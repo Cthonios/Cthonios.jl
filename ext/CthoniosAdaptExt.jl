@@ -44,13 +44,13 @@ function Adapt.adapt_structure(to, p::Cthonios.ObjectiveParameters)
 end
 
 # problems
-function Adapt.adapt_structure(to, prob::Cthonios.QuasiStaticProblem)
-  objective = Adapt.adapt_structure(to, prob.objective)
-  solver = Adapt.adapt_structure(to, prob.solver)
-  pp = prob.post_processor
-  timer = Adapt.adapt_structure(to, prob.timer)
-  return Cthonios.QuasiStaticProblem(objective, solver, pp, timer)
-end
+# function Adapt.adapt_structure(to, prob::Cthonios.QuasiStaticProblem)
+#   objective = Adapt.adapt_structure(to, prob.objective)
+#   solver = Adapt.adapt_structure(to, prob.solver)
+#   pp = prob.post_processor
+#   timer = Adapt.adapt_structure(to, prob.timer)
+#   return Cthonios.QuasiStaticProblem(objective, solver, pp, timer)
+# end
 
 # properties
 function Adapt.adapt_structure(to, props::Cthonios.MaterialProperties)
