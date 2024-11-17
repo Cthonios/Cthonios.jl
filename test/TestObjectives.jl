@@ -20,12 +20,12 @@
       )
     )
   ]
-  domain = Domain("window_pain_tri3.g", sections, dbcs, nbcs, 2)
+  domain = Domain("window_pain_tri3.g", sections, dbcs, nbcs)
   asm = Cthonios.StaticAssembler(domain)
   Cthonios.update_unknown_dofs!(domain, asm)
   
   coords = domain.coords
-  time = ConstantTimeStepper(0.0, 1.0, 0.0125)
+  time = QuasiStatic(0.0, 1.0, 0.0125)
 
   # constructors
   objective = Objective(

@@ -35,12 +35,24 @@ Constructor for a ```Domain``` type.
 ```mesh_file``` - File name of a mesh to read.
 ```sections_in``` - A set of ```Section```s.
 ```dbcs_in``` - A set of ```DirichletBC```s.
-```n_dofs``` - The number of dofs in the problem.
+```nbcs_in``` - A set of ```NeumannBC```s
 """
-function Domain(mesh_file::String, sections_in, dbcs_in, nbcs_in, n_dofs::Int)
+function Domain(
+  mesh_file::String, 
+  sections_in, 
+  dbcs_in = DirichletBC[], 
+  nbcs_in = NeumannBC[]
+)
+  # get number of dofs based on physics
+  n_dofs = map(x -> x.physics |> num_fields, sections_in)
+  @assert all(x -> x == n_dofs[1], n_dofs)
+  n_dofs = n_dofs[1]
+
+  # setup mesh 
   mesh = FileMesh(ExodusDatabase, mesh_file)
   coords = coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
+
   dof = DofManager{n_dofs, size(coords, 2), Vector{Float64}}()
   # setup sections
   # TODO need to check all sections have compatable physics
@@ -90,7 +102,7 @@ function Domain(inputs::Dict{Symbol, Any})
   sections = map(section -> eval(Symbol(section[:type]))(section), sections)
   n_dofs = map(s -> num_fields(s.physics), sections)
   @assert all(n_dofs .== n_dofs[1])
-  return Domain(mesh_file, sections, dbcs, nbcs, n_dofs[1])
+  return Domain(mesh_file, sections, dbcs, nbcs)
 end
 
 """

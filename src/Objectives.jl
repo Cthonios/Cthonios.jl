@@ -41,19 +41,23 @@ function Objective(domain::Domain, value_func::F1, neumann_value_func::F2, timer
   )
 end
 
+function Objective(domain::Domain, ::typeof(energy))
+  return Objective(
+    domain,
+    energy, gradient, hessian,
+    neumann_energy, neumann_gradient, neumann_hessian,
+    TimerOutput()
+  )
+end
+
 function Objective(inputs::Dict{Symbol, Any}, domain, timer)
   value_func = eval(Meta.parse(inputs[:value]))
-  grad_func = eval(Meta.parse(inputs[:gradient]))
-  hess_func = eval(Meta.parse(inputs[:hessian]))
-  neumann_value_func = eval(Meta.parse(inputs[Symbol("neumann value")]))
-  neumann_grad_func = eval(Meta.parse(inputs[Symbol("neumann gradient")]))
-  neumann_hess_func = eval(Meta.parse(inputs[Symbol("neumann hessian")]))
-  return Objective(
-    domain, 
-    value_func, grad_func, hess_func, 
-    neumann_value_func, neumann_grad_func, neumann_hess_func, 
-    timer
-  )
+
+  if typeof(value_func) == typeof(energy)
+    return Objective(domain, value_func)
+  else
+    throw(ErrorException("Unsupported objective function"))
+  end
 end
 
 function grad_u end
@@ -78,7 +82,8 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, Q} <: AbstractObjectiveParameters
+# struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
@@ -89,7 +94,9 @@ struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, Q} <: AbstractObjectivePar
   props::P
   # scratch arrays
   U::U2
-  hvp_scratch::U3
+  # grad_scratch::U3
+  # grad_vec_scratch::V1
+  hvp_scratch::U4
   q_vals_scratch::Q
 end
 
@@ -111,6 +118,8 @@ function ObjectiveParameters(o::Objective, times)
   props = map(sec -> sec.props, o.domain.sections)
   props = ComponentArray(props)
   # scratch arrays
+  grad_scratch = create_fields(o.domain)
+  grad_vec_scratch = create_unknowns(o.domain)
   hvp_scratch = create_fields(o.domain)
   # need a scratch array for calculating q values on gpus
   # TODO move somewhere else
@@ -129,6 +138,7 @@ function ObjectiveParameters(o::Objective, times)
   state_new = ComponentArray(state_new)
   params = ObjectiveParameters(
     X, times, Ubc, nbc, state_old, state_new, props,
+    # U, grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch
     U, hvp_scratch, q_vals_scratch
   )
   return params
@@ -137,9 +147,11 @@ end
 function gradient(o::Objective, Uu, p)
   @timeit timer(o) "Objective - gradient" begin
     g = similar(p.hvp_scratch)
+    # g = p.grad_scratch
     g .= zero(eltype(g))
     gradient!(g, o, Uu, p)
-    return g[o.domain.dof.unknown_dofs]
+    return g.vals[o.domain.dof.unknown_dofs]
+    # return g
   end
 end
 
@@ -161,7 +173,7 @@ function gradient_for_ad!(g, o::Objective, Uu, p::ObjectiveParameters)
     g .= zero(eltype(g))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(g, o.gradient, o.domain, Uu, p)
-    # surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
+    surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
     # return @views g[o.domain.dof.unknown_dofs]
     return nothing
   # end
@@ -267,6 +279,13 @@ $(TYPEDSIGNATURES)
 """
 function step!(p::ObjectiveParameters)
   step!(p.t)
+  return nothing
+end
+
+function step_new!(p::ObjectiveParameters, o::Objective)
+  step!(p.t)
+  update_dirichlet_vals!(p, o)
+  update_neumann_vals!(p, o)
   return nothing
 end
 

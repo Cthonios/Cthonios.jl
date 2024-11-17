@@ -1,8 +1,9 @@
 problems:
-- type: QuasiStaticProblem
+# - type: QuasiStaticProblem
+- type: Problem
   domain:
     type: Domain
-    mesh file: examples/hole_array/hole_array.exo
+    mesh file: examples/hole_array/hole_array_tri6.exo
     dirichlet boundary conditions:
     - type: DirichletBC
       nodeset: yminus_nodeset
@@ -27,34 +28,32 @@ problems:
           type: NeoHookean
           properties:
             type: MaterialProperties
-            # bulk modulus: 1000.0
-            # shear modulus: 1.0
-            bulk modulus: 8.333
-            shear modulus: 0.3378
+            bulk modulus: 1000.0
+            shear modulus: 1.0
+            # bulk modulus: 8.333
+            # shear modulus: 0.3378
         formulation:
           type: PlaneStrain
   time:
-    type: ConstantTimeStepper
+    type: QuasiStatic
     start time: 0.0
     end time: 1.0
-    time increment: 0.025
+    time increment: 0.0125
   objective:
     type: Objective
     value: energy
-    gradient: gradient
-    hessian: hessian
-    neumann value: neumann_energy
-    neumann gradient: neumann_gradient
-    neumann hessian: neumann_hessian
+
   nonlinear solver:
-    # type: NewtonSolver
-    # linear solver: 
-    #   type: DirectSolver
-    #   parameters: {}
     type: TrustRegionSolver
+    tol: 1e-8
+
     preconditioner: 
       type: CholeskyPreconditioner
+    
+    # TODO make a whole block for warmstart 
+    # with solvers as options
     warm start: true
+
   postprocessor:
     type: ExodusPostProcessor
     output file: output.e

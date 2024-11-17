@@ -61,21 +61,9 @@ function solve!(prob::QuasiStaticProblem, Uu, p)
       while current_time(p.t) < end_time(p.t)
         load_step_banner(prob, p.t)
         @timeit timer(prob) "Load step - solve!" begin
-          if solver.use_warm_start
-            # TODO currently stepping is done with in the warm start solver
-            # figure out how to sort this out and make it  consistent across
-            # interfaces
-            solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
-          else
-            # step!(p)
-            # update_dirichlet_vals!(p, objective)
-            # update_neumann_vals!(p, objective)
-          end
-
           step!(p)
           update_dirichlet_vals!(p, objective)
           update_neumann_vals!(p, objective)
-
           solve!(solver, Uu, p)
         end
 

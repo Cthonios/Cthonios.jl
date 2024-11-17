@@ -13,7 +13,7 @@ it needs the following types
 3. an unknown vector
 4. an int called max_iter
 """
-abstract type AbstractNonlinearSolver{L, O, U, T} <: AbstractSolver end
+abstract type AbstractNonlinearSolver{L, O, U, W, T} <: AbstractSolver end
 timer(s::T) where T <: AbstractNonlinearSolver = s.timer
 
 """
@@ -41,6 +41,8 @@ function solve!(solver::AbstractNonlinearSolver, Uu, p)
 end
 
 # nonlinear solvers
+include("WarmStart.jl")
+
 include("NewtonSolver.jl")
 include("TrustRegionSolver.jl")
 

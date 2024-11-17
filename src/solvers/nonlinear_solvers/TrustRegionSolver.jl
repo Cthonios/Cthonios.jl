@@ -38,16 +38,16 @@ struct TrustRegionSolver{
   L,
   O,
   U <: AbstractVector,
-  T <: TimerOutput,
   W,
+  T <: TimerOutput,
   F <: NodalField,
   S <: TrustRegionSolverSettings
-} <: AbstractNonlinearSolver{L, O, U, T}
+} <: AbstractNonlinearSolver{L, O, U, W, T}
   preconditioner::L
   objective::O
   ΔUu::U
-  timer::T
   warm_start::W
+  timer::T
   o::U
   g::F
   Hv::F
@@ -69,11 +69,12 @@ TODO figure out which scratch arrays can be nixed
 function TrustRegionSolver(
   objective::Objective, p, timer; 
   preconditioner=CholeskyPreconditioner,
-  use_warm_start=true
+  use_warm_start=true,
+  settings=TrustRegionSolverSettings()
 )
   @timeit timer "TrustRegionSolver - setup" begin
     domain = objective.domain
-    settings       = TrustRegionSolverSettings() # TODO add non-defaults
+    # settings       = TrustRegionSolverSettings() # TODO add non-defaults
     # TODO eventually write a custom linear solver for this one
     precond        = preconditioner(objective, p, timer)
     ΔUu            = create_unknowns(domain)
@@ -92,8 +93,8 @@ function TrustRegionSolver(
   return TrustRegionSolver(
     precond, objective,
     ΔUu,
-    timer,
     warm_start,
+    timer,
     o, g, Hv,
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
@@ -108,7 +109,15 @@ function TrustRegionSolver(
 )
   preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
   warm_start = inputs[Symbol("warm start")]
-  return TrustRegionSolver(objective, p, timer; preconditioner=preconditioner, use_warm_start=warm_start)
+  settings = TrustRegionSolverSettings()
+
+  for key in fieldnames(typeof(settings))
+    if haskey(inputs, key)
+      setfield!(settings, key, inputs[key])
+    end
+  end
+
+  return TrustRegionSolver(objective, p, timer; preconditioner=preconditioner, use_warm_start=warm_start, settings=settings)
 end
 
 timer(solver::TrustRegionSolver) = solver.timer
@@ -301,6 +310,12 @@ end
 
 function solve!(solver::TrustRegionSolver, Uu, p)
   @timeit timer(solver) "TrustRegionSolver - solve!" begin
+    if solver.use_warm_start
+      @timeit timer(solver) "TrustRegionSolver - warm start" begin
+        solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
+      end
+    end
+
     # unpack some solver settings
     settings = solver.settings
     tr_size = solver.settings.tr_size
