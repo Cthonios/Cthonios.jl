@@ -21,7 +21,7 @@ function NewtonSolver(objective::Objective, p, timer; linear_solver_type=DirectS
   @timeit timer "NewtonSolver - setup" begin
     linear_solver = linear_solver_type(objective, p, timer)
     ΔUu = create_unknowns(objective.domain)
-    warm_start = WarmStart(objective)
+    warm_start = WarmStart(objective, p)
   end
   return NewtonSolver(
     linear_solver, objective, ΔUu, warm_start, timer,
