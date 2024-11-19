@@ -78,7 +78,7 @@ function TrustRegionSolver(
     # TODO eventually write a custom linear solver for this one
     precond        = preconditioner(objective, p, timer)
     ΔUu            = create_unknowns(domain)
-    warm_start     = WarmStart(objective)
+    warm_start     = WarmStart(objective, p)
     o              = zeros(1)
     g              = create_fields(domain) # gradient
     Hv             = create_fields(domain) # hessian-vector product

@@ -82,8 +82,8 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-# struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObjectiveParameters
-struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObjectiveParameters
+# struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
   t::T
@@ -94,8 +94,8 @@ struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectivePar
   props::P
   # scratch arrays
   U::U2
-  # grad_scratch::U3
-  # grad_vec_scratch::V1
+  grad_scratch::U3
+  grad_vec_scratch::V1
   hvp_scratch::U4
   q_vals_scratch::Q
 end
@@ -138,20 +138,39 @@ function ObjectiveParameters(o::Objective, times)
   state_new = ComponentArray(state_new)
   params = ObjectiveParameters(
     X, times, Ubc, nbc, state_old, state_new, props,
-    # U, grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch
-    U, hvp_scratch, q_vals_scratch
+    U, grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch
+    # U, hvp_scratch, q_vals_scratch
   )
   return params
 end
 
+function zero_parameters!(p::ObjectiveParameters)
+  p.X .= zero(eltype(p.X))
+  # p.t .= 
+  if length(p.Ubc) > 0
+    p.Ubc .= zero(eltype(p.Ubc))
+  end
+  if length(p.nbc) > 0
+    p.nbc .= zero(eltype(p.nbc))
+  end
+  p.state_old .= zero(eltype(p.state_old))
+  p.state_new .= zero(eltype(p.state_new))
+  p.props .= zero(eltype(p.props))
+  p.U .= zero(eltype(p.U))
+  p.hvp_scratch .= zero(eltype(p.hvp_scratch))
+  p.q_vals_scratch .= zero(eltype(p.q_vals_scratch))
+  return nothing
+end
+
 function gradient(o::Objective, Uu, p)
   @timeit timer(o) "Objective - gradient" begin
-    g = similar(p.hvp_scratch)
-    # g = p.grad_scratch
+    g = p.grad_scratch
     g .= zero(eltype(g))
     gradient!(g, o, Uu, p)
-    return g.vals[o.domain.dof.unknown_dofs]
-    # return g
+    # update vec now
+    g_vec = p.grad_vec_scratch
+    g_vec .= @views g.vals[o.domain.dof.unknown_dofs]
+    return g_vec
   end
 end
 
@@ -160,11 +179,9 @@ $(TYPEDSIGNATURES)
 """
 function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
   @timeit timer(o) "Objectives - gradient!" begin
-    g .= zero(eltype(g))
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(g, o.gradient, o.domain, Uu, p)
     surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
-    return @views g[o.domain.dof.unknown_dofs]
   end
 end
 
@@ -192,6 +209,9 @@ function hessian!(asm::FiniteElementContainers.Assembler, o::Objective, Uu, p::O
   end
 end
 
+# TODO need to make below have pre-allocated arrays
+# currently breaks trust region solver though
+# probably need to modularize that guy.
 function hvp(o::Objective, Uu, p, Vv)
   @timeit timer(o) "Objective - hvp" begin
     Hv = similar(p.hvp_scratch)

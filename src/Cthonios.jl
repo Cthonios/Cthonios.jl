@@ -24,7 +24,7 @@ using TimerOutputs
 using YAML
 
 # import to avoid name conflicts with gradient, hvp
-import Enzyme: Const, Duplicated, Forward, Reverse, autodiff, make_zero
+import Enzyme: Const, Duplicated, Forward, Reverse, autodiff, make_zero, make_zero!
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
