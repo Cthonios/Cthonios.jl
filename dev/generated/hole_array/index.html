@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Hole Array · Cthonios.jl</title><meta name="title" content="Hole Array · Cthonios.jl"/><meta property="og:title" content="Hole Array · Cthonios.jl"/><meta property="twitter:title" content="Hole Array · Cthonios.jl"/><meta name="description" content="Documentation for Cthonios.jl."/><meta property="og:description" content="Documentation for Cthonios.jl."/><meta property="twitter:description" content="Documentation for Cthonios.jl."/><meta property="og:url" content="https://cthonios.github.io/Cthonios.jl/generated/hole_array/"/><meta property="twitter:url" content="https://cthonios.github.io/Cthonios.jl/generated/hole_array/"/><link rel="canonical" href="https://cthonios.github.io/Cthonios.jl/generated/hole_array/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Cthonios.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../running_cthonios/">Running Cthonios</a></li><li><a class="tocitem" href="../../bcs/">Boundary Conditions</a></li><li><a class="tocitem" href="../../domains/">Domains</a></li><li><a class="tocitem" href="../../iterators/">Iterators</a></li><li><a class="tocitem" href="../../materials/">Materials</a></li><li><a class="tocitem" href="../../objectives/">Objectives</a></li><li><a class="tocitem" href="../../physics/">Physics</a></li><li><a class="tocitem" href="../../sections/">Sections</a></li><li><span class="tocitem">Solvers</span><ul><li><a class="tocitem" href="../../linear_solvers/">Linear solvers</a></li><li><a class="tocitem" href="../../nonlinear_solvers/">Nonlinear solvers</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Hole Array</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#File-management"><span>File management</span></a></li><li class="toplevel"><a class="tocitem" href="#Functions-for-BCs"><span>Functions for BCs</span></a></li><li class="toplevel"><a class="tocitem" href="#Boundary-conditions"><span>Boundary conditions</span></a></li><li class="toplevel"><a class="tocitem" href="#Sections"><span>Sections</span></a></li><li class="toplevel"><a class="tocitem" href="#Domain-setup"><span>Domain setup</span></a></li><li class="toplevel"><a class="tocitem" href="#Objective-setup"><span>Objective setup</span></a></li><li class="toplevel"><a class="tocitem" href="#Integrator-setup"><span>Integrator setup</span></a></li><li class="toplevel"><a class="tocitem" href="#Post-processor"><span>Post-processor</span></a></li><li class="toplevel"><a class="tocitem" href="#Finally,-solve-the-problem"><span>Finally, solve the problem</span></a></li><li class="toplevel"><a class="tocitem" href="#Interactive-plotting"><span>Interactive plotting</span></a></li></ul></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Hole Array</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Hole Array</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Cthonios/Cthonios.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Cthonios/Cthonios.jl/blob/main/examples/hole_array/script.jl#" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Load-up-necessary-packages"><a class="docs-heading-anchor" href="#Load-up-necessary-packages">Load up necessary packages</a><a id="Load-up-necessary-packages-1"></a><a class="docs-heading-anchor-permalink" href="#Load-up-necessary-packages" title="Permalink"></a></h1><pre><code class="language-julia hljs">using Cthonios</code></pre><p>using Meshes</p><pre><code class="language-julia hljs">import Meshes: SimpleMesh, viz</code></pre><h1 id="File-management"><a class="docs-heading-anchor" href="#File-management">File management</a><a id="File-management-1"></a><a class="docs-heading-anchor-permalink" href="#File-management" title="Permalink"></a></h1><pre><code class="language-julia hljs">mesh_file = &quot;../../../examples/hole_array/hole_array.exo&quot;</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;../../../examples/hole_array/hole_array.exo&quot;</code></pre><h1 id="Functions-for-BCs"><a class="docs-heading-anchor" href="#Functions-for-BCs">Functions for BCs</a><a id="Functions-for-BCs-1"></a><a class="docs-heading-anchor-permalink" href="#Functions-for-BCs" title="Permalink"></a></h1><pre><code class="language-julia hljs">func_1(x, t) = -5. * t#(0., -5. * t)
+func_2(x, t) = 0.0
+func_3(x, t) = @SVector [0., -0.025 * t]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">func_3 (generic function with 1 method)</code></pre><h1 id="Boundary-conditions"><a class="docs-heading-anchor" href="#Boundary-conditions">Boundary conditions</a><a id="Boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-conditions" title="Permalink"></a></h1><pre><code class="language-julia hljs">disp_bcs = [
+  DirichletBC(&quot;yminus_nodeset&quot;, [1, 2], func_2)
+  DirichletBC(&quot;yplus_nodeset&quot;, [1], func_2)
+  DirichletBC(&quot;yplus_nodeset&quot;, [2], func_1)
+]
+traction_bcs = [
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Any[]</code></pre><h1 id="Sections"><a class="docs-heading-anchor" href="#Sections">Sections</a><a id="Sections-1"></a><a class="docs-heading-anchor-permalink" href="#Sections" title="Permalink"></a></h1><pre><code class="language-julia hljs">sections = Section[
+  Section(
+    &quot;Block1&quot;, 2,
+    SolidMechanics(NeoHookean(), PlaneStrain()),
+    MaterialProperties(
+      &quot;bulk modulus&quot; =&gt; 0.833,
+      &quot;shear modulus&quot; =&gt; 1.0
+    )
+  )
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Section}:
+ Section{SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, MaterialProperties{Dict{Symbol, Any}}}(&quot;Block1&quot;, 2, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}(NeoHookean(), PlaneStrain(), Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}(NeoHookean(), PlaneStrain())), MaterialProperties{Dict{Symbol, Any}}(Dict{Symbol, Any}(Symbol(&quot;bulk modulus&quot;) =&gt; 0.833, Symbol(&quot;shear modulus&quot;) =&gt; 1.0)))</code></pre><h1 id="Domain-setup"><a class="docs-heading-anchor" href="#Domain-setup">Domain setup</a><a id="Domain-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Domain-setup" title="Permalink"></a></h1><pre><code class="language-julia hljs">domain = Domain(mesh_file, sections, disp_bcs, traction_bcs)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}([44.29728315483824 44.09375 … 40.010176197600856 20.023250115402412; 50.65587225363096 51.0 … 30.205590373069363 30.2388316572343], DofManager
+  Number of nodes         = 8416
+  Number of dofs per node = 2
+  Storage type            = Vector{Int64}, (Block1 = Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}(1, 2, NonAllocatedFunctionSpace
+  Reference finite element = ReferenceFE:
+  Element Type                                  = ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}
+  Surface Element Type                          = ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}
+  Interpolation Type                            = SpecialPolynomials.Lagrange
+  Polynomial Degree                             = 1
+  Quadrature Degree                             = 2
+  Array Backend Type                            = ReferenceFiniteElements.ArrayBackend{SArray}()
+  Edge Nodes Storage Type                       = Vector{SVector{2, Int64}}
+  Face Nodes Storage Type                       = Vector{SVector{0, Union{}}}
+  Interior Nodes Storage Type                   = Vector{Int64}
+  Nodal Coordinates Storage Type                = Vector{SVector{2, Float64}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Vector{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Vector{Float64}
+    Shape Function Values Storage Type          = Vector{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Vector{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+  Surface Nodal Coordinates Storage Type        = Vector{Vector{SVector{2, Float64}}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Matrix{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Matrix{Float64}
+    Shape Function Values Storage Type          = Matrix{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Matrix{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+
+, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}(NeoHookean(), PlaneStrain(), Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}(NeoHookean(), PlaneStrain())), [0.833, 1.0]),), (yplus_nodeset_2 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_1
+, yminus_nodeset_1_2 = DirichletBCInternal:
+  Numbe of active dofs = 258
+  Function             = func_2
+, yplus_nodeset_1 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_2
+), Int64[], NamedTuple(), NamedTuple())</code></pre><h1 id="Objective-setup"><a class="docs-heading-anchor" href="#Objective-setup">Objective setup</a><a id="Objective-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Objective-setup" title="Permalink"></a></h1><pre><code class="language-julia hljs">objective = Objective(domain, Cthonios.energy)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Objective{Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}, typeof(Cthonios.energy), typeof(Cthonios.gradient), typeof(Cthonios.hessian), typeof(Cthonios.neumann_energy), typeof(Cthonios.neumann_gradient), typeof(Cthonios.neumann_hessian), TimerOutput}(Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}([44.29728315483824 44.09375 … 40.010176197600856 20.023250115402412; 50.65587225363096 51.0 … 30.205590373069363 30.2388316572343], DofManager
+  Number of nodes         = 8416
+  Number of dofs per node = 2
+  Storage type            = Vector{Int64}, (Block1 = Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}(1, 2, NonAllocatedFunctionSpace
+  Reference finite element = ReferenceFE:
+  Element Type                                  = ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}
+  Surface Element Type                          = ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}
+  Interpolation Type                            = SpecialPolynomials.Lagrange
+  Polynomial Degree                             = 1
+  Quadrature Degree                             = 2
+  Array Backend Type                            = ReferenceFiniteElements.ArrayBackend{SArray}()
+  Edge Nodes Storage Type                       = Vector{SVector{2, Int64}}
+  Face Nodes Storage Type                       = Vector{SVector{0, Union{}}}
+  Interior Nodes Storage Type                   = Vector{Int64}
+  Nodal Coordinates Storage Type                = Vector{SVector{2, Float64}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Vector{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Vector{Float64}
+    Shape Function Values Storage Type          = Vector{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Vector{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+  Surface Nodal Coordinates Storage Type        = Vector{Vector{SVector{2, Float64}}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Matrix{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Matrix{Float64}
+    Shape Function Values Storage Type          = Matrix{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Matrix{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+
+, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}(NeoHookean(), PlaneStrain(), Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}(NeoHookean(), PlaneStrain())), [0.833, 1.0]),), (yplus_nodeset_2 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_1
+, yminus_nodeset_1_2 = DirichletBCInternal:
+  Numbe of active dofs = 258
+  Function             = func_2
+, yplus_nodeset_1 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_2
+), Int64[], NamedTuple(), NamedTuple()), Cthonios.energy, Cthonios.gradient, Cthonios.hessian, Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, <span class="sgr1">────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                  </span>         Time                    Allocations      
+                  ───────────────────────   ────────────────────────
+Tot / % measured:      173ms /   0.0%           10.7MiB /   0.0%    
+
+Section   ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────
+<span class="sgr1">────────────────────────────────────────────────────────────────────</span>)</code></pre><h1 id="Integrator-setup"><a class="docs-heading-anchor" href="#Integrator-setup">Integrator setup</a><a id="Integrator-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Integrator-setup" title="Permalink"></a></h1><pre><code class="language-julia hljs">integrator = QuasiStatic(0.0, 1.0, 1. / 20)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">QuasiStatic:
+  Start time = 0.0
+  End time   = 1.0
+  Time step  = [0.05]
+</code></pre><h1 id="Post-processor"><a class="docs-heading-anchor" href="#Post-processor">Post-processor</a><a id="Post-processor-1"></a><a class="docs-heading-anchor-permalink" href="#Post-processor" title="Permalink"></a></h1><pre><code class="language-julia hljs">pp = ExodusPostProcessor(mesh_file, &quot;output.e&quot;, [&quot;displ_x&quot;, &quot;displ_y&quot;])
+problem = Problem(objective, integrator, TrustRegionSolver, pp)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Problem{QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, TrustRegionSolver{CholeskyPreconditioner{FiniteElementContainers.StaticAssembler{Float64, Int64, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Float64}}, SparseArrays.CHOLMOD.Factor{Float64, Int64}, TimerOutput}, Objective{Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}, typeof(Cthonios.energy), typeof(Cthonios.gradient), typeof(Cthonios.hessian), typeof(Cthonios.neumann_energy), typeof(Cthonios.neumann_gradient), typeof(Cthonios.neumann_hessian), TimerOutput}, Vector{Float64}, Cthonios.WarmStart{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}}, TimerOutput, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Cthonios.TrustRegionSolverSettings}, ExodusPostProcessor{ExodusDatabase{Int32, Int32, Int32, Float64, Initialization{2, 8416, 14768, 1, 2, 3}}}, TimerOutput}(QuasiStatic:
+  Start time = 0.0
+  End time   = 1.0
+  Time step  = [0.05]
+, TrustRegionSolver{CholeskyPreconditioner{FiniteElementContainers.StaticAssembler{Float64, Int64, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Float64}}, SparseArrays.CHOLMOD.Factor{Float64, Int64}, TimerOutput}, Objective{Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}, typeof(Cthonios.energy), typeof(Cthonios.gradient), typeof(Cthonios.hessian), typeof(Cthonios.neumann_energy), typeof(Cthonios.neumann_gradient), typeof(Cthonios.neumann_hessian), TimerOutput}, Vector{Float64}, Cthonios.WarmStart{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}}, TimerOutput, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Cthonios.TrustRegionSolverSettings}(CholeskyPreconditioner{FiniteElementContainers.StaticAssembler{Float64, Int64, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Float64}}, SparseArrays.CHOLMOD.Factor{Float64, Int64}, TimerOutput}(FiniteElementContainers.StaticAssembler{Float64, Int64, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Int64}, Vector{Float64}, Vector{Int64}, Vector{Int64}, Vector{Float64}}([1, 2, 3, 4, 1, 2, 3, 4, 1, 2  …  15213, 15214, 14713, 14714, 15715, 15716, 15213, 15214, 14713, 14714], [1, 1, 1, 1, 2, 2, 2, 2, 3, 3  …  14713, 14713, 14713, 14713, 14714, 14714, 14714, 14714, 14714, 14714], [1, 2, 5, 6, 7, 8, 11, 12, 25, 26  …  531639, 531640, 531641, 531642, 531643, 531644, 531645, 531646, 531647, 531648], [14768], [36], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [1.0936717307567239, -0.292890957074626, -0.30874880569639573, 0.08916014301262334, -0.7849229250603279, 0.20373081406200264, -0.292890957074626, 0.7500337522693039, 0.5059934763459568, -0.6357183841377304  …  -0.7268771191494259, 0.08076579504917981, 0.9979500765131166, -0.18077748700999746, 0.516845025294151, -0.4374812602032614, -0.3360675382841535, -0.11729029295148521, -0.18077748700999746, 0.5547715531547467], [144643, 144644, 118497, 118498, 144635, 144636, 144619, 144620, 94955, 94956  …  212007, 212008, 212035, 212036, 212063, 212064, 212091, 212092, 212117, 212118], [1, 11, 21, 31, 41, 51, 61, 71, 81, 91  …  212007, 212021, 212035, 212049, 212063, 212077, 212091, 212105, 212117, 212129], [1, 2, 3, 4, 5, 6, 9623, 9624, 11471, 11472  …  16251, 16252, 16315, 16316, 15729, 15730, 16279, 16280, 16315, 16316], [5.4007533141565585, -0.12274042142879321, -1.5186858384289632, -0.06110082032272626, -1.2926637279292954, 0.012201741061584614, -0.46358225309950574, -0.49453493243157615, -0.9498052563957434, 0.6572070814006334  …  0.06184611651062613, -0.8785394483537146, 0.03552764141376441, 1.5006309589952131, 0.36180915966271, -0.22120364003548657, -0.5826270613111169, -0.5956993044027834, 0.22081790164840692, 0.81690294443827], [1, 11, 21, 31, 41, 51, 61, 71, 81, 91  …  212007, 212021, 212035, 212049, 212063, 212077, 212091, 212105, 212117, 212129], [1, 2, 3, 4, 5, 6, 9623, 9624, 11471, 11472  …  15729, 15730, 16089, 16090, 16251, 16252, 16279, 16280, 16315, 16316], [5.4007533141565585, -0.12274042142879321, -1.518685838428963, -0.06110082032272626, -1.2926637279292952, 0.012201741061584559, -0.46358225309950574, -0.49453493243157604, -0.9498052563957434, 0.6572070814006336  …  0.49343249162560143, -0.6682757065971714, -0.20353841920379576, -2.3339441745135883, 0.6479072940312096, -1.7785439159854481, -0.6800008192355074, -1.2177908150442818, -0.06791756643505412, 6.213529049365272]), SparseArrays.CHOLMOD.Factor{Float64, Int64}
+type:    LLt
+method:  supernodal
+maxnnz:  0
+nnz:     566054
+success: true
+, <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                              </span>         Time                    Allocations      
+                              ───────────────────────   ────────────────────────
+      Tot / % measured:            4.95s /  11.6%            629MiB /  19.3%    
+
+Section               ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────────────────
+TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>), Objective{Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}, typeof(Cthonios.energy), typeof(Cthonios.gradient), typeof(Cthonios.hessian), typeof(Cthonios.neumann_energy), typeof(Cthonios.neumann_gradient), typeof(Cthonios.neumann_hessian), TimerOutput}(Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}([44.29728315483824 44.09375 … 40.010176197600856 20.023250115402412; 50.65587225363096 51.0 … 30.205590373069363 30.2388316572343], DofManager
+  Number of nodes         = 8416
+  Number of dofs per node = 2
+  Storage type            = Vector{Int64}, (Block1 = Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}(1, 2, NonAllocatedFunctionSpace
+  Reference finite element = ReferenceFE:
+  Element Type                                  = ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}
+  Surface Element Type                          = ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}
+  Interpolation Type                            = SpecialPolynomials.Lagrange
+  Polynomial Degree                             = 1
+  Quadrature Degree                             = 2
+  Array Backend Type                            = ReferenceFiniteElements.ArrayBackend{SArray}()
+  Edge Nodes Storage Type                       = Vector{SVector{2, Int64}}
+  Face Nodes Storage Type                       = Vector{SVector{0, Union{}}}
+  Interior Nodes Storage Type                   = Vector{Int64}
+  Nodal Coordinates Storage Type                = Vector{SVector{2, Float64}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Vector{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Vector{Float64}
+    Shape Function Values Storage Type          = Vector{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Vector{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+  Surface Nodal Coordinates Storage Type        = Vector{Vector{SVector{2, Float64}}}
+  CellInterpolants:
+    Quadrature Point Storage Type               = Matrix{SVector{2, Float64}}
+    Quadrature Weights Storage Type             = Matrix{Float64}
+    Shape Function Values Storage Type          = Matrix{SVector{3, Float64}}
+    Shape Function Gradients Storage Type       = Matrix{SMatrix{3, 2, Float64, 6}}
+    Shape Function Hessians Storage Type        = Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}
+
+, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}(NeoHookean(), PlaneStrain(), Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}(NeoHookean(), PlaneStrain())), [0.833, 1.0]),), (yplus_nodeset_2 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_1
+, yminus_nodeset_1_2 = DirichletBCInternal:
+  Numbe of active dofs = 258
+  Function             = func_2
+, yplus_nodeset_1 = DirichletBCInternal:
+  Numbe of active dofs = 129
+  Function             = func_2
+), [4, 10, 14, 18, 22, 46, 48, 52, 60, 80  …  8247, 8267, 8269, 8277, 8281, 8287, 8295, 8305, 8399, 8411], NamedTuple(), NamedTuple()), Cthonios.energy, Cthonios.gradient, Cthonios.hessian, Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                              </span>         Time                    Allocations      
+                              ───────────────────────   ────────────────────────
+      Tot / % measured:            4.98s /  11.5%            633MiB /  19.2%    
+
+Section               ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────────────────
+TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], Cthonios.WarmStart{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}}([0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}([0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], QuasiStatic:
+  Start time = 0.0
+  End time   = 0.0
+  Time step  = [0.0]
+, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], SVector{2, Float64}[], (Block1 = Array{Float64, 3}(undef, 0, 3, 14768)), (Block1 = Array{Float64, 3}(undef, 0, 3, 14768)), (Block1 = [0.0, 0.0]), [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], (Block1 = [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0])), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                              </span>         Time                    Allocations      
+                              ───────────────────────   ────────────────────────
+      Tot / % measured:            5.41s /  10.6%            689MiB /  17.6%    
+
+Section               ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────────────────
+TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>, [0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], true,   TrustRegionSolverSettings
+        t_1                                     = 0.25
+        t_2                                     = 1.75
+        η_1                                     = 1.0e-10
+        η_2                                     = 0.1
+        η_3                                     = 0.5
+        max_trust_iters                         = 100
+        tol                                     = 1.0e-8
+        max_cg_iters                            = 50
+        max_cumulative_cg_iters                 = 1000
+        cg_tol                                  = 2.0e-10
+        cg_inexact_solve_ratio                  = 1.0e-5
+        tr_size                                 = 2.0
+        min_tr_size                             = 1.0e-8
+        check_stability                         = false
+        use_preconditioned_inner_product_for_cg = true
+        use_incremental_objective               = false
+        debug_info                              = true
+        over_iter                               = 0
+
+), ExodusPostProcessor{ExodusDatabase{Int32, Int32, Int32, Float64, Initialization{2, 8416, 14768, 1, 2, 3}}}(ExodusDatabase:
+  File name                   = output.e
+  Mode                        = rw
+
+Initialization:
+  Number of dim       = 2
+  Number of nodes     = 8416
+  Number of elem      = 14768
+  Number of blocks    = 1
+  Number of node sets = 2
+  Number of side sets = 3
+
+Block:
+  Block1                        
+
+NodeSet:
+  yminus_nodeset                  yplus_nodeset                 
+
+SideSet:
+  remaining_surface_sideset       yminus_sideset                  yplus_sideset                 
+
+NodalVariable:
+  displ_x                         displ_y                       
+
+, [&quot;displ_x&quot;, &quot;displ_y&quot;]), <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                              </span>         Time                    Allocations      
+                              ───────────────────────   ────────────────────────
+      Tot / % measured:            5.62s /  10.2%            702MiB /  17.3%    
+
+Section               ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────────────────
+TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>)</code></pre><h1 id="Finally,-solve-the-problem"><a class="docs-heading-anchor" href="#Finally,-solve-the-problem">Finally, solve the problem</a><a id="Finally,-solve-the-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Finally,-solve-the-problem" title="Permalink"></a></h1><pre><code class="language-julia hljs">Uu, p = Cthonios.create_unknowns_and_parameters(problem)
+Cthonios.solve!(problem, Uu, p)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.05
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 5.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 1.715676e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.522898e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.063125e-05    -5.071297e-05    3.952473e-05    1.526497e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-3.493087e-10    -3.493053e-10    5.006832e-10    3.952430e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    2
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.05
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 10.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 6.864668e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.540703e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.162061e-05    -5.170523e-05    4.065076e-05    1.544400e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-3.681313e-10    -3.681308e-10    5.349619e-10    4.065030e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    3
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.15000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 15.000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 1.547735e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.558793e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.263328e-05    -5.272091e-05    4.181887e-05    1.562593e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-3.881529e-10    -3.881516e-10    5.719933e-10    4.181837e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    4
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.15000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.2
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 20.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 2.757886e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.577201e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.367406e-05    -5.376484e-05    4.303537e-05    1.581106e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.095595e-10    -4.095596e-10    6.122325e-10    4.303484e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    5
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.2
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.25
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 25.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 4.319400e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.595983e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.475386e-05    -5.484797e-05    4.431244e-05    1.599998e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.327220e-10    -4.327128e-10    6.564758e-10    4.431187e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    6
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.25
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.3
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 30.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 6.234715e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.615261e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.590182e-05    -5.599952e-05    4.567699e-05    1.619393e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.584322e-10    -4.584345e-10    7.064555e-10    4.567638e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    7
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.3
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.35
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 35.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 8.506217e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.635319e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.721805e-05    -5.731986e-05    4.720246e-05    1.639578e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.894383e-10    -4.894354e-10    7.686091e-10    4.720180e-05         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    8
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.35
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.39999999999999997
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 40.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 1.113620e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.656977e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.921809e-05    -5.932575e-05    4.925456e-05    1.661388e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.511760e-10    -5.511644e-10    8.219089e-10    4.925383e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    9
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.39999999999999997
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.44999999999999996
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 44.99999999999999
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 1.412672e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.683543e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-6.746924e-05    -6.760428e-05    7.631099e-05    1.688134e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.448139e-09    -4.448067e-09    1.330728e-09    7.631001e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    10
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.44999999999999996
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.49999999999999994
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 49.99999999999999
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 1.747763e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.744863e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-2.777264e-04    -2.830970e-04    7.609987e-03    2.291558e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.720672e-04    -1.765163e-04    3.618123e-03    9.746703e-03         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-6.082553e-05    -6.011008e-05    1.111181e-03    3.129326e-03         7    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.508474e-06    -1.508459e-06    4.952984e-08    1.111190e-03         7    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-8.824053e-13    -8.745459e-13    1.666394e-10    4.933149e-08         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    11
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.49999999999999994
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.5499999999999999
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 54.99999999999999
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 2.136345e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.703130e-01
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-2.596735e-02    -2.595844e-02    8.356207e-02    2.386198e-01         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-8.868150e-03    -8.793829e-03    6.472778e-03    8.461356e-02         5    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.891442e-04    -1.801108e-04    3.334573e-04    6.238576e-03         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.495072e-06    -1.485033e-06    5.543318e-06    3.279539e-04         7    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.621570e-10    -1.621636e-10    5.379263e-10    5.542785e-06         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    12
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.5499999999999999
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.6
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 60.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 2.464661e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 7.433010e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-7.088957e-03    -6.923074e-03    1.023488e-03    7.353444e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-7.306785e-05    -7.178960e-05    1.463838e-04    9.105397e-04         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-7.491317e-08    -7.485676e-08    1.047690e-07    1.462800e-04         6    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.358913e-13    -1.040181e-13    3.106095e-11    1.047605e-07         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    13
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.6
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.65
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 65.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 2.815981e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 4.065052e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-2.017834e-03    -1.990687e-03    3.076176e-04    4.041749e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.571913e-06    -4.556908e-06    6.635017e-06    3.022532e-04         5    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.490608e-10    -1.490617e-10    1.414513e-10    6.634878e-06         5    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    14
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.65
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.7000000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 70.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 3.171121e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 2.839646e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-9.361653e-04    -9.286702e-04    1.271555e-04    2.830527e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-6.622107e-07    -6.615778e-07    7.560913e-07    1.265616e-04         5    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.823874e-12    -1.823735e-12    1.564895e-10    7.560467e-07         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    15
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.7000000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.7500000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 75.00000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 3.526472e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 2.203658e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-5.390718e-04    -5.362673e-04    6.471699e-05    2.199292e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.532046e-07    -1.531478e-07    1.476949e-07    6.460553e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-8.038015e-14    -6.462940e-14    1.783371e-11    1.476852e-07         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    16
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.7500000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.8000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 80.00000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 3.881439e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.812743e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-3.501610e-04    -3.488915e-04    3.782159e-05    1.810363e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-4.735849e-08    -4.735027e-08    4.067117e-08    3.779242e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.332268e-15    -4.510369e-15    6.096810e-12    4.066447e-08         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    17
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.8000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.8500000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 85.00000000000001
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 4.235851e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.548259e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-2.456573e-04    -2.450039e-04    2.438562e-05    1.546849e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.780080e-08    -1.779918e-08    1.431892e-08    2.437602e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.154632e-14    -5.109267e-16    4.180022e-12    1.431224e-08         3    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    18
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.8500000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.9000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 90.00000000000003
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 4.589662e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.358120e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.818643e-04    -1.814957e-04    1.693851e-05    1.357236e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-7.709119e-09    -7.708664e-09    6.180563e-09    1.693473e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    19
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.9000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     0.9500000000000003
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 95.00000000000003
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 4.942876e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.215645e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.401277e-04    -1.399048e-04    1.248875e-05    1.215070e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-3.726756e-09    -3.726616e-09    3.246852e-09    1.248698e-05         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    20
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= Old Time     0.9500000000000003
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= New Time     1.0000000000000002
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= End Time     1.0
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>= % Completete 100.00000000000003
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Warm start
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial objective = 5.295526e+00
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Initial residual  = 1.105628e-02
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Updating preconditioner, attempt = 1
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Objective        Model Objective  Residual        Model Residual      CG    TR size
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>==============================================================================================================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.113782e-04    -1.112359e-04    9.681376e-06    1.105242e-02         2    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>-1.977335e-09    -1.977250e-09    2.105721e-09    9.680381e-06         4    2.000000e+00    interior    true
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Converged
+
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
+<span class="sgr1">                              </span>         Time                    Allocations
+                              ───────────────────────   ────────────────────────
+      Tot / % measured:            56.5s /  35.4%           4.38GiB /  34.6%
+
+Section               ncalls     time    %tot     avg     alloc    %tot      avg
+────────────────────────────────────────────────────────────────────────────────
+Problem - solve!           1    19.4s   97.1%   19.4s   1.40GiB   92.2%  1.40GiB
+  Integrator step         20    19.4s   97.1%   971ms   1.39GiB   92.0%  71.4MiB
+    TrustRegionSol...     20    19.4s   97.1%   970ms   1.38GiB   91.0%  70.6MiB
+      TrustRegionS...     53    9.60s   48.0%   181ms    238MiB   15.3%  4.49MiB
+        Objective ...    266    9.31s   46.5%  35.0ms   34.2MiB    2.2%   132KiB
+          Objectiv...    266    9.30s   46.5%  35.0ms     0.00B    0.0%    0.00B
+      TrustRegionS...     53    2.03s   10.1%  38.3ms   19.0MiB    1.2%   366KiB
+        Objective ...     53    1.87s    9.4%  35.3ms   6.81MiB    0.4%   132KiB
+          Objectiv...     53    1.87s    9.4%  35.3ms     0.00B    0.0%    0.00B
+      Objective - hvp     53    1.85s    9.2%  34.9ms   6.81MiB    0.4%   132KiB
+        Objective ...     53    1.85s    9.2%  34.8ms     0.00B    0.0%    0.00B
+      TrustRegionS...     20    1.72s    8.6%  86.2ms    539MiB   34.8%  27.0MiB
+        Warm start...     20    1.72s    8.6%  86.2ms    539MiB   34.8%  27.0MiB
+          Objectiv...     20    811ms    4.1%  40.5ms    104MiB    6.7%  5.18MiB
+          WarmStar...     20    496ms    2.5%  24.8ms    431MiB   27.8%  21.5MiB
+          WarmStar...     20    329ms    1.6%  16.4ms     0.00B    0.0%    0.00B
+      CholeskyPrec...     20    1.61s    8.1%  80.6ms    527MiB   34.0%  26.4MiB
+        Objective ...     20    1.20s    6.0%  59.8ms    104MiB    6.7%  5.19MiB
+      Objective - ...    106    952ms    4.8%  8.98ms   7.36KiB    0.0%    71.1B
+        Objective ...    106    951ms    4.8%  8.98ms     0.00B    0.0%    0.00B
+      Objective - ...     73    675ms    3.4%  9.25ms      752B    0.0%    10.3B
+        Objectives...     73    674ms    3.4%  9.23ms     0.00B    0.0%    0.00B
+  ExodusPostProces...     21   8.30ms    0.0%   395μs   2.70MiB    0.2%   132KiB
+TrustRegionSolver ...      1    575ms    2.9%   575ms    121MiB    7.8%   121MiB
+  CholeskyPrecondi...      1    178ms    0.9%   178ms   56.6MiB    3.7%  56.6MiB
+    Objective - he...      1   34.6ms    0.2%  34.6ms   8.54MiB    0.6%  8.54MiB
+<span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span></code></pre><h1 id="Interactive-plotting"><a class="docs-heading-anchor" href="#Interactive-plotting">Interactive plotting</a><a id="Interactive-plotting-1"></a><a class="docs-heading-anchor-permalink" href="#Interactive-plotting" title="Permalink"></a></h1><pre><code class="language-julia hljs">exo = ExodusDatabase(&quot;output.e&quot;, &quot;r&quot;)
+mesh = SimpleMesh(exo, 20)
+viz(mesh)</code></pre><img src="6cd7ef6b.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../nonlinear_solvers/">« Nonlinear solvers</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 21 November 2024 16:23">Thursday 21 November 2024</span>. Using Julia version 1.10.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
