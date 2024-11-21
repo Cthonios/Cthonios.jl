@@ -151,7 +151,9 @@ function zero_parameters!(p::ObjectiveParameters)
     p.Ubc .= zero(eltype(p.Ubc))
   end
   if length(p.nbc) > 0
-    p.nbc .= zero(eltype(p.nbc))
+    for n in axes(p.nbc, 1)
+      p.nbc[n] = zero(typeof(p.nbc[n]))
+    end
   end
   p.state_old .= zero(eltype(p.state_old))
   p.state_new .= zero(eltype(p.state_new))

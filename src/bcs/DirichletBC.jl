@@ -14,6 +14,24 @@ struct DirichletBC{N, D, F} <: AbstractBCInput
   func::F
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Input file syntax
+
+
+```
+domain:
+  dirichlet boundary conditions:
+  - type: DirichletBC
+    nodeset: nset_1
+    function: (x, t) -> 0.0
+  - type: DirichletBC
+    nodeset: nset_2
+    function: (x, t) -> 1.0
+  ...
+```
+"""
 function DirichletBC(inputs::Dict{Symbol, Any})
   nodeset = inputs[:nodeset]
   dofs = inputs[:dofs]
@@ -81,4 +99,20 @@ function DirichletBCInternal(mesh, bc::DirichletBC, n_dofs::Int)
   end
   bc_internal = DirichletBCInternal(new_nodes, dofs, bc.func)
   return bc_internal
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function setup_bcs(::Type{DirichletBCInternal}, mesh, dbcs_in, n_dofs)
+  dbcs = Dict{Symbol, Any}()
+  for bc in dbcs_in
+    name = bc.nset_name
+    for dof in bc.dofs
+      name = name * "_$dof"
+    end
+    dbcs[Symbol(name)] = DirichletBCInternal(mesh, bc, n_dofs)
+  end
+  dbcs = NamedTuple(dbcs)
+  return dbcs
 end

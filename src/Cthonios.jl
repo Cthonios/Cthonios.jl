@@ -1,17 +1,19 @@
 module Cthonios
 
+using Reexport
+
 using ArgParse
 using Atomix
 using ComponentArrays
-using ConstitutiveModels
+@reexport using ConstitutiveModels
 using DocStringExtensions
-using Exodus
-using FiniteElementContainers
+@reexport using Exodus
+@reexport using FiniteElementContainers
 using ForwardDiff
 using IterativeSolvers
 using LimitedLDLFactorizations
 using LDLFactorizations
-using LinearAlgebra
+@reexport using LinearAlgebra
 using LinearSolve
 using Parameters
 using Printf
@@ -19,8 +21,8 @@ using ReferenceFiniteElements
 using RuntimeGeneratedFunctions
 using SciMLOperators
 using SparseArrays
-using StaticArrays
-using TimerOutputs
+@reexport using StaticArrays
+@reexport using TimerOutputs
 using YAML
 
 # import to avoid name conflicts with gradient, hvp

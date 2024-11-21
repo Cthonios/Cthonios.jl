@@ -102,6 +102,23 @@ function Section(inputs::Dict{Symbol, Any})
   return Section(block_name, quadrature_order, physics, props)
 end
 
+function element_to_block_map(mesh, sections_in)
+  elem_to_block = Dict{Int, Int}()
+  for sec in sections_in
+    block = Block(mesh.mesh_obj, sec.block_name)
+    id = block.id
+    block_id_map = Exodus.read_block_id_map(mesh.mesh_obj, id)
+    # display(block_id_map)
+    for elem in block_id_map
+      if haskey(elem_to_block, elem)
+        @assert false "element found in more than one block"
+      end
+      elem_to_block[elem] = id
+    end
+  end
+  return elem_to_block
+end
+
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -153,7 +170,7 @@ Section internals.
 ```block_name``` - Name of exodus block to construct section from.
 ```fspace``` - Function space for this element type
 """
-struct NeumannBCSectionInternal{F, P <: AbstractPhysics, M, B} <: AbstractSectionInternal{F, P}
+struct SurfaceSectionInternal{F, P <: AbstractPhysics, M, B} <: AbstractSectionInternal{F, P}
   block_id::Int
   q_order::Int
   fspace::F
@@ -163,7 +180,7 @@ struct NeumannBCSectionInternal{F, P <: AbstractPhysics, M, B} <: AbstractSectio
 end
 
 # neumann bc section
-function NeumannBCSectionInternal(mesh, dof::DofManager, section, bc)
+function SurfaceSectionInternal(mesh, dof::DofManager, section, bc)
   # set up book keeping stuff
   elem_ids = Vector{Int}(undef, 0)
   conns = Vector{Int}(undef, 0)
@@ -203,8 +220,29 @@ function NeumannBCSectionInternal(mesh, dof::DofManager, section, bc)
   fspace = NonAllocatedFunctionSpace(dof, block_elem_id_map, conns, section.q_order, elem_type)
   # TODO is a dummy set always the right thing?
   props = Dict{Symbol, Any}()
-  return NeumannBCSectionInternal(section.block_id, section.q_order, fspace, section.physics, props, bc)
+  return SurfaceSectionInternal(section.block_id, section.q_order, fspace, section.physics, props, bc)
 end
+
+function setup_sections(::Type{SectionInternal}, sections_in, mesh, dof, args...)
+  sections = Dict{Symbol, Any}()
+  for section in sections_in
+    sections[Symbol(section.block_name)] = SectionInternal(mesh, dof, section)
+  end
+  sections = NamedTuple(sections)
+  return sections
+end
+
+function setup_sections(::Type{SurfaceSectionInternal}, sections, mesh, dof, args...)
+  nbcs = args[1]
+  nbc_sections = Dict{Symbol, Any}()
+  for (n, (section, bc)) in enumerate(Iterators.product(sections, nbcs))
+    sec_name = "neumann_bc_section_$n"
+    nbc_sections[Symbol(sec_name)] = SurfaceSectionInternal(mesh, dof, section, bc)
+  end
+  nbc_sections = NamedTuple(nbc_sections)
+  return nbc_sections
+end
+
 
 # exports
 export MaterialProperties

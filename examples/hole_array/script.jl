@@ -1,31 +1,26 @@
-using ConstitutiveModels
+#md # # Load up necessary packages
 using Cthonios
-using Exodus
-using FiniteElementContainers
-using LinearAlgebra
-using StaticArrays
-using TimerOutputs
+# using Meshes
+import Meshes: SimpleMesh, viz
 
-# file management
-# mesh_file = Base.source_dir() * "/hole_array.exo"
-mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
+#md # # File management
+mesh_file = Base.source_dir() * "/hole_array.exo"
 
-# functions
+#md # # Functions for BCs
 func_1(x, t) = -5. * t#(0., -5. * t)
 func_2(x, t) = 0.0
 func_3(x, t) = @SVector [0., -0.025 * t]
 
-# bcs
+#md # # Boundary conditions
 disp_bcs = [
   DirichletBC("yminus_nodeset", [1, 2], func_2)
   DirichletBC("yplus_nodeset", [1], func_2)
   DirichletBC("yplus_nodeset", [2], func_1)
 ]
 traction_bcs = [
-  # NeumannBC("yplus_sideset", func_3)
 ]
 
-# sections
+#md # # Sections
 sections = Section[
   Section(
     "Block1", 2,
@@ -37,14 +32,24 @@ sections = Section[
   )
 ]
 
-# problem setup
+#md # # Domain setup
 domain = Domain(mesh_file, sections, disp_bcs, traction_bcs)
-# domain = Domain(mesh_file, sections, disp_bcs)
+
+#md # # Objective setup
 objective = Objective(domain, Cthonios.energy)
-integrator = QuasiStatic(0.0, 1.0, 1. / 80)
+
+#md # # Integrator setup
+integrator = QuasiStatic(0.0, 1.0, 1. / 20)
+
+#md # # Post-processor
 pp = ExodusPostProcessor(mesh_file, "output.e", ["displ_x", "displ_y"])
 problem = Problem(objective, integrator, TrustRegionSolver, pp)
 
-# solve problem
+#md # # Finally, solve the problem
 Uu, p = Cthonios.create_unknowns_and_parameters(problem)
 Cthonios.solve!(problem, Uu, p)
+
+#md # # Interactive plotting
+exo = ExodusDatabase("output.e", "r")
+mesh = SimpleMesh(exo, 20)
+viz(mesh)
