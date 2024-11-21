@@ -11,7 +11,7 @@ function update_mesh_location(content)
   return content
 end
 
-LITERATE_OUTPUT = "src/generated/"
+LITERATE_OUTPUT = joinpath(@__DIR__, "src/generated/")
 
 Literate.markdown(
   joinpath(@__DIR__, "../examples/hole_array/script.jl"), 
