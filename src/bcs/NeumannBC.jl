@@ -84,7 +84,7 @@ function setup_bcs(::Type{NeumannBCInternal}, mesh, nbcs_in, sections_in)
     block_ids = [elem_to_block[e] for e in bc_temp.elements]
 
     if !all(x -> x == block_ids[1], block_ids)
-      @assert "Neumann BCs in problems with multiple element types are currently not supported"
+      @assert false "Neumann BCs in problems with multiple element types are currently not supported"
     end
 
     nbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)

@@ -111,7 +111,7 @@ function element_to_block_map(mesh, sections_in)
     # display(block_id_map)
     for elem in block_id_map
       if haskey(elem_to_block, elem)
-        @assert "element found in more than one block"
+        @assert false "element found in more than one block"
       end
       elem_to_block[elem] = id
     end
