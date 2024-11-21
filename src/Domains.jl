@@ -41,8 +41,10 @@ function Domain(
   mesh_file::String, 
   sections_in, 
   dbcs_in = DirichletBC[], 
-  nbcs_in = NeumannBC[]
+  nbcs_in = NeumannBC[],
+  contact_pairs_in = ContactPair[]
 )
+  @info "Reading mesh from $mesh_file"
   # get number of dofs based on physics
   n_dofs = map(x -> x.physics |> num_fields, sections_in)
   @assert all(x -> x == n_dofs[1], n_dofs)
@@ -53,40 +55,17 @@ function Domain(
   coords = coordinates(mesh)
   coords = NodalField{size(coords), Vector}(coords)
 
+  # setup dof manager
   dof = DofManager{n_dofs, size(coords, 2), Vector{Float64}}()
-  # setup sections
-  # TODO need to check all sections have compatable physics
-  sections = Dict{Symbol, Any}()
-  for section in sections_in
-    sections[Symbol(section.block_name)] = SectionInternal(mesh, dof, section)
-  end
-  sections = NamedTuple(sections)
+
   # setup bcs
-  # dbcs = map(bc -> DirichletBCInternal(mesh, bc, n_dofs), dbcs_in)
-  dbcs = Dict{Symbol, Any}()
-  for bc in dbcs_in
-    name = bc.nset_name
-    for dof in bc.dofs
-      name = name * "_$dof"
-    end
-    dbcs[Symbol(name)] = DirichletBCInternal(mesh, bc, n_dofs)
-  end
-  dbcs = NamedTuple(dbcs)
+  dbcs = setup_bcs(DirichletBCInternal, mesh, dbcs_in, n_dofs)
   ddofs = Vector{Int}(undef, 0)
+  nbcs = setup_bcs(NeumannBCInternal, mesh, nbcs_in, sections_in)
 
-  nbcs = Dict{Symbol, Any}()
-  for bc in nbcs_in
-    name = bc.sset_name
-    nbcs[Symbol(name)] = NeumannBCInternal(mesh, bc)
-  end
-  nbcs = NamedTuple(nbcs)
-
-  nbc_sections = Dict{Symbol, Any}()
-  for (n, (section, bc)) in enumerate(Iterators.product(sections, nbcs))
-    sec_name = "neumann_bc_section_$n"
-    nbc_sections[Symbol(sec_name)] = NeumannBCSectionInternal(mesh, dof, section, bc)
-  end
-  nbc_sections = NamedTuple(nbc_sections)
+  # sections
+  sections = setup_sections(SectionInternal, sections_in, mesh, dof)
+  nbc_sections = setup_sections(SurfaceSectionInternal, sections, mesh, dof, nbcs)
 
   return Domain(coords, dof, sections, dbcs, ddofs, nbcs, nbc_sections)
 end

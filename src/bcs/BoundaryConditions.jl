@@ -1,4 +1,10 @@
+"""
+$(TYPEDEF)
+"""
 abstract type AbstractBCInput end
+"""
+$(TYPEDEF)
+"""
 abstract type AbstractBCInternal end
 
 include("DirichletBC.jl")
