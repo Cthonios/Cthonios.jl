@@ -96,7 +96,7 @@ traction_bcs = [
 ), Int64[], NamedTuple(), NamedTuple()), Cthonios.energy, Cthonios.gradient, Cthonios.hessian, Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, <span class="sgr1">────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                  </span>         Time                    Allocations      
                   ───────────────────────   ────────────────────────
-Tot / % measured:      173ms /   0.0%           10.7MiB /   0.0%    
+Tot / % measured:      174ms /   0.0%           10.6MiB /   0.0%    
 
 Section   ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────
@@ -118,13 +118,13 @@ success: true
 , <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                              </span>         Time                    Allocations      
                               ───────────────────────   ────────────────────────
-      Tot / % measured:            4.95s /  11.6%            629MiB /  19.3%    
+      Tot / % measured:            4.91s /  11.2%            625MiB /  19.4%    
 
 Section               ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────────────────
-TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
-  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
-    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+TrustRegionSolver ...      1    550ms  100.0%   550ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    171ms   31.2%   171ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.8ms    6.3%  34.8ms   8.54MiB    7.0%  8.54MiB
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>), Objective{Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}, typeof(Cthonios.energy), typeof(Cthonios.gradient), typeof(Cthonios.hessian), typeof(Cthonios.neumann_energy), typeof(Cthonios.neumann_gradient), typeof(Cthonios.neumann_hessian), TimerOutput}(Cthonios.Domain{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, DofManager{Int64, 2, 8416, Vector{Float64}, Vector{Int64}}, @NamedTuple{Block1::Cthonios.SectionInternal{NonAllocatedFunctionSpace{2, Vector{Int64}, FiniteElementContainers.VectorizedElementField{Int64, 2, 3, 14768, Vector{Int64}}, FiniteElementContainers.VectorizedElementField{Int64, 2, 6, 14768, Vector{Int64}}, ReferenceFiniteElements.ReferenceFE{Int64, Float64, ReferenceFiniteElements.Tri3{SpecialPolynomials.Lagrange, 2}, ReferenceFiniteElements.Edge{2, SpecialPolynomials.Lagrange, 1, 2}, ReferenceFiniteElements.ArrayBackend{SArray}, Vector{SVector{2, Int64}}, Vector{SVector{0, Union{}}}, Vector{Int64}, Vector{SVector{2, Float64}}, ReferenceFiniteElements.CellInterpolants{StructArrays.StructVector{ReferenceFiniteElements.Interpolants, @NamedTuple{ξ::Vector{SVector{2, Float64}}, w::Vector{Float64}, N::Vector{SVector{3, Float64}}, ∇N_ξ::Vector{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Vector{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}, Vector{Vector{SVector{2, Float64}}}, ReferenceFiniteElements.SurfaceInterpolants{StructArrays.StructArray{ReferenceFiniteElements.Interpolants, 2, @NamedTuple{ξ::Matrix{SVector{2, Float64}}, w::Matrix{Float64}, N::Matrix{SVector{3, Float64}}, ∇N_ξ::Matrix{SMatrix{3, 2, Float64, 6}}, ∇∇N_ξ::Matrix{SArray{Tuple{3, 2, 2}, Float64, 3, 12}}}, Int64}}}}, SolidMechanics{2, 2, 0, NeoHookean, PlaneStrain, Cthonios.StressDivergence{2, 2, 0, NeoHookean, PlaneStrain}}, SVector{2, Float64}}}, @NamedTuple{yplus_nodeset_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_1)}, yminus_nodeset_1_2::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}, yplus_nodeset_1::Cthonios.DirichletBCInternal{Vector{Int32}, Vector{Int64}, typeof(Main.func_2)}}, Vector{Int64}, @NamedTuple{}, @NamedTuple{}}([44.29728315483824 44.09375 … 40.010176197600856 20.023250115402412; 50.65587225363096 51.0 … 30.205590373069363 30.2388316572343], DofManager
   Number of nodes         = 8416
   Number of dofs per node = 2
@@ -166,13 +166,13 @@ TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
 ), [4, 10, 14, 18, 22, 46, 48, 52, 60, 80  …  8247, 8267, 8269, 8277, 8281, 8287, 8295, 8305, 8399, 8411], NamedTuple(), NamedTuple()), Cthonios.energy, Cthonios.gradient, Cthonios.hessian, Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                              </span>         Time                    Allocations      
                               ───────────────────────   ────────────────────────
-      Tot / % measured:            4.98s /  11.5%            633MiB /  19.2%    
+      Tot / % measured:            4.94s /  11.1%            629MiB /  19.3%    
 
 Section               ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────────────────
-TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
-  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
-    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+TrustRegionSolver ...      1    550ms  100.0%   550ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    171ms   31.2%   171ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.8ms    6.3%  34.8ms   8.54MiB    7.0%  8.54MiB
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], Cthonios.WarmStart{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}}([0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], ObjectiveParameters{FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, QuasiStatic{Vector{Int64}, Float64, Vector{Float64}}, Vector{Float64}, Vector{SVector{2, Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:0, ShapedAxis((0, 3, 14768))),)}}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = 1:2,)}}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, Vector{Float64}, FiniteElementContainers.VectorizedNodalField{Float64, 2, 2, 8416, Vector{Float64}}, ComponentArrays.ComponentVector{Float64, Vector{Float64}, Tuple{ComponentArrays.Axis{(Block1 = ViewAxis(1:44304, ShapedAxis((3, 14768))),)}}}}([0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], QuasiStatic:
   Start time = 0.0
   End time   = 0.0
@@ -180,13 +180,13 @@ TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
 , [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], SVector{2, Float64}[], (Block1 = Array{Float64, 3}(undef, 0, 3, 14768)), (Block1 = Array{Float64, 3}(undef, 0, 3, 14768)), (Block1 = [0.0, 0.0]), [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], (Block1 = [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0])), [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                              </span>         Time                    Allocations      
                               ───────────────────────   ────────────────────────
-      Tot / % measured:            5.41s /  10.6%            689MiB /  17.6%    
+      Tot / % measured:            5.32s /  10.3%            685MiB /  17.7%    
 
 Section               ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────────────────
-TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
-  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
-    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+TrustRegionSolver ...      1    550ms  100.0%   550ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    171ms   31.2%   171ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.8ms    6.3%  34.8ms   8.54MiB    7.0%  8.54MiB
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>, [0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  …  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], true,   TrustRegionSolverSettings
         t_1                                     = 0.25
         t_2                                     = 1.75
@@ -234,13 +234,13 @@ NodalVariable:
 , [&quot;displ_x&quot;, &quot;displ_y&quot;]), <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                              </span>         Time                    Allocations      
                               ───────────────────────   ────────────────────────
-      Tot / % measured:            5.62s /  10.2%            702MiB /  17.3%    
+      Tot / % measured:            5.54s /   9.9%            698MiB /  17.4%    
 
 Section               ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────────────────
-TrustRegionSolver ...      1    575ms  100.0%   575ms    121MiB  100.0%   121MiB
-  CholeskyPrecondi...      1    178ms   30.9%   178ms   56.6MiB   46.7%  56.6MiB
-    Objective - he...      1   34.6ms    6.0%  34.6ms   8.54MiB    7.0%  8.54MiB
+TrustRegionSolver ...      1    550ms  100.0%   550ms    121MiB  100.0%   121MiB
+  CholeskyPrecondi...      1    171ms   31.2%   171ms   56.6MiB   46.7%  56.6MiB
+    Objective - he...      1   34.8ms    6.3%  34.8ms   8.54MiB    7.0%  8.54MiB
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>)</code></pre><h1 id="Finally,-solve-the-problem"><a class="docs-heading-anchor" href="#Finally,-solve-the-problem">Finally, solve the problem</a><a id="Finally,-solve-the-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Finally,-solve-the-problem" title="Permalink"></a></h1><pre><code class="language-julia hljs">Uu, p = Cthonios.create_unknowns_and_parameters(problem)
 Cthonios.solve!(problem, Uu, p)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr36"><span class="sgr1">[ Info: </span></span>================================================================================================
 <span class="sgr36"><span class="sgr1">[ Info: </span></span>= Load step    1
@@ -618,36 +618,36 @@ Cthonios.solve!(problem, Uu, p)</code></pre><pre class="documenter-example-outpu
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span>
 <span class="sgr1">                              </span>         Time                    Allocations
                               ───────────────────────   ────────────────────────
-      Tot / % measured:            56.5s /  35.4%           4.38GiB /  34.6%
+      Tot / % measured:            56.8s /  35.0%           4.38GiB /  34.6%
 
 Section               ncalls     time    %tot     avg     alloc    %tot      avg
 ────────────────────────────────────────────────────────────────────────────────
-Problem - solve!           1    19.4s   97.1%   19.4s   1.40GiB   92.2%  1.40GiB
-  Integrator step         20    19.4s   97.1%   971ms   1.39GiB   92.0%  71.4MiB
-    TrustRegionSol...     20    19.4s   97.1%   970ms   1.38GiB   91.0%  70.6MiB
-      TrustRegionS...     53    9.60s   48.0%   181ms    238MiB   15.3%  4.49MiB
-        Objective ...    266    9.31s   46.5%  35.0ms   34.2MiB    2.2%   132KiB
-          Objectiv...    266    9.30s   46.5%  35.0ms     0.00B    0.0%    0.00B
-      TrustRegionS...     53    2.03s   10.1%  38.3ms   19.0MiB    1.2%   366KiB
-        Objective ...     53    1.87s    9.4%  35.3ms   6.81MiB    0.4%   132KiB
-          Objectiv...     53    1.87s    9.4%  35.3ms     0.00B    0.0%    0.00B
-      Objective - hvp     53    1.85s    9.2%  34.9ms   6.81MiB    0.4%   132KiB
-        Objective ...     53    1.85s    9.2%  34.8ms     0.00B    0.0%    0.00B
-      TrustRegionS...     20    1.72s    8.6%  86.2ms    539MiB   34.8%  27.0MiB
-        Warm start...     20    1.72s    8.6%  86.2ms    539MiB   34.8%  27.0MiB
-          Objectiv...     20    811ms    4.1%  40.5ms    104MiB    6.7%  5.18MiB
-          WarmStar...     20    496ms    2.5%  24.8ms    431MiB   27.8%  21.5MiB
-          WarmStar...     20    329ms    1.6%  16.4ms     0.00B    0.0%    0.00B
-      CholeskyPrec...     20    1.61s    8.1%  80.6ms    527MiB   34.0%  26.4MiB
-        Objective ...     20    1.20s    6.0%  59.8ms    104MiB    6.7%  5.19MiB
-      Objective - ...    106    952ms    4.8%  8.98ms   7.36KiB    0.0%    71.1B
-        Objective ...    106    951ms    4.8%  8.98ms     0.00B    0.0%    0.00B
-      Objective - ...     73    675ms    3.4%  9.25ms      752B    0.0%    10.3B
-        Objectives...     73    674ms    3.4%  9.23ms     0.00B    0.0%    0.00B
-  ExodusPostProces...     21   8.30ms    0.0%   395μs   2.70MiB    0.2%   132KiB
-TrustRegionSolver ...      1    575ms    2.9%   575ms    121MiB    7.8%   121MiB
-  CholeskyPrecondi...      1    178ms    0.9%   178ms   56.6MiB    3.7%  56.6MiB
-    Objective - he...      1   34.6ms    0.2%  34.6ms   8.54MiB    0.6%  8.54MiB
+Problem - solve!           1    19.3s   97.2%   19.3s   1.40GiB   92.2%  1.40GiB
+  Integrator step         20    19.3s   97.2%   966ms   1.39GiB   92.0%  71.4MiB
+    TrustRegionSol...     20    19.3s   97.2%   966ms   1.38GiB   91.0%  70.6MiB
+      TrustRegionS...     53    9.78s   49.2%   185ms    238MiB   15.3%  4.49MiB
+        Objective ...    266    9.50s   47.8%  35.7ms   34.2MiB    2.2%   132KiB
+          Objectiv...    266    9.50s   47.8%  35.7ms     0.00B    0.0%    0.00B
+      TrustRegionS...     53    2.06s   10.4%  38.9ms   19.0MiB    1.2%   366KiB
+        Objective ...     53    1.91s    9.6%  35.9ms   6.81MiB    0.4%   132KiB
+          Objectiv...     53    1.90s    9.6%  35.9ms     0.00B    0.0%    0.00B
+      Objective - hvp     53    1.87s    9.4%  35.3ms   6.81MiB    0.4%   132KiB
+        Objective ...     53    1.87s    9.4%  35.2ms     0.00B    0.0%    0.00B
+      TrustRegionS...     20    1.74s    8.8%  87.1ms    539MiB   34.8%  27.0MiB
+        Warm start...     20    1.74s    8.8%  87.1ms    539MiB   34.8%  27.0MiB
+          Objectiv...     20    827ms    4.2%  41.3ms    104MiB    6.7%  5.18MiB
+          WarmStar...     20    500ms    2.5%  25.0ms    431MiB   27.8%  21.5MiB
+          WarmStar...     20    331ms    1.7%  16.6ms     0.00B    0.0%    0.00B
+      CholeskyPrec...     20    1.21s    6.1%  60.7ms    527MiB   34.0%  26.3MiB
+        Objective ...     20    808ms    4.1%  40.4ms    104MiB    6.7%  5.18MiB
+      Objective - ...    106    930ms    4.7%  8.78ms   7.36KiB    0.0%    71.1B
+        Objective ...    106    930ms    4.7%  8.78ms     0.00B    0.0%    0.00B
+      Objective - ...     73    700ms    3.5%  9.58ms      752B    0.0%    10.3B
+        Objectives...     73    698ms    3.5%  9.56ms     0.00B    0.0%    0.00B
+  ExodusPostProces...     21   8.36ms    0.0%   398μs   2.70MiB    0.2%   132KiB
+TrustRegionSolver ...      1    550ms    2.8%   550ms    121MiB    7.8%   121MiB
+  CholeskyPrecondi...      1    171ms    0.9%   171ms   56.6MiB    3.7%  56.6MiB
+    Objective - he...      1   34.8ms    0.2%  34.8ms   8.54MiB    0.6%  8.54MiB
 <span class="sgr1">────────────────────────────────────────────────────────────────────────────────</span></code></pre><h1 id="Interactive-plotting"><a class="docs-heading-anchor" href="#Interactive-plotting">Interactive plotting</a><a id="Interactive-plotting-1"></a><a class="docs-heading-anchor-permalink" href="#Interactive-plotting" title="Permalink"></a></h1><pre><code class="language-julia hljs">exo = ExodusDatabase(&quot;output.e&quot;, &quot;r&quot;)
 mesh = SimpleMesh(exo, 20)
-viz(mesh)</code></pre><img src="6cd7ef6b.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../nonlinear_solvers/">« Nonlinear solvers</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 21 November 2024 16:23">Thursday 21 November 2024</span>. Using Julia version 1.10.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+viz(mesh)</code></pre><img src="6cd7ef6b.png" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../nonlinear_solvers/">« Nonlinear solvers</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 21 November 2024 16:39">Thursday 21 November 2024</span>. Using Julia version 1.10.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
