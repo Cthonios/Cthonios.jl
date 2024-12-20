@@ -67,7 +67,7 @@ $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(
-  objective::Objective, p, timer; 
+  objective::AbstractObjective, p, timer; 
   preconditioner=CholeskyPreconditioner,
   use_warm_start=true,
   settings=TrustRegionSolverSettings()
@@ -105,7 +105,7 @@ end
 
 function TrustRegionSolver(
   inputs::Dict{Symbol, Any},
-  objective::Objective, p, timer
+  objective::AbstractObjective, p, timer
 )
   preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
   warm_start = inputs[Symbol("warm start")]

@@ -17,7 +17,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function NewtonSolver(objective::Objective, p, timer; linear_solver_type=DirectSolver, use_warm_start=false)
+function NewtonSolver(objective::AbstractObjective, p, timer; linear_solver_type=DirectSolver, use_warm_start=false)
   @timeit timer "NewtonSolver - setup" begin
     linear_solver = linear_solver_type(objective, p, timer)
     ΔUu = create_unknowns(objective.domain)
@@ -32,7 +32,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function NewtonSolver(inputs::Dict{Symbol, Any}, objective::Objective, p, timer)
+function NewtonSolver(inputs::Dict{Symbol, Any}, objective::AbstractObjective, p, timer)
   @timeit timer "NewtonSolver - setup" begin
     linear_solver_inputs = inputs[Symbol("linear solver")]
     linear_solver = eval(Symbol(linear_solver_inputs[:type]))(linear_solver_inputs[:parameters], objective, p, timer)

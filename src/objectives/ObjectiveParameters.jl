@@ -29,7 +29,7 @@ Constructor for a ```ObjectiveParameters``` type.
 ```o``` - Objective function object.
 ```times``` - Times object.
 """
-function ObjectiveParameters(o::Objective, times)
+function ObjectiveParameters(o::AbstractObjective, times)
   X = copy(o.domain.coords)
   U = create_fields(o.domain)
   # boundary conditions
@@ -84,5 +84,39 @@ function zero_parameters!(p::ObjectiveParameters)
   p.U .= zero(eltype(p.U))
   p.hvp_scratch .= zero(eltype(p.hvp_scratch))
   p.q_vals_scratch .= zero(eltype(p.q_vals_scratch))
+  return nothing
+end
+
+# methods for telling letting design parameters
+# know we're taking a timestep from the integrator
+"""
+$(TYPEDSIGNATURES)
+"""
+function step!(p::ObjectiveParameters)
+  step!(p.t)
+  return nothing
+end
+
+function step_new!(p::ObjectiveParameters, o::AbstractObjective)
+  step!(p.t)
+  update_dirichlet_vals!(p, o)
+  update_neumann_vals!(p, o)
+  return nothing
+end
+
+# methods for updating design parameters
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_dirichlet_vals!(p::ObjectiveParameters, o::AbstractObjective)
+  update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function update_neumann_vals!(p::ObjectiveParameters, o::AbstractObjective)
+  update_neumann_vals!(p.nbc, o.domain, p.X, p.t)
   return nothing
 end

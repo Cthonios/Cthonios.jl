@@ -13,7 +13,7 @@ timer(s::DirectSolver) = s.timer
 $(TYPEDSIGNATURES)
 Direct linear solver constructor from a Domain
 """
-function DirectSolver(obj::Objective, p, timer)
+function DirectSolver(obj::AbstractObjective, p, timer)
   @timeit timer "DirectSolver - setup" begin
     asm = StaticAssembler(obj.domain)
     update_unknown_dofs!(obj.domain, asm)
@@ -30,7 +30,7 @@ end
 $(TYPEDSIGNATURES)
 Direct linear solver constructor from a Domain
 """
-function DirectSolver(inputs::Dict{Symbol, Any}, obj::Objective, p, timer)
+function DirectSolver(inputs::Dict{Symbol, Any}, obj::AbstractObjective, p, timer)
   # TODO need to hook up inputs and what not
   return DirectSolver(obj, p, timer)
 end
@@ -46,7 +46,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function gradient!(solver::DirectSolver, obj::Objective, Uu, p::ObjectiveParameters)
+function gradient!(solver::DirectSolver, obj::AbstractObjective, Uu, p::ObjectiveParameters)
   @timeit timer(solver) "DirectSolver - gradient!" begin
     R = solver.assembler.residuals
     # annoying below TODO fix this

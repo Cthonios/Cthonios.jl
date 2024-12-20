@@ -3,7 +3,7 @@ $(TYPEDEF)
 Abstract base objective type.
 """
 abstract type AbstractObjective end
-
+timer(o::AbstractObjective) = o.timer
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
@@ -17,57 +17,57 @@ respectively.
 ```hessian``` - A function for the quadrature level objective hessian evaluation.
 ```timer``` - A timer that's already setup.
 """
-struct Objective{D, F1, F2, F3, F4, F5, F6, T}
-  domain::D
-  value::F1
-  gradient::F2
-  hessian::F3
-  neumann_value::F4
-  neumann_gradient::F5
-  neumann_hessian::F6
-  timer::T
-end
+# struct Objective{D, F1, F2, F3, F4, F5, F6, T} <: AbstractObjective
+#   domain::D
+#   value::F1
+#   gradient::F2
+#   hessian::F3
+#   neumann_value::F4
+#   neumann_gradient::F5
+#   neumann_hessian::F6
+#   timer::T
+# end
 
-function Objective(domain::Domain, value_func::F1, neumann_value_func::F2, timer::TimerOutput) where {F1 <: Function, F2 <: Function}
-  grad_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, z, x, state, props, t), u)
-  hess_func(phys, cell, u, x, state, props, t) = ForwardDiff.hessian(z -> value_func(phys, cell, z, x, state, props, t), u)
-  neumann_grad_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
-  neumann_hess_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.hessian(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
-  return Objective(
-    domain, 
-    value_func, grad_func, hess_func, 
-    neumann_value_func, neumann_grad_func, neumann_hess_func,
-    timer
-  )
-end
+# function Objective(domain::Domain, value_func::F1, neumann_value_func::F2, timer::TimerOutput) where {F1 <: Function, F2 <: Function}
+#   grad_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, z, x, state, props, t), u)
+#   hess_func(phys, cell, u, x, state, props, t) = ForwardDiff.hessian(z -> value_func(phys, cell, z, x, state, props, t), u)
+#   neumann_grad_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+#   neumann_hess_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.hessian(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+#   return Objective(
+#     domain, 
+#     value_func, grad_func, hess_func, 
+#     neumann_value_func, neumann_grad_func, neumann_hess_func,
+#     timer
+#   )
+# end
 
-function Objective(domain::Domain, ::typeof(energy))
-  return Objective(
-    domain,
-    energy, gradient, hessian,
-    neumann_energy, neumann_gradient, neumann_hessian,
-    TimerOutput()
-  )
-end
+# function Objective(domain::Domain, ::typeof(energy))
+#   return Objective(
+#     domain,
+#     energy, gradient, hessian,
+#     neumann_energy, neumann_gradient, neumann_hessian,
+#     TimerOutput()
+#   )
+# end
 
-function Objective(inputs::Dict{Symbol, Any}, domain, timer)
-  value_func = eval(Meta.parse(inputs[:value]))
+# function Objective(inputs::Dict{Symbol, Any}, domain, timer)
+#   value_func = eval(Meta.parse(inputs[:value]))
 
-  if typeof(value_func) == typeof(energy)
-    return Objective(domain, value_func)
-  else
-    throw(ErrorException("Unsupported objective function"))
-  end
-end
+#   if typeof(value_func) == typeof(energy)
+#     return Objective(domain, value_func)
+#   else
+#     throw(ErrorException("Unsupported objective function"))
+#   end
+# end
 
-function grad_u end
-function grad_p end
-function val_and_grad_u end
-function val_and_grad_p end
-function hvp_u end
-function hvp_p end
+# function grad_u end
+# function grad_p end
+# function val_and_grad_u end
+# function val_and_grad_p end
+# function hvp_u end
+# function hvp_p end
 
-timer(o::Objective) = o.timer
+# timer(o::Objective) = o.timer
 
 """
 $(TYPEDEF)
@@ -75,97 +75,8 @@ Abstract base type for objective function parameters.
 """
 abstract type AbstractObjectiveParameters end
 
-# """
-# $(TYPEDEF)
-# $(TYPEDFIELDS)
-# Type for objective function parameters for design parameters
-# such as coordinates, time, bc values, properties
-# state variables, and some scratch arrays.
-# """
-# struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObjectiveParameters
-# # struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
-#   # design parameters
-#   X::U1
-#   t::T
-#   Ubc::B # dirichlet bc design parameters
-#   nbc::N # neumann bc design parameters
-#   state_old::S
-#   state_new::S
-#   props::P
-#   # scratch arrays
-#   U::U2
-#   grad_scratch::U3
-#   grad_vec_scratch::V1
-#   hvp_scratch::U4
-#   q_vals_scratch::Q
-# end
 
-# """
-# $(TYPEDSIGNATURES)
-# Constructor for a ```ObjectiveParameters``` type.
-# ```o``` - Objective function object.
-# ```times``` - Times object.
-# """
-# function ObjectiveParameters(o::Objective, times)
-#   X = copy(o.domain.coords)
-#   U = create_fields(o.domain)
-#   # boundary conditions
-#   Ubc = Vector{eltype(X)}(undef, 0)
-#   nbc = Vector{SVector{size(X, 1), eltype(X)}}(undef, 0)
-#   update_dirichlet_vals!(Ubc, o.domain, X, times)
-#   update_neumann_vals!(nbc, o.domain, X, times)
-#   # properties
-#   props = map(sec -> sec.props, o.domain.sections)
-#   props = ComponentArray(props)
-#   # scratch arrays
-#   grad_scratch = create_fields(o.domain)
-#   grad_vec_scratch = create_unknowns(o.domain)
-#   hvp_scratch = create_fields(o.domain)
-#   # need a scratch array for calculating q values on gpus
-#   # TODO move somewhere else
-#   q_vals_scratch = Dict{Symbol, Any}()
-#   state_old = Dict{Symbol, Any}()
-#   state_new = Dict{Symbol, Any}()
-#   for (name, sec) in pairs(o.domain.sections)
-#     NQ = FiniteElementContainers.num_q_points(sec.fspace)
-#     NE = FiniteElementContainers.num_elements(sec.fspace)
-#     q_vals_scratch[name] = zeros(eltype(X), NQ, NE)
-#     state_old[name] = repeat(init_state(sec.physics), outer=(1, NQ, NE))
-#     state_new[name] = repeat(init_state(sec.physics), outer=(1, NQ, NE))
-#   end
-#   q_vals_scratch = ComponentArray(q_vals_scratch)
-#   state_old = ComponentArray(state_old)
-#   state_new = ComponentArray(state_new)
-#   params = ObjectiveParameters(
-#     X, times, Ubc, nbc, state_old, state_new, props,
-#     U, grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch
-#     # U, hvp_scratch, q_vals_scratch
-#   )
-#   return params
-# end
-
-# function zero_parameters!(p::ObjectiveParameters)
-#   p.X .= zero(eltype(p.X))
-#   # p.t .= 
-#   if length(p.Ubc) > 0
-#     p.Ubc .= zero(eltype(p.Ubc))
-#   end
-#   if length(p.nbc) > 0
-#     for n in axes(p.nbc, 1)
-#       p.nbc[n] = zero(typeof(p.nbc[n]))
-#     end
-#   end
-#   p.state_old .= zero(eltype(p.state_old))
-#   p.state_new .= zero(eltype(p.state_new))
-#   p.props .= zero(eltype(p.props))
-#   p.U .= zero(eltype(p.U))
-#   p.hvp_scratch .= zero(eltype(p.hvp_scratch))
-#   p.q_vals_scratch .= zero(eltype(p.q_vals_scratch))
-#   return nothing
-# end
-include("ObjectiveParameters.jl")
-
-function gradient(o::Objective, Uu, p)
+function gradient(o::AbstractObjective, Uu, p)
   @timeit timer(o) "Objective - gradient" begin
     g = p.grad_scratch
     g .= zero(eltype(g))
@@ -180,7 +91,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
+function gradient!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - gradient!" begin
     update_field_unknowns!(p.U, o.domain, Uu)
     domain_iterator!(g, o.gradient, o.domain, Uu, p)
@@ -188,7 +99,7 @@ function gradient!(g, o::Objective, Uu, p::ObjectiveParameters)
   end
 end
 
-function gradient_for_ad!(g, o::Objective, Uu, p::ObjectiveParameters)
+function gradient_for_ad!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   # @timeit timer(o) "Objectives - gradient!" begin
     g .= zero(eltype(g))
     update_field_unknowns!(p.U, o.domain, Uu)
@@ -202,7 +113,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hessian!(asm::FiniteElementContainers.Assembler, o::Objective, Uu, p::ObjectiveParameters)
+function hessian!(asm::FiniteElementContainers.Assembler, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objective - hessian!" begin
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(p.U, o.domain, Uu)
@@ -215,7 +126,7 @@ end
 # TODO need to make below have pre-allocated arrays
 # currently breaks trust region solver though
 # probably need to modularize that guy.
-function hvp(o::Objective, Uu, p, Vv)
+function hvp(o::AbstractObjective, Uu, p, Vv)
   @timeit timer(o) "Objective - hvp" begin
     Hv = similar(p.hvp_scratch)
     Hv .= zero(eltype(Hv))
@@ -227,7 +138,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hvp!(Hv::AbstractVector, o::Objective, Uu, p::ObjectiveParameters, Vv)
+function hvp!(Hv::AbstractVector, o::AbstractObjective, Uu, p::AbstractObjectiveParameters, Vv)
   @timeit timer(o) "Objective - hvp!" begin
     Hv .= zero(eltype(Hv))
     hvp!(p.hvp_scratch, o, Uu, p, Vv)
@@ -239,7 +150,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function hvp!(Hv::NodalField, o::Objective, Uu, p::ObjectiveParameters, Vv)
+function hvp!(Hv::NodalField, o::AbstractObjective, Uu, p::AbstractObjectiveParameters, Vv)
   @timeit timer(o) "Objective - hvp!" begin
     Hv .= zero(eltype(Hv))
     update_field_unknowns!(p.U, o.domain, Uu)
@@ -266,7 +177,7 @@ end
 #   DifferentiationInterface.gradient(func, backend, Uu)
 # end
 
-function mass_matrix!(asm, o::Objective, Uu, p::ObjectiveParameters)
+function mass_matrix!(asm, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - mass_matrix!" begin
     # asm.masses .= zero(eltype(asm.masses))
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
@@ -276,7 +187,7 @@ function mass_matrix!(asm, o::Objective, Uu, p::ObjectiveParameters)
   end
 end
 
-function objective(o::Objective, Uu, p)
+function objective(o::AbstractObjective, Uu, p)
   @timeit timer(o) "Objective - objective" begin
     val = zeros(1)
     objective!(val, o, Uu, p)
@@ -287,7 +198,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
+function objective!(val, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objective - objective!" begin
     val .= zero(eltype(val))
     update_field_unknowns!(p.U, o.domain, Uu)
@@ -297,37 +208,11 @@ function objective!(val, o::Objective, Uu, p::ObjectiveParameters)
   end
 end
 
-"""
-$(TYPEDSIGNATURES)
-"""
-function step!(p::ObjectiveParameters)
-  step!(p.t)
-  return nothing
-end
-
-function step_new!(p::ObjectiveParameters, o::Objective)
-  step!(p.t)
-  update_dirichlet_vals!(p, o)
-  update_neumann_vals!(p, o)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_dirichlet_vals!(p::ObjectiveParameters, o::Objective)
-  update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function update_neumann_vals!(p::ObjectiveParameters, o::Objective)
-  update_neumann_vals!(p.nbc, o.domain, p.X, p.t)
-  return nothing
-end
+# implementations
+include("ObjectiveParameters.jl")
+include("UnconstrainedObjective.jl")
 
 # exports
-export Objective
+# export Objective
 export ObjectiveParameters
+export UnconstrainedObjective

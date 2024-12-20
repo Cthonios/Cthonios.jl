@@ -9,7 +9,7 @@ struct EigenSolver{O, A, T, F} <: AbstractSolver
   tolerance::F
 end
 
-function EigenSolver(obj::Objective, p, timer, nev)
+function EigenSolver(obj::AbstractObjective, p, timer, nev)
   @timeit timer "EigenSolver - setup" begin
     mass_asm = StaticAssembler(obj.domain)
     stiffness_asm = StaticAssembler(obj.domain)

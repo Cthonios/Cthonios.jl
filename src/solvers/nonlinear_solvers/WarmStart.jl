@@ -5,7 +5,7 @@ struct WarmStart{R, Uu, p}
   ΔUu
 end
 
-function WarmStart(o::Objective, p)
+function WarmStart(o::AbstractObjective, p)
   dR = create_fields(o.domain)
   dUu = create_unknowns(o.domain)
   dp = make_zero(p)
