@@ -80,9 +80,9 @@ end
 
 function write_output(pp::ExodusPostProcessor, n, objective, Uu, p)
   @timeit timer(objective) "ExodusPostProcessor - write_output" begin
-    update_field_unknowns!(p.U, objective.domain, Uu)
+    update_field_unknowns!(current_solution(p), objective.domain, Uu)
     write_time(pp, n, current_time(p.t))
-    write_fields(pp, p.U, n)
+    write_fields(pp, current_solution(p), n)
   end
 end
 

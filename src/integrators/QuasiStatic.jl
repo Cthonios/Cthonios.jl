@@ -59,3 +59,21 @@ function Base.show(io::IO, time::QuasiStatic)
   println(io, "  End time   = $(time.end_time)")
   println(io, "  Time step  = $(time.Δt)")
 end
+
+# function scratch_arrays(objective, ::QuasiStatic)
+#   U = create_fields(objective.domain)
+# end
+# scratch arrays necessary for the integrator to work
+# these go in the parameters object p
+struct QuasiStaticCache{T <: NodalField}
+  U::T
+end
+
+function QuasiStaticCache(objective)
+  U = create_fields(objective.domain)
+  return QuasiStaticCache{typeof(U)}(U)
+end
+
+current_solution(cache::QuasiStaticCache) = cache.U
+
+integrator_cache(objective, ::QuasiStatic) = QuasiStaticCache(objective)

@@ -106,8 +106,10 @@ paramaters ```p```. This method is useful for filling
 quantities such as objectives, gradients, or hessians.
 """
 function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters)
-  update_field_bcs!(p.U, domain, p.Ubc)
-  update_field_unknowns!(p.U, domain, Uu)
+  # update_field_bcs!(current_solution(p), domain, current_solution(p)bc)
+  # update_field_unknowns!(current_solution(p), domain, Uu)
+  update_field_bcs!(current_solution(p), domain, p.Ubc)
+  update_field_unknowns!(current_solution(p), domain, Uu)
 
   # loop over sections
   for (block_num, (section_name, section)) in enumerate(pairs(domain.sections))
@@ -116,7 +118,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
     # loop over elements
     for e in 1:num_elements(fspace)
       X_el = element_coordinates(section, p.X, e)
-      U_el = element_fields(section, p.U, e)
+      U_el = element_fields(section, current_solution(p), e)
       # props_el = element_props(section, p.props, section_name, e)
       props_el = @views SVector{NP, eltype(p.props)}(p.props[section_name])
       local_val = scratch_variable(global_val, section)
@@ -144,7 +146,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
   #   bc, fspace, physics = section.bc, section.fspace, section.physics
   #   for e in 1:num_elements(fspace)
   #     X_el = surface_element_coordinates(section, p.X, e)
-  #     U_el = surface_element_fields(section, p.U, e)
+  #     U_el = surface_element_fields(section, current_solution(p), e)
   #     # props_el = @views SVector{NP, eltype(p.props)}(p.props[section_name])
   #     local_val = scratch_variable(global_val, section)
   #     for q in 1:ReferenceFiniteElements.num_quadrature_points(fspace.ref_fe.surface_element)
@@ -172,8 +174,11 @@ is useful for quantities such as hessian vector productions.
 """
 # function domain_iterator!(global_val, f, domain::Domain, U::NodalField, X::NodalField, V::NodalField)
 function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters, Vv)
-  update_field_bcs!(p.U, domain, p.Ubc)
-  update_field_unknowns!(p.U, domain, Uu)
+  # update_field_bcs!(current_solution(p), domain, current_solution(p)bc)
+  # update_field_unknowns!(current_solution(p), domain, Uu)
+  # update_field_unknowns!(p.hvp_scratch, domain, Vv)
+  update_field_bcs!(current_solution(p), domain, p.Ubc)
+  update_field_unknowns!(current_solution(p), domain, Uu)
   update_field_unknowns!(p.hvp_scratch, domain, Vv)
 
   # update_field_bcs!(U, domain, Ubc)
@@ -186,7 +191,7 @@ function domain_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParamet
       ND, NN, NP, NS = size(section)
       NF = num_dofs_per_node(section.fspace)
       X_el = element_coordinates(section, p.X, e)
-      U_el = element_fields(section, p.U, e)
+      U_el = element_fields(section, current_solution(p), e)
       V_el = element_fields(section, p.hvp_scratch, e)
       props_el = @views SVector{NP, eltype(p.props)}(p.props[section_name])
       local_val = zeros(SMatrix{NN * NF, NN * NF, eltype(global_val), NN * NF * NN * NF})
@@ -214,8 +219,8 @@ end
 # for neumann bcs
 
 function surface_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParameters)
-  update_field_bcs!(p.U, domain, p.Ubc)
-  update_field_unknowns!(p.U, domain, Uu)
+  update_field_bcs!(current_solution(p), domain, p.Ubc)
+  update_field_unknowns!(current_solution(p), domain, Uu)
 
   # Neumann BCs
   # TODO minor inefficiency for hessian by 
@@ -228,7 +233,7 @@ function surface_iterator!(global_val, f, domain::Domain, Uu, p::ObjectiveParame
     bc, fspace, physics = section.bc, section.fspace, section.physics
     for e in 1:num_elements(fspace)
       X_el = surface_element_coordinates(section, p.X, e)
-      U_el = surface_element_fields(section, p.U, e)
+      U_el = surface_element_fields(section, current_solution(p), e)
       local_val = surface_scratch_variable(global_val, section)
       for q in 1:ReferenceFiniteElements.num_quadrature_points(fspace.ref_fe.surface_element)
         bc_val = p.nbc[bc_index]

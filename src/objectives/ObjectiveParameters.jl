@@ -5,7 +5,7 @@ Type for objective function parameters for design parameters
 such as coordinates, time, bc values, properties
 state variables, and some scratch arrays.
 """
-struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObjectiveParameters
+struct ObjectiveParameters{U1, T, B, N, S, P, U3, V1, U4, Q, IC} <: AbstractObjectiveParameters
 # struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
@@ -16,11 +16,13 @@ struct ObjectiveParameters{U1, T, B, N, S, P, U2, U3, V1, U4, Q} <: AbstractObje
   state_new::S
   props::P
   # scratch arrays
-  U::U2
+  # U::U2
   grad_scratch::U3
   grad_vec_scratch::V1
   hvp_scratch::U4
   q_vals_scratch::Q
+  # caches
+  integrator_cache::IC
 end
 
 """
@@ -29,9 +31,10 @@ Constructor for a ```ObjectiveParameters``` type.
 ```o``` - Objective function object.
 ```times``` - Times object.
 """
+# TODO change below to have times renamed to integrator
 function ObjectiveParameters(o::AbstractObjective, times)
   X = copy(o.domain.coords)
-  U = create_fields(o.domain)
+  # U = create_fields(o.domain)
   # boundary conditions
   Ubc = Vector{eltype(X)}(undef, 0)
   nbc = Vector{SVector{size(X, 1), eltype(X)}}(undef, 0)
@@ -59,14 +62,23 @@ function ObjectiveParameters(o::AbstractObjective, times)
   q_vals_scratch = ComponentArray(q_vals_scratch)
   state_old = ComponentArray(state_old)
   state_new = ComponentArray(state_new)
+
+  # in development stuff
+  int_cache = integrator_cache(o, times)
+
   params = ObjectiveParameters(
     X, times, Ubc, nbc, state_old, state_new, props,
-    U, grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch
+    grad_scratch, grad_vec_scratch, hvp_scratch, q_vals_scratch,
+    int_cache
     # U, hvp_scratch, q_vals_scratch
   )
   return params
 end
 
+# bindings to integrator methods
+current_solution(p::ObjectiveParameters) = current_solution(p.integrator_cache)
+
+# TODO can probably replace this with make_zero! from enzyme
 function zero_parameters!(p::ObjectiveParameters)
   p.X .= zero(eltype(p.X))
   # p.t .= 
@@ -81,7 +93,9 @@ function zero_parameters!(p::ObjectiveParameters)
   p.state_old .= zero(eltype(p.state_old))
   p.state_new .= zero(eltype(p.state_new))
   p.props .= zero(eltype(p.props))
-  p.U .= zero(eltype(p.U))
+  # p.U .= zero(eltype(p.U))
+  U = current_solution(p)
+  U .= zero(eltype(U))
   p.hvp_scratch .= zero(eltype(p.hvp_scratch))
   p.q_vals_scratch .= zero(eltype(p.q_vals_scratch))
   return nothing
@@ -112,6 +126,22 @@ function update_dirichlet_vals!(p::ObjectiveParameters, o::AbstractObjective)
   update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
   return nothing
 end
+
+# """
+# $(TYPEDSIGNATURES)
+# """
+# function update_field_bcs!(p::ObjectiveParameters, o::AbstractObjective)
+#   update_field_bcs!(current_solution(p), o.domain, p.Ubc)
+#   return nothing
+# end
+
+# """
+# $(TYPEDSIGNATURES)
+# """
+# function update_field_unknowns!(p, o, Uu)
+#   update_field_unknowns!(current_solution(p), o.domain, Uu)
+#   return nothing
+# end
 
 """
 $(TYPEDSIGNATURES)
