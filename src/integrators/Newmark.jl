@@ -57,23 +57,60 @@ function step!(time::Newmark)
 end
 
 # cache
-struct NewmarkCache{Us}
+struct NewmarkCache{Us, Uus}
   U::Us
-  V::Us
-  A::Us
-  U_old::Us
-  V_old::Us
-  A_old::Us
+  Uu_predicted::Uus
+  U_predicted::Us
+  Vu::Uus
+  Au::Uus
 end
 
 function NewmarkCache(objective)
   U = create_fields(objective.domain)
-  V = create_fields(objective.domain)
-  A = create_fields(objective.domain)
-  U_old = create_fields(objective.domain)
-  V_old = create_fields(objective.domain)
-  A_old = create_fields(objective.domain)
-  return NewmarkCache(U, V, A, U_old, V_old, A_old)
+  Uu_predicted = create_unknowns(objective.domain)
+  U_predicted = create_fields(objective.domain)
+  Vu = create_unknowns(objective.domain)
+  Au = create_unknowns(objective.domain)
+  return NewmarkCache(U, Uu_predicted, U_predicted, Vu, Au)
 end
 
+# newmark method specific methods
+# def correct(UCorrection, V, A, dt):
+#   A = UCorrection/(newmarkParameters.beta*dt*dt)
+#   V += dt*newmarkParameters.gamma*A
+#   return V, A
+
+# TODO make non-allocating
+# function correct(int::Newmark, Uu, Vu, Au)
+function correct!(p, int::Newmark)
+  @unpack β, γ, Δt = int
+  # Vu_corr = copy(Vu)
+  @unpack Vu, Au = p
+  Au .= Uu / (β * Δt * Δt)
+  Vu += Δt * γ * Au
+  return nothing
+end
+
+# def predict(U, V, A, dt):
+  # U += dt*V + 0.5*dt*dt*(1.0 - 2.0*newmarkParameters.beta)*A
+  # V += dt*(1.0 - newmarkParameters.gamma)*A
+  # return U, V
+
+
+# TODO make non-allocating
+# function predict(int::Newmark, Uu, Vu, Au)
+function predict!(p, int::Newmark)
+  @unpack β, γ, Δt = int
+  # Uu_pred = copy(Uu)
+  # Vu_pred = copy(Vu)
+  Uu_pred = p.Uu_predicted
+  Vu = p.Vu
+
+  Uu_pred += Δt * Vv + 0.5 * Δt * Δt * (1. - 2. * β) * Au
+  Vu += Δt * (1. - γ) * Au
+  return nothing
+end
+
+# connects types
 integrator_cache(objective, ::Newmark) = NewmarkCache(objective)
+integrator_unknowns(objective, ::Newmark) = (create_unknowns(objective.domain), create_unknowns(objective.domain))

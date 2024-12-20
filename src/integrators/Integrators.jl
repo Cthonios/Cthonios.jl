@@ -13,6 +13,13 @@ end_time(int::AbstractTimeIntegrator) = int.end_time
 start_time(int::AbstractTimeIntegrator) = int.start_time
 time_step(int::AbstractTimeIntegrator) = int.Δt[1]
 
+function step!(integrator, solver, Uu, p)
+  integration_step_header(integrator)
+  step_new!(p, solver.objective)
+  solve!(solver, Uu, p)
+  return nothing
+end
+
 abstract type AbstractTimeIntegratorCache end
 
 # cache methods

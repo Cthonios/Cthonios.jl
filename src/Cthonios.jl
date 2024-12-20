@@ -2,6 +2,7 @@ module Cthonios
 
 using Reexport
 
+# using AcceleratedKernels
 using ArgParse
 using Atomix
 using ComponentArrays
@@ -26,6 +27,8 @@ using SparseArrays
 using YAML
 
 # import to avoid name conflicts with gradient, hvp
+import AcceleratedKernels as AK
+import KernelAbstractions as KA
 import Enzyme: Const, Duplicated, Forward, Reverse, autodiff, make_zero, make_zero!
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
@@ -41,13 +44,15 @@ include("Domains.jl")
 include("contact/Contact.jl")
 
 include("integrators/Integrators.jl")
-include("Objectives.jl")
+
+include("objectives/Objectives.jl")
 
 include("iterators/Iterators.jl")
 include("solvers/Solvers.jl")
 
 # include("problems/Problems.jl")
 include("Problem.jl")
+# include("SchwarzProblem.jl")
 
 include("Main.jl")
 

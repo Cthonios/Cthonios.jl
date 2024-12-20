@@ -1,4 +1,4 @@
-struct QuasiStatic{I, T, U} <: AbstractQuasiStaticTimeIntegrator
+struct QuasiStatic{I, T, U} <: AbstractTimeIntegrator
   start_time::T
   end_time::T
   current_time::U
@@ -6,10 +6,16 @@ struct QuasiStatic{I, T, U} <: AbstractQuasiStaticTimeIntegrator
   Δt::U
 end
 
-current_time(t::QuasiStatic) = t.current_time[1]
-end_time(t::QuasiStatic) = t.end_time
-start_time(t::QuasiStatic) = t.start_time
-time_step(t::QuasiStatic) = t.Δt[1]
+"""
+$(TYPEDSIGNATURES)
+Method to construct a ```QuasiStatic```.
+```start_time``` - the initial time value.
+```end_time``` - time to end the simulation.
+```Δt``` - the time step to use for all time steps.
+"""
+function QuasiStatic(start_time::T, end_time::T, Δt::T) where T <: Number
+  return QuasiStatic(start_time, end_time, [start_time], [1], [Δt])
+end
 
 function QuasiStatic(inputs::Dict{Symbol, Any})
   start_time = inputs[Symbol("start time")]
@@ -42,30 +48,9 @@ function step!(time::QuasiStatic)
   return nothing
 end
 
-"""
-$(TYPEDSIGNATURES)
-Method to construct a ```QuasiStatic```.
-```start_time``` - the initial time value.
-```end_time``` - time to end the simulation.
-```Δt``` - the time step to use for all time steps.
-"""
-function QuasiStatic(start_time::T, end_time::T, Δt::T) where T <: Number
-  return QuasiStatic(start_time, end_time, [start_time], [1], [Δt])
-end
 
-function Base.show(io::IO, time::QuasiStatic)
-  println(io, "QuasiStatic:")
-  println(io, "  Start time = $(time.start_time)")
-  println(io, "  End time   = $(time.end_time)")
-  println(io, "  Time step  = $(time.Δt)")
-end
-
-# function scratch_arrays(objective, ::QuasiStatic)
-#   U = create_fields(objective.domain)
-# end
-# scratch arrays necessary for the integrator to work
-# these go in the parameters object p
-struct QuasiStaticCache{T <: NodalField}
+# cache
+struct QuasiStaticCache{T <: NodalField} <: AbstractTimeIntegratorCache
   U::T
 end
 
@@ -74,6 +59,6 @@ function QuasiStaticCache(objective)
   return QuasiStaticCache{typeof(U)}(U)
 end
 
-current_solution(cache::QuasiStaticCache) = cache.U
-
+# connects types
 integrator_cache(objective, ::QuasiStatic) = QuasiStaticCache(objective)
+integrator_unknowns(objective, ::QuasiStatic) = (create_unknowns(objective.domain),)

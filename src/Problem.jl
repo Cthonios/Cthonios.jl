@@ -54,9 +54,10 @@ function solve!(prob::Problem, Uu, p)
 
       while current_time(integrator) < end_time(integrator)
         @timeit timer(prob) "Integrator step" begin
-          integration_step_header(integrator)
-          step_new!(p, objective)
-          solve!(solver, Uu, p)
+          # integration_step_header(integrator)
+          # step_new!(p, objective)
+          # solve!(solver, Uu, p)
+          step!(integrator, solver, Uu, p)
         end
 
         write_output(post_processor, n + 1, objective, Uu, p)
