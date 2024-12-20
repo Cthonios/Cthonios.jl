@@ -35,9 +35,9 @@ end
 timer(prob::Problem) = prob.timer
 
 function create_unknowns_and_parameters(prob::Problem)
-  Uu = create_unknowns(prob.solver)
+  int_unknowns = integrator_unknowns(prob.solver.objective, prob.integrator)
   p = ObjectiveParameters(prob.solver.objective, prob.integrator)
-  return Uu, p
+  return int_unknowns..., p
 end
 
 function solve!(prob::Problem, Uu, p)
