@@ -40,5 +40,19 @@ function ContactPairInternal(mesh, dof, section, contact_pair::ContactPair)
 end
 
 include("LevelSets.jl")
-include("PenaltyContact.jl")
+# include("PenaltyContact.jl")
 include("Surfaces.jl")
+
+function setup_contact_pairs(sections, mesh, dof, contact_pairs_in)
+  contact_pairs = Dict{Symbol, Any}()
+  for (n, (section, c_pair)) in enumerate(Iterators.product(sections, contact_pairs_in))
+    if typeof(c_pair) <: LevelSetContactPair
+      pair_name = Symbol("level_set_contact_pair_$(n)_$(c_pair.sset_name)_$(typeof(c_pair.l_set))")
+      contact_pairs[pair_name] = LevelSetContactPairInternal(mesh, dof, section, c_pair)
+    else
+      @assert false "Unimplemented for $(typeof(c_pair))"
+    end
+  end
+  contact_pairs = NamedTuple(contact_pairs)
+  return contact_pairs
+end

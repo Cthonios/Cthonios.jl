@@ -13,12 +13,12 @@ end
 
 LITERATE_OUTPUT = joinpath(@__DIR__, "src/generated/")
 
-Literate.markdown(
-  joinpath(@__DIR__, "../examples/hole_array/script.jl"), 
-  LITERATE_OUTPUT,
-  name="hole_array";
-  preprocess=update_mesh_location
-)
+# Literate.markdown(
+#   joinpath(@__DIR__, "../examples/hole_array/script.jl"), 
+#   LITERATE_OUTPUT,
+#   name="hole_array";
+#   preprocess=update_mesh_location
+# )
 
 makedocs(;
   # modules=[Cthonios],

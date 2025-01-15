@@ -9,6 +9,7 @@ abstract type AbstractBCInternal end
 
 include("DirichletBC.jl")
 include("NeumannBC.jl")
+include("SchwarzBC.jl")
 
 # exports
 export DirichletBC

@@ -6,10 +6,10 @@ struct Problem{I, S, P, T}
 end
 
 function Problem(
-  objective::Objective, integrator, solver_type, pp
+  objective::AbstractObjective, integrator, solver_type, pp; use_warm_start=true
 ) # TODO add solver options
   p = ObjectiveParameters(objective, integrator)
-  solver = solver_type(objective, p, objective.timer; use_warm_start=true) 
+  solver = solver_type(objective, p, objective.timer; use_warm_start=use_warm_start)
   return Problem(integrator, solver, pp, objective.timer)
 end
 
@@ -35,7 +35,7 @@ end
 timer(prob::Problem) = prob.timer
 
 function create_unknowns_and_parameters(prob::Problem)
-  Uu = create_unknowns(prob.solver)
+  Uu = create_unknowns(prob.solver.objective.domain)
   p = ObjectiveParameters(prob.solver.objective, prob.integrator)
   return Uu, p
 end
@@ -48,15 +48,13 @@ function solve!(prob::Problem, Uu, p)
       n = 1
       update_dirichlet_vals!(p, objective)
       update_neumann_vals!(p, objective)
-      update_field_unknowns!(p.U, objective.domain, Uu)
+      update_field_unknowns!(current_solution(p), objective.domain, Uu)
 
       write_output(post_processor, 1, objective, Uu, p)
 
       while current_time(integrator) < end_time(integrator)
         @timeit timer(prob) "Integrator step" begin
-          integration_step_header(integrator)
-          step_new!(p, objective)
-          solve!(solver, Uu, p)
+          step!(integrator, solver, Uu, p)
         end
 
         write_output(post_processor, n + 1, objective, Uu, p)

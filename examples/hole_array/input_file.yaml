@@ -40,7 +40,7 @@ problems:
     end time: 1.0
     time increment: 0.0125
   objective:
-    type: Objective
+    type: UnconstrainedObjective
     value: energy
 
   nonlinear solver:

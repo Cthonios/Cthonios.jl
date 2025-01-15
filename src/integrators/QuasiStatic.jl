@@ -1,4 +1,4 @@
-struct QuasiStatic{I, T, U} <: AbstractQuasiStaticTimeIntegrator
+struct QuasiStatic{I, T, U} <: AbstractTimeIntegrator
   start_time::T
   end_time::T
   current_time::U
@@ -6,10 +6,16 @@ struct QuasiStatic{I, T, U} <: AbstractQuasiStaticTimeIntegrator
   Δt::U
 end
 
-current_time(t::QuasiStatic) = t.current_time[1]
-end_time(t::QuasiStatic) = t.end_time
-start_time(t::QuasiStatic) = t.start_time
-time_step(t::QuasiStatic) = t.Δt[1]
+"""
+$(TYPEDSIGNATURES)
+Method to construct a ```QuasiStatic```.
+```start_time``` - the initial time value.
+```end_time``` - time to end the simulation.
+```Δt``` - the time step to use for all time steps.
+"""
+function QuasiStatic(start_time::T, end_time::T, Δt::T) where T <: Number
+  return QuasiStatic(start_time, end_time, [start_time], [1], [Δt])
+end
 
 function QuasiStatic(inputs::Dict{Symbol, Any})
   start_time = inputs[Symbol("start time")]
@@ -31,31 +37,31 @@ function integration_step_header(times::QuasiStatic)
   @info "$(repeat('=', 96))"
 end
 
-"""
-$(TYPEDSIGNATURES)
-Method to increment ```time.current_time``` by ```Δt```.
-"""
-function step!(time::QuasiStatic) 
-  temp = current_time(time) + time_step(time)
-  time.current_time[1] = temp
-  time.current_time_step[1] += 1
+function step!(integrator::QuasiStatic, solver, Uu, p)
+  integration_step_header(integrator)
+
+  # time updates
+  temp = current_time(integrator) + time_step(integrator)
+  integrator.current_time[1] = temp
+  integrator.current_time_step[1] += 1
+
+  # step!(integrator)
+  update_dirichlet_vals!(p, solver.objective)
+  update_neumann_vals!(p, solver.objective)
+  solve!(solver, Uu, p)
   return nothing
 end
 
-"""
-$(TYPEDSIGNATURES)
-Method to construct a ```QuasiStatic```.
-```start_time``` - the initial time value.
-```end_time``` - time to end the simulation.
-```Δt``` - the time step to use for all time steps.
-"""
-function QuasiStatic(start_time::T, end_time::T, Δt::T) where T <: Number
-  return QuasiStatic(start_time, end_time, [start_time], [1], [Δt])
+# cache
+struct QuasiStaticCache{T <: NodalField} <: AbstractTimeIntegratorCache
+  U::T
 end
 
-function Base.show(io::IO, time::QuasiStatic)
-  println(io, "QuasiStatic:")
-  println(io, "  Start time = $(time.start_time)")
-  println(io, "  End time   = $(time.end_time)")
-  println(io, "  Time step  = $(time.Δt)")
+function QuasiStaticCache(objective)
+  U = create_fields(objective.domain)
+  return QuasiStaticCache{typeof(U)}(U)
 end
+
+# connects types
+integrator_cache(objective, ::QuasiStatic) = QuasiStaticCache(objective)
+integrator_unknowns(objective, ::QuasiStatic) = (create_unknowns(objective.domain),)

@@ -21,7 +21,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj::Objective, p, timer)
+function CholeskyPreconditioner(obj::AbstractObjective, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = StaticAssembler(obj.domain)
     update_unknown_dofs!(obj.domain, asm)
@@ -81,7 +81,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function LimitedLDLPreconditioner(obj::Objective, p, timer)
+function LimitedLDLPreconditioner(obj::AbstractObjective, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = StaticAssembler(obj.domain)
     update_unknown_dofs!(obj.domain, asm)
@@ -119,7 +119,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function LDLPreconditioner(obj::Objective, p, timer)
+function LDLPreconditioner(obj::AbstractObjective, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = StaticAssembler(obj.domain)
     update_unknown_dofs!(obj.domain, asm)

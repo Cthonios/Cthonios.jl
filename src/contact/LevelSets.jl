@@ -35,3 +35,20 @@ end
 function (combined::Combined{L1, L2})(x, args...) where {L1, L2}
   return min(combined.l1(x, args...), combined.l2(x, args...))
 end
+
+# containers for running
+struct LevelSetContactPair{S, L <: AbstractLevelSet} <: AbstractContactInput
+  sset_name::S
+  l_set::L
+end
+
+struct LevelSetContactPairInternal{S, L <: AbstractLevelSet} <: AbstractContactInternal
+  c_sec::S
+  l_set::L
+end
+
+function LevelSetContactPairInternal(mesh, dof, section, contact_pair)
+  sset = ContactSet(mesh, String(contact_pair.sset_name))
+  sec_sset = SurfaceSectionInternal(mesh, dof, section, sset)
+  return LevelSetContactPairInternal(sec_sset, contact_pair.l_set)
+end

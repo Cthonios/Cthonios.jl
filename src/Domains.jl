@@ -19,7 +19,7 @@ you will need to run, ```update_unknown_dofs!```.
 ```dirichlet_dofs``` - A set of dofs to apply dirichlet dofs.
   This is mainly for book-keeping purposes
 """
-struct Domain{C, D, S, DBCs, DDofs, NBCs, NS} <: AbstractDomain
+struct Domain{C, D, S, DBCs, DDofs, NBCs, NS, CPs} <: AbstractDomain
   coords::C
   dof::D
   sections::S
@@ -27,6 +27,7 @@ struct Domain{C, D, S, DBCs, DDofs, NBCs, NS} <: AbstractDomain
   dirichlet_dofs::DDofs
   neumann_bcs::NBCs
   neumann_bc_sections::NS
+  contact_pairs::CPs
 end
 
 """
@@ -67,7 +68,10 @@ function Domain(
   sections = setup_sections(SectionInternal, sections_in, mesh, dof)
   nbc_sections = setup_sections(SurfaceSectionInternal, sections, mesh, dof, nbcs)
 
-  return Domain(coords, dof, sections, dbcs, ddofs, nbcs, nbc_sections)
+  # contact pairs
+  contact_pairs = setup_contact_pairs(sections, mesh, dof, contact_pairs_in)
+
+  return Domain(coords, dof, sections, dbcs, ddofs, nbcs, nbc_sections, contact_pairs)
 end
 
 function Domain(inputs::Dict{Symbol, Any})
@@ -147,7 +151,8 @@ function update_neumann_vals!(nbc, domain::Domain, X, t)
   for sec in domain.neumann_bc_sections
     for e in 1:length(sec.bc.elements)
       X_el = surface_element_coordinates(sec, X, e)
-      X_el = SMatrix{length(X_el) ÷ ND, ND, eltype(X_el), length(X_el)}(X_el...)
+      # X_el = SMatrix{length(X_el) ÷ ND, ND, eltype(X_el), length(X_el)}(X_el...)
+      X_el = SMatrix{ND, length(X_el) ÷ ND, eltype(X_el), length(X_el)}(X_el...)
       for q in 1:ReferenceFiniteElements.num_quadrature_points(sec.fspace.ref_fe.surface_element)
         interps = MappedSurfaceInterpolants(sec.fspace.ref_fe, X_el, q, sec.bc.sides[e])
         X_q = interps.X_q

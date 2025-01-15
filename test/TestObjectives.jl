@@ -28,17 +28,17 @@
   time = QuasiStatic(0.0, 1.0, 0.0125)
 
   # constructors
-  objective = Objective(
-    domain, 
-    Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
-    Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
-    TimerOutput()
+  objective = UnconstrainedObjective(
+    domain, Cthonios.energy
+    # Cthonios.energy, Cthonios.gradient, Cthonios.hessian, 
+    # Cthonios.neumann_energy, Cthonios.neumann_gradient, Cthonios.neumann_hessian, 
+    # TimerOutput()
   )
   Uu = Cthonios.create_unknowns(objective.domain)
   p = ObjectiveParameters(objective, time)
 
   # some methods
-  Cthonios.step!(p)
+  # Cthonios.step!(p)
   Cthonios.update_dirichlet_vals!(p, objective)
 
   for bc in domain.dirichlet_bcs
