@@ -30,8 +30,7 @@ $(TYPEDSIGNATURES)
 function gradient!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - gradient!" begin
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    gradient_u!(g, o.volume_integral, Uu, p, o.domain)
-    gradient_u!(g, o.surface_integral, Uu, p, o.domain)
+    gradient_u!(g, o.integral, Uu, p, o.domain)
   end
 end
 
@@ -47,8 +46,7 @@ end
 function gradient_x!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - gradient_x!" begin
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    gradient_x!(g, o.volume_integral, Uu, p, o.domain)
-    gradient_x!(g, o.surface_integral, Uu, p, o.domain)
+    gradient_x!(g, o.integral, Uu, p, o.domain)
   end
 end
 
@@ -56,8 +54,7 @@ function gradient_for_ad!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParam
   # @timeit timer(o) "Objectives - gradient!" begin
     g .= zero(eltype(g))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    gradient_u!(g, o.volume_integral, Uu, p, o.domain)
-    gradient_u!(g, o.surface_integral, Uu, p, o.domain)
+    gradient_u!(g, o.integral, Uu, p, o.domain)
     # return @views g[o.domain.dof.unknown_dofs]
     return nothing
   # end
@@ -70,8 +67,7 @@ function hessian!(asm::FiniteElementContainers.Assembler, o::AbstractObjective, 
   @timeit timer(o) "Objective - hessian!" begin
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    hessian_u!(asm, o.volume_integral, Uu, p, o.domain)
-    # surface_iterator!(asm, o.neumann_hessian, o.domain, Uu, p) # Don't even need this except for maybe some cases?
+    hessian_u!(asm, o.integral, Uu, p, o.domain)
     return SparseArrays.sparse!(asm) |> Symmetric
   end
 end
@@ -108,7 +104,7 @@ function hvp!(Hv::NodalField, o::AbstractObjective, Uu, p::AbstractObjectivePara
     Hv .= zero(eltype(Hv))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
     update_field_unknowns!(p.hvp_scratch, o.domain, Vv)
-    hvp_u!(Hv, o.volume_integral, Uu, p, Vv, o.domain)
+    hvp_u!(Hv, o.integral, Uu, p, Vv, o.domain)
     # TODO do we need a surface iterator for more general neumann bcs?
     return @views Hv[o.domain.dof.unknown_dofs]
   end
@@ -123,7 +119,7 @@ function mass_matrix!(asm, o::AbstractObjective, Uu, p::AbstractObjectiveParamet
     # asm.masses .= zero(eltype(asm.masses))
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    integrate!(asm, o.volume_integral, mass_matrix, Uu, p, o.domain)
+    integrate!(asm, o.integral.volume_integral, mass_matrix, Uu, p, o.domain)
     return SparseArrays.sparse!(asm) |> Symmetric
   end
 end
@@ -143,8 +139,7 @@ function objective!(val, o::AbstractObjective, Uu, p::AbstractObjectiveParameter
   @timeit timer(o) "Objective - objective!" begin
     val .= zero(eltype(val))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    value!(val, o.volume_integral, Uu, p, o.domain)
-    value!(val, o.surface_integral, Uu, p, o.domain)
+    value!(val, o.integral, Uu, p, o.domain)
     return @views val[1]
   end
 end
