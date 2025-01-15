@@ -14,7 +14,7 @@ p is the set of parameters
 abstract type AbstractLinearSolver end
 
 # linear solvers
-include("DirectSolver.jl")
+# include("DirectSolver.jl")
 # include("KrylovSolver.jl")
 include("Preconditioners.jl")
 
@@ -24,5 +24,5 @@ export LimitedLDLPreconditioner
 export LDLPreconditioner
 
 # solvers
-export DirectSolver
+# export DirectSolver
 # export KrylovSolver

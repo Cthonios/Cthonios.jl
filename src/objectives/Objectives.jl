@@ -30,8 +30,25 @@ $(TYPEDSIGNATURES)
 function gradient!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - gradient!" begin
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    domain_iterator!(g, o.gradient, o.domain, Uu, p)
-    surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
+    gradient_u!(g, o.volume_integral, Uu, p, o.domain)
+    gradient_u!(g, o.surface_integral, Uu, p, o.domain)
+  end
+end
+
+function gradient_x(o::AbstractObjective, Uu, p)
+  @timeit timer(o) "Objective - gradient_x" begin
+    dX = similar(p.X)
+    dX .= zero(eltype(dX))
+    gradient_x!(dX, o, Uu, p)
+    return dX
+  end
+end
+
+function gradient_x!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
+  @timeit timer(o) "Objectives - gradient_x!" begin
+    update_field_unknowns!(current_solution(p), o.domain, Uu)
+    gradient_x!(g, o.volume_integral, Uu, p, o.domain)
+    gradient_x!(g, o.surface_integral, Uu, p, o.domain)
   end
 end
 
@@ -39,8 +56,8 @@ function gradient_for_ad!(g, o::AbstractObjective, Uu, p::AbstractObjectiveParam
   # @timeit timer(o) "Objectives - gradient!" begin
     g .= zero(eltype(g))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    domain_iterator!(g, o.gradient, o.domain, Uu, p)
-    surface_iterator!(g, o.neumann_gradient, o.domain, Uu, p)
+    gradient_u!(g, o.volume_integral, Uu, p, o.domain)
+    gradient_u!(g, o.surface_integral, Uu, p, o.domain)
     # return @views g[o.domain.dof.unknown_dofs]
     return nothing
   # end
@@ -53,7 +70,7 @@ function hessian!(asm::FiniteElementContainers.Assembler, o::AbstractObjective, 
   @timeit timer(o) "Objective - hessian!" begin
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    domain_iterator!(asm, o.hessian, o.domain, Uu, p)
+    hessian_u!(asm, o.volume_integral, Uu, p, o.domain)
     # surface_iterator!(asm, o.neumann_hessian, o.domain, Uu, p) # Don't even need this except for maybe some cases?
     return SparseArrays.sparse!(asm) |> Symmetric
   end
@@ -91,34 +108,22 @@ function hvp!(Hv::NodalField, o::AbstractObjective, Uu, p::AbstractObjectivePara
     Hv .= zero(eltype(Hv))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
     update_field_unknowns!(p.hvp_scratch, o.domain, Vv)
-    domain_iterator!(Hv, o.hessian, o.domain, Uu, p, Vv)
+    hvp_u!(Hv, o.volume_integral, Uu, p, Vv, o.domain)
     # TODO do we need a surface iterator for more general neumann bcs?
     return @views Hv[o.domain.dof.unknown_dofs]
   end
 end
 
-# """
-# $(TYPEDSIGNATURES)
-# """
-# function objective(o::Objective, Uu, p)
-#   # return domain_iterator(o.value, o.domain, Uu, p)
-#   return domain_iterator(energy, o.domain, Uu, p)
-# end
-
-# function grad_u(o::Objective, Uu, p, backend)
-#   # func = x -> objective(o, x, p)
-#   # DifferentiationInterface.gradient(func, backend, Uu)
-#   # DifferentiationInterface.gradient(x -> objective(o, x, p), backend, Uu)
-#   func = x -> domain_iterator(energy, o.domain, x, p)
-#   DifferentiationInterface.gradient(func, backend, Uu)
-# end
-
+"""
+$(TYPEDSIGNATURES)
+Special case for use in dynamics problems
+"""
 function mass_matrix!(asm, o::AbstractObjective, Uu, p::AbstractObjectiveParameters)
   @timeit timer(o) "Objectives - mass_matrix!" begin
     # asm.masses .= zero(eltype(asm.masses))
     asm.stiffnesses .= zero(eltype(asm.stiffnesses))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    domain_iterator!(asm, mass_matrix, o.domain, Uu, p)
+    integrate!(asm, o.volume_integral, mass_matrix, Uu, p, o.domain)
     return SparseArrays.sparse!(asm) |> Symmetric
   end
 end
@@ -138,8 +143,8 @@ function objective!(val, o::AbstractObjective, Uu, p::AbstractObjectiveParameter
   @timeit timer(o) "Objective - objective!" begin
     val .= zero(eltype(val))
     update_field_unknowns!(current_solution(p), o.domain, Uu)
-    domain_iterator!(val, o.value, o.domain, Uu, p)
-    surface_iterator!(val, o.neumann_value, o.domain, Uu, p)
+    value!(val, o.volume_integral, Uu, p, o.domain)
+    value!(val, o.surface_integral, Uu, p, o.domain)
     return @views val[1]
   end
 end

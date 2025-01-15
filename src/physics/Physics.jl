@@ -19,6 +19,9 @@ $(TYPEDSIGNATURES)
 """
 num_states(::AbstractPhysics{NF, NP, NS}) where {NF, NP, NS} = NS
 
+# some utilities
+include("Utils.jl")
+
 # implementations as small kernels which operate
 # at the quadratue level
 include("kernels/Dynamics.jl")

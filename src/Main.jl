@@ -1,6 +1,7 @@
 function cthonios_main()::Cint
   settings = parse_command_line()
   input_settings = read_input_file(settings)
+  run(input_settings)
   return Int32(0)
 end
 
@@ -16,7 +17,10 @@ end
 
 function read_input_file(settings)
   input_file = settings["input-file"]
-  input_settings = YAML.load_file(input_file; dicttype=Dict{Symbol, Any})
+  YAML.load_file(input_file; dicttype=Dict{Symbol, Any})
+end
+
+function run(input_settings)
   problems = input_settings[:problems]
   for prob_inputs in problems
     type = Symbol(prob_inputs[:type])

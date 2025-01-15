@@ -9,7 +9,7 @@ struct ObjectiveParameters{U1, T, B, N, S, P, U3, V1, U4, Q, IC} <: AbstractObje
 # struct ObjectiveParameters{U1, T, B, N, S, P, U2, U4, Q} <: AbstractObjectiveParameters
   # design parameters
   X::U1
-  t::T
+  t::T # TODO eventually move out since now it's an integrator
   Ubc::B # dirichlet bc design parameters
   nbc::N # neumann bc design parameters
   state_old::S
@@ -101,23 +101,6 @@ function zero_parameters!(p::ObjectiveParameters)
   return nothing
 end
 
-# methods for telling letting design parameters
-# know we're taking a timestep from the integrator
-"""
-$(TYPEDSIGNATURES)
-"""
-function step!(p::ObjectiveParameters)
-  step!(p.t)
-  return nothing
-end
-
-function step_new!(p::ObjectiveParameters, o::AbstractObjective)
-  step!(p.t)
-  update_dirichlet_vals!(p, o)
-  update_neumann_vals!(p, o)
-  return nothing
-end
-
 # methods for updating design parameters
 """
 $(TYPEDSIGNATURES)
@@ -126,22 +109,6 @@ function update_dirichlet_vals!(p::ObjectiveParameters, o::AbstractObjective)
   update_dirichlet_vals!(p.Ubc, o.domain, p.X, p.t)
   return nothing
 end
-
-# """
-# $(TYPEDSIGNATURES)
-# """
-# function update_field_bcs!(p::ObjectiveParameters, o::AbstractObjective)
-#   update_field_bcs!(current_solution(p), o.domain, p.Ubc)
-#   return nothing
-# end
-
-# """
-# $(TYPEDSIGNATURES)
-# """
-# function update_field_unknowns!(p, o, Uu)
-#   update_field_unknowns!(current_solution(p), o.domain, Uu)
-#   return nothing
-# end
 
 """
 $(TYPEDSIGNATURES)

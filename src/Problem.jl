@@ -35,9 +35,9 @@ end
 timer(prob::Problem) = prob.timer
 
 function create_unknowns_and_parameters(prob::Problem)
-  int_unknowns = integrator_unknowns(prob.solver.objective, prob.integrator)
+  Uu = create_unknowns(prob.solver.objective.domain)
   p = ObjectiveParameters(prob.solver.objective, prob.integrator)
-  return int_unknowns..., p
+  return Uu, p
 end
 
 function solve!(prob::Problem, Uu, p)
@@ -54,9 +54,6 @@ function solve!(prob::Problem, Uu, p)
 
       while current_time(integrator) < end_time(integrator)
         @timeit timer(prob) "Integrator step" begin
-          # integration_step_header(integrator)
-          # step_new!(p, objective)
-          # solve!(solver, Uu, p)
           step!(integrator, solver, Uu, p)
         end
 

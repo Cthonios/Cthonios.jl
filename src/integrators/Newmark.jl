@@ -45,16 +45,29 @@ function integration_step_header(times::Newmark)
   @info "$(repeat('=', 96))"
 end
 
-"""
-$(TYPEDSIGNATURES)
-Method to increment ```time.current_time``` by ```Δt```.
-"""
-function step!(time::Newmark) 
-  temp = current_time(time) + time_step(time)
-  time.current_time[1] = temp
-  time.current_time_step[1] += 1
+function step!(integrator::Newmark, solver, Uu, p)
+  integration_step_header(integrator)
+
+  # time updates
+  temp = current_time(integrator) + time_step(integrator)
+  integrator.current_time[1] = temp
+  integrator.current_time_step[1] += 1
+
+  # bc updates
+  update_dirichlet_vals!(p, solver.objective)
+  update_neumann_vals!(p, solver.objective)
+
+  # predict
+  predict!(p, integrator)
+
+  # solve
+  solve!(solver, Uu, p)
+
+  # correct
+  correct!(p, integrator)
   return nothing
 end
+
 
 # cache
 struct NewmarkCache{Us, Uus}
@@ -85,7 +98,7 @@ end
 function correct!(p, int::Newmark)
   @unpack β, γ, Δt = int
   # Vu_corr = copy(Vu)
-  @unpack Vu, Au = p
+  @unpack Vu, Au = p.integrator_cache
   Au .= Uu / (β * Δt * Δt)
   Vu += Δt * γ * Au
   return nothing
@@ -103,8 +116,8 @@ function predict!(p, int::Newmark)
   @unpack β, γ, Δt = int
   # Uu_pred = copy(Uu)
   # Vu_pred = copy(Vu)
-  Uu_pred = p.Uu_predicted
-  Vu = p.Vu
+  Uu_pred = p.integrator_cache.Uu_predicted
+  Vu = p.integrator_cache.Vu
 
   Uu_pred += Δt * Vv + 0.5 * Δt * Δt * (1. - 2. * β) * Au
   Vu += Δt * (1. - γ) * Au

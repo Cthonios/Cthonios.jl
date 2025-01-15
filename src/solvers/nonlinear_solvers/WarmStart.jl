@@ -40,6 +40,9 @@ function solve!(warm_start::WarmStart, solver, objective, Uu, p)
     dp.Ubc .= p.Ubc .- dp.Ubc
     dp.nbc .= p.nbc .- dp.nbc
 
+    # TODO try to make this use finite difference
+    # instead of having to rely on Enzyme since
+    # Enyzme takes forever to compile/precompile
     @timeit timer(objective) "WarmStart - AD" begin
       autodiff(
         Forward, Cthonios.gradient_for_ad!,

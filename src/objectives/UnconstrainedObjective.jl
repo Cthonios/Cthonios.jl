@@ -13,38 +13,50 @@ respectively.
 """
 struct UnconstrainedObjective{
   D, 
-  F1, F2, F3, 
-  F4, F5, F6, 
+  # F1, F2, F3, F4,
+  V,
+  # F5, F6, F7, F8, 
+  S,
   T
 } <: AbstractObjective
   domain::D
-  value::F1
-  gradient::F2
-  hessian::F3
-  neumann_value::F4
-  neumann_gradient::F5
-  neumann_hessian::F6
+  # value::F1
+  # gradient::F2
+  # gradient_x::F3
+  # hessian::F4
+  volume_integral::V
+  # neumann_value::F5
+  # neumann_gradient::F6
+  # neumann_gradient_x::F7
+  # neumann_hessian::F8
+  surface_integral::S
   timer::T
 end
 
-function UnconstrainedObjective(domain::Domain, value_func::F1, neumann_value_func::F2, timer::TimerOutput) where {F1 <: Function, F2 <: Function}
-  grad_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, z, x, state, props, t), u)
-  hess_func(phys, cell, u, x, state, props, t) = ForwardDiff.hessian(z -> value_func(phys, cell, z, x, state, props, t), u)
-  neumann_grad_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
-  neumann_hess_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.hessian(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
-  return UnconstrainedObjective(
-    domain, 
-    value_func, grad_func, hess_func, 
-    neumann_value_func, neumann_grad_func, neumann_hess_func,
-    timer
-  )
-end
+# function UnconstrainedObjective(domain::Domain, value_func::F1, neumann_value_func::F2, timer::TimerOutput) where {F1 <: Function, F2 <: Function}
+#   grad_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, z, x, state, props, t), u)
+#   grad_x_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> value_func(phys, cell, u, z, state, props, t), x)
+#   hess_func(phys, cell, u, x, state, props, t) = ForwardDiff.hessian(z -> value_func(phys, cell, z, x, state, props, t), u)
+#   neumann_grad_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+#   neumann_grad_x_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_value_func(phys, cell, u, z, t, bc, val, r, q, f), x)
+#   neumann_hess_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.hessian(z -> neumann_value_func(phys, cell, z, x, t, bc, val, r, q, f), u)
+#   return UnconstrainedObjective(
+#     domain, 
+#     value_func, grad_func, grad_x_func, hess_func, 
+#     neumann_value_func, neumann_grad_func, neumann_grad_x_func, neumann_hess_func,
+#     timer
+#   )
+# end
 
 function UnconstrainedObjective(domain::Domain, ::typeof(energy))
+  # grad_x_func(phys, cell, u, x, state, props, t) = ForwardDiff.gradient(z -> energy(phys, cell, u, z, state, props, t), x)
+  neumann_grad_x_func(phys, cell, u, x, t, bc, val, r, q, f) = ForwardDiff.gradient(z -> neumann_energy(phys, cell, u, z, t, bc, val, r, q, f), x)
   return UnconstrainedObjective(
     domain,
-    energy, gradient, hessian,
-    neumann_energy, neumann_gradient, neumann_hessian,
+    # energy, gradient, grad_x_func, hessian,
+    VolumeIntegral(energy),
+    # neumann_energy, neumann_gradient, neumann_grad_x_func, neumann_hessian,
+    SurfaceIntegral(neumann_energy),
     TimerOutput()
   )
 end

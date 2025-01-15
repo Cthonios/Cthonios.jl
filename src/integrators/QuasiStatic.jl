@@ -37,17 +37,20 @@ function integration_step_header(times::QuasiStatic)
   @info "$(repeat('=', 96))"
 end
 
-"""
-$(TYPEDSIGNATURES)
-Method to increment ```time.current_time``` by ```Δt```.
-"""
-function step!(time::QuasiStatic) 
-  temp = current_time(time) + time_step(time)
-  time.current_time[1] = temp
-  time.current_time_step[1] += 1
+function step!(integrator::QuasiStatic, solver, Uu, p)
+  integration_step_header(integrator)
+
+  # time updates
+  temp = current_time(integrator) + time_step(integrator)
+  integrator.current_time[1] = temp
+  integrator.current_time_step[1] += 1
+
+  # step!(integrator)
+  update_dirichlet_vals!(p, solver.objective)
+  update_neumann_vals!(p, solver.objective)
+  solve!(solver, Uu, p)
   return nothing
 end
-
 
 # cache
 struct QuasiStaticCache{T <: NodalField} <: AbstractTimeIntegratorCache
