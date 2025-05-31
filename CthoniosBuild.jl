@@ -47,7 +47,11 @@ if settings["build-sysimage"]
   # all_deps = vcat(deps..., weakdeps...) |> sort
   # @info "Using all the following deps and weakdeps"
   # display(all_deps)
-  create_sysimage(deps, sysimage_path="cthonios_sysimage.so"; cpu_target="generic")
+  create_sysimage(
+    deps, sysimage_path="cthonios_sysimage.so"; 
+    cpu_target="generic",
+    include_transitive_dependencies=true
+  )
 end
 
 if settings["build-app"]
