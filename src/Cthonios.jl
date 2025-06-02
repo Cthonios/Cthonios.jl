@@ -3,11 +3,22 @@ module Cthonios
 using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
+using Enzyme
 using Exodus
 using FiniteElementContainers
+using LinearAlgebra
 using Printf
+using StaticArrays
 using TimerOutputs
 using YAML
+
+# Re-exports
+export FiniteElementContainers
+export StaticArrays
+
+export SingleDomainSimulation
+export UnconstrainedObjective
+export parameters
 
 # small components that make up a more complex problem
 # include("bcs/BoundaryConditions.jl")
@@ -40,8 +51,17 @@ using YAML
 # include("simulations/Simulations.jl")
 # # include("SchwarzProblem.jl")
 
+# objectives
+include("objectives/Objectives.jl")
+
+# physics
+include("physics/Physics.jl")
+
 # simulations
 include("simulations/Simulations.jl")
+
+# solvers
+include("solvers/Solvers.jl")
 
 # CLI
 include("Main.jl")
