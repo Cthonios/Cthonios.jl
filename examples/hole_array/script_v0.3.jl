@@ -19,7 +19,7 @@ physics = (;
 )
 props = (;
     Block1 = Dict{String, Any}(
-        "bulk modulus" => 100.,
+        "bulk modulus" => 10.,
         "shear modulus" => 1.
     )
 )

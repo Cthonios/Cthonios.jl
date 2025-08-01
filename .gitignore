@@ -5,6 +5,7 @@
 /docs/Manifest.toml
 /docs/build/
 *.e
+*.exo
 *.log
 *.so
 build/
