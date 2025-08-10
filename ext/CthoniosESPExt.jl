@@ -6,7 +6,7 @@ using Cthonios
 using EngineeringSketchPadWrapper
 using FiniteElementContainers
 using LinearAlgebra
-using OptimizationNLopt
+using NLopt
 using TimerOutputs
 
 function Cthonios.StructuralOptimization(csm_file, objective, sim)

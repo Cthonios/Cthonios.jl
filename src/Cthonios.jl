@@ -3,14 +3,11 @@ module Cthonios
 using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
-# using EngineeringSketchPadWrapper
 using Enzyme
 using Exodus
 using FiniteElementContainers
 using LinearAlgebra
-# using NLopt
-using Optimization
-using OptimizationNLopt
+using NLopt
 using Printf
 using StaticArrays
 using TimerOutputs
