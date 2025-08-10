@@ -5,7 +5,7 @@ struct WarmStart{R, Uu, p}
   ΔUu
 end
 
-function WarmStart(o::AbstractObjective, p)
+function WarmStart(o::AbstractObjectiveCache, p)
   dR = create_field(o)
   dUu = create_unknowns(o)
   dp = make_zero(p)
@@ -13,35 +13,39 @@ function WarmStart(o::AbstractObjective, p)
   return WarmStart(dR, dUu, dp, ΔUu)
 end
 
-function assemble_vector_for_ad!(storage, assembler, Uu, p)
-  fill!(storage, zero(eltype(storage)))
-  fspace = FiniteElementContainers.function_space(assembler, H1Field)
-  t = FiniteElementContainers.current_time(p.times)
-  Δt = FiniteElementContainers.time_step(p.times)
-  update_bcs!(p)
-  update_field_unknowns!(p.h1_field, assembler.dof, Uu)
-  for (b, (conns, block_physics, state_old, state_new, props)) in enumerate(zip(
-    values(fspace.elem_conns), 
-    values(p.physics),
-    values(p.state_old), values(p.state_new),
-    values(p.properties)
-  ))
-    ref_fe = values(fspace.ref_fes)[b]
-    backend = FiniteElementContainers._check_backends(assembler, p.h1_field, p.h1_coords, state_old, state_new, conns)
-    FiniteElementContainers._assemble_block_vector!(
-      storage, block_physics, ref_fe, 
-      p.h1_field, p.h1_coords, state_old, state_new, props, t, Δt,
-      conns, b, residual,
-      backend
-    )
-  end
-end
+# function assemble_vector_for_ad!(storage, assembler, Uu, p, func)
+#   fill!(storage, zero(eltype(storage)))
+#   fspace = FiniteElementContainers.function_space(assembler, H1Field)
+#   t = FiniteElementContainers.current_time(p.times)
+#   Δt = FiniteElementContainers.time_step(p.times)
+#   update_bcs!(p)
+#   update_field_unknowns!(p.h1_field, assembler.dof, Uu)
+#   for (b, (conns, block_physics, state_old, state_new, props)) in enumerate(zip(
+#     values(fspace.elem_conns), 
+#     values(p.physics),
+#     values(p.state_old), values(p.state_new),
+#     values(p.properties)
+#   ))
+#     ref_fe = values(fspace.ref_fes)[b]
+#     backend = FiniteElementContainers._check_backends(assembler, p.h1_field, p.h1_coords, state_old, state_new, conns)
+#     FiniteElementContainers._assemble_block_vector!(
+#       storage, block_physics, ref_fe, 
+#       p.h1_field, p.h1_coords, state_old, state_new, props, t, Δt,
+#       # conns, b, residual,
+#       conns, b, func,
+#       backend
+#     )
+#   end
+# end
 
 # TODO figure out a way to do it analytically
-function solve!(warm_start::WarmStart, objective, Uu, p)
+function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
   @timeit objective.timer "Warm start - solve!" begin
-    @info "Warm start"
-    assembler = objective.assembler
+    if verbose
+      @info "Warm start"
+    end
+    assembler = objective.sim_cache.assembler
+    # assembler = assembler(objective)
     # need scratch arrays
     # R = assembler.residual_unknowns
     R = create_field(assembler, H1Field)
@@ -92,14 +96,15 @@ function solve!(warm_start::WarmStart, objective, Uu, p)
         Duplicated(R, dR),
         Const(assembler),
         Duplicated(Uu, dUu),
-        Duplicated(p, dp)
+        Duplicated(p, dp),
+        Const(residual)
       )
     end
 
     # need to subtract 1 from teh time step int since it steps twice here
     # p.t.current_time_step[1] = p.t.current_time_step[1] - 1
 
-    R = dR[objective.assembler.dof.H1_unknown_dofs]
+    R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
     # R = residual(assembler)
 
     # K = Cthonios.hessian!(solver.assembler, objective, Uu, p)

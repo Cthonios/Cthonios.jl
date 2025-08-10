@@ -1,4 +1,4 @@
-struct UnconstrainedObjective{A, F1, F2, F3, T} <: AbstractObjective{A, F1, T}
+struct UnconstrainedObjective{A, F1, F2, F3, T} <: AbstractObjectiveCache{A, F1, T}
     assembler::A
     value::F1
     gradient_u::F2

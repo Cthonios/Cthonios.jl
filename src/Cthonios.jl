@@ -3,10 +3,14 @@ module Cthonios
 using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
+# using EngineeringSketchPadWrapper
 using Enzyme
 using Exodus
 using FiniteElementContainers
 using LinearAlgebra
+# using NLopt
+using Optimization
+using OptimizationNLopt
 using Printf
 using StaticArrays
 using TimerOutputs
@@ -51,6 +55,9 @@ export parameters
 # include("simulations/Simulations.jl")
 # # include("SchwarzProblem.jl")
 
+# utilities
+include("Utils.jl")
+
 # objectives
 include("objectives/Objectives.jl")
 
@@ -62,6 +69,12 @@ include("simulations/Simulations.jl")
 
 # solvers
 include("solvers/Solvers.jl")
+
+#
+include("qoi_extractors/QOIExtractors.jl")
+
+# optimizations
+include("optimizations/Optimizations.jl")
 
 # CLI
 include("Main.jl")

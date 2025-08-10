@@ -18,10 +18,11 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj::AbstractObjective, p, timer)
+function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     # asm = StaticAssembler(obj.domain)
-    asm = obj.assembler
+    # asm = obj.assembler
+    asm = assembler(obj)
     # update_unknown_dofs!(obj.domain, asm)
     # TODO need stuff here
     # inefficiency here by creating these copies
@@ -42,13 +43,15 @@ function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
   return nothing
 end
 
-function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p)
+function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=false)
   @timeit timer(P) "CholeskyPreconditioner - update_preconditioner!" begin
     # H = hessian!(P.assembler, obj, Uu, p)
     H = hessian(obj, Uu, p)
     attempt = 1
     while attempt < 10
-      @info "Updating preconditioner, attempt = $attempt"
+      if verbose
+        @info "Updating preconditioner, attempt = $attempt"
+      end
       try
         if attempt == 1
           P.preconditioner = cholesky(H)

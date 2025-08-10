@@ -59,6 +59,7 @@ struct TrustRegionSolver{
   y_scratch_3::U
   y_scratch_4::U
   use_warm_start::Bool
+  verbose::Bool
   settings::S
 end
 
@@ -67,9 +68,10 @@ $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(
-  objective::AbstractObjective, p, timer; 
+  objective::AbstractObjectiveCache, p, timer; 
   preconditioner=CholeskyPreconditioner,
   use_warm_start=true,
+  verbose=true,
   settings=TrustRegionSolverSettings()
 )
   @timeit timer "TrustRegionSolver - setup" begin
@@ -101,13 +103,14 @@ function TrustRegionSolver(
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
     use_warm_start,
+    verbose,
     settings
   )
 end
 
 function TrustRegionSolver(
   inputs::Dict{Symbol, Any},
-  objective::AbstractObjective, p, timer
+  objective::AbstractObjectiveCache, p, timer
 )
   preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
   warm_start = inputs[Symbol("warm start")]
@@ -128,12 +131,13 @@ negCurveString = "neg curve"
 boundaryString = "boundary"
 interiorString = "interior"
 
-function is_converged(objective, x, realO, modelO, realRes, modelRes, cgIters, trSize, settings)
+function is_converged(solver::TrustRegionSolver, objective, x, realO, modelO, realRes, modelRes, cgIters, trSize, settings)
   gg = dot(realRes, realRes)
   if gg < settings.tol^2
     modelResNorm = norm(modelRes)
     realResNorm = sqrt(gg)
     print_min_banner(
+      solver,
       realO, modelO,
       realResNorm,
       modelResNorm,
@@ -143,12 +147,17 @@ function is_converged(objective, x, realO, modelO, realRes, modelRes, cgIters, t
       true,
       settings
     )
-    @info "Converged"
+
+    if solver.verbose
+      @info "Converged"
+      println("") # a bit of output formatting
+    end
+
     if settings.check_stability
       @assert false "hook this up"
       # objective.check_stability(x)
     end
-    println("") # a bit of output formatting
+    
         
     return true
   end
@@ -182,13 +191,16 @@ function preconditioned_project_to_boundary(z, d, trSize, zz, mult_by_approx_hes
   return z + tau * d
 end
 
-function print_banner()
-  @info "=============================================================================================================================="
-  @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
-  @info "=============================================================================================================================="
+function print_banner(solver::TrustRegionSolver)
+  if solver.verbose
+    @info "=============================================================================================================================="
+    @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
+    @info "=============================================================================================================================="
+  end
 end
 
 function print_min_banner(
+  solver::TrustRegionSolver,
   objective, modelObjective, res, modelRes, 
   cgIters, trSize, onBoundary, willAccept, settings
 )
@@ -201,8 +213,11 @@ function print_min_banner(
   else
     will_accept = false
   end
-  str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
-  @info str
+
+  if solver.verbose
+    str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
+    @info str
+  end
 end
 
 function project_to_boundary_with_coefs(z, d, trSize, zz, zd, dd)
@@ -315,7 +330,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     if solver.use_warm_start
       @timeit timer(solver) "TrustRegionSolver - warm start" begin
         # solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
-        solve!(solver.warm_start, solver.objective, Uu, p)
+        solve!(solver.warm_start, solver.objective, Uu, p; verbose=solver.verbose)
       end
     end
 
@@ -332,28 +347,32 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     g = gradient(solver.objective, x, p)
     g_norm = norm(g)
 
-    @info @sprintf "Initial objective = %1.6e" o[1]
-    @info @sprintf "Initial residual  = %1.6e" g_norm
+    if solver.verbose
+      @info @sprintf "Initial objective = %1.6e" o[1]
+      @info @sprintf "Initial residual  = %1.6e" g_norm
+    end
 
     # preconditioner
     update_preconditioner!(solver.preconditioner, solver.objective, x, p)
     P = solver.preconditioner.preconditioner
     # this could potentially return an unstable solution
-    if is_converged(value, x, 0.0, 0.0, g, g, 0, tr_size, settings)
+    if is_converged(solver, value, x, 0.0, 0.0, g, g, 0, tr_size, settings)
       # if callback
       #   # callback(x, objective)
       #   @assert false
       # end
       # return x, True
-      @show "converged"
+      if solver.verbose
+        @show "converged"
+      end
       return nothing
     end
 
     cumulativeCgIters=0
-    print_banner()
+    print_banner(solver)
     for i in 1:settings.max_trust_iters
       if i > 1 && i % 25 == 0
-        print_banner()
+        print_banner(solver)
       end
 
       # setup some local closures to this iteration
@@ -423,6 +442,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         gy = gradient(solver.objective, y, p)
         
         if is_converged(
+          solver,
           solver.objective, y, realObjective, modelObjective,
           gy, g + Jd, cgIters, trSizeUsed, settings
         )
@@ -460,6 +480,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         willAccept = rho >= settings.η_1 || 
                      (rho >= -0 && realResNorm <= g_norm)
         print_min_banner(
+          solver,
           realObjective, modelObjective,
           realResNorm, modelResNorm,
           cgIters, trSizeUsed, stepType,
@@ -486,7 +507,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
         if cgIters >= settings.max_cg_iters || cumulativeCgIters >= settings.max_cumulative_cg_iters
           # objective.update_precond(x)
-          update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+          update_preconditioner!(solver.preconditioner, solver.objective, x, p; verbose=solver.verbose)
           P = solver.preconditioner.preconditioner
           cumulativeCgIters=0
         end
