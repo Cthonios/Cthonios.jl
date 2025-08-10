@@ -14,43 +14,26 @@ using TimerOutputs
 using YAML
 
 # Re-exports
-export FiniteElementContainers
-export StaticArrays
+export DirichletBC
+export PlaneStrain
+export ThreeDimensional
+export TimerOutput
+export TimeStepper
+export UnstructuredMesh
+export energy
+export residual
+export stiffness
+export @SVector
 
+# Cthonios exports
+export QuadratureLevelObjective
 export SingleDomainSimulation
+export SolidMechanics
+export TrustRegionSolver
 export UnconstrainedObjective
+export create_unknowns
+export evolve!
 export parameters
-
-# small components that make up a more complex problem
-# include("bcs/BoundaryConditions.jl")
-# include("physics/Physics.jl")
-# include("PostProcessors.jl")
-# include("Sections.jl")
-
-# # container for small components
-# include("Domains.jl")
-
-# # extra optional stuff related to constraints
-# include("contact/Contact.jl")
-
-# # time integration facilities
-# include("integrators/Integrators.jl")
-
-# # integrals over objective function kernels
-# include("integrals/Integrals.jl")
-
-# # different objectives
-# include("objectives/Objectives.jl")
-
-# # integrals over objective function kernels
-# # include("integrals/Integrals.jl")
-
-# # solvers
-# include("solvers/Solvers.jl")
-
-# # different problem types
-# include("simulations/Simulations.jl")
-# # include("SchwarzProblem.jl")
 
 # utilities
 include("Utils.jl")

@@ -50,3 +50,16 @@ function assemble_vector_for_ad!(storage, assembler, Uu, p, func)
         )
     end
 end
+
+function create_properties(physics, props)
+    @assert length(physics) == length(props)
+    for (k1, k2) in zip(keys(physics), keys(props))
+        @assert k1 == k2
+    end
+    props = map(
+        (x, y) -> FiniteElementContainers.create_properties(x, y), 
+        values(physics), values(props)
+    )
+    props = NamedTuple{keys(physics)}(props)
+    return props
+end

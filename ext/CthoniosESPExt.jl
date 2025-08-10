@@ -63,10 +63,7 @@ function Cthonios.forward_problem!(opt::StructuralOptimization, design_params)
 
     displ = assembler.dof.H1_vars[1]
     solver = Cthonios.TrustRegionSolver(objective_cache, p, opt.timer; use_warm_start=true, verbose=false)
-    mesh = UnstructuredMesh(mesh_file)
-    pp = PostProcessor(mesh, "output.exo", displ)
-    Cthonios.evolve!(objective_cache.sim_cache, solver, pp, Uu, p)
-    close(pp)
+    Cthonios.evolve!(objective_cache.sim_cache, solver, Uu, p)
 
     # @info "Finished running forward problem"
 

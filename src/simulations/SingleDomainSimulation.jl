@@ -25,13 +25,28 @@ function simulation_cache(sim::SingleDomainSimulation)
     return SingleDomainSimulationCache(sim)
 end
 
-struct SingleDomainSimulationCache{A, P, T} <: AbstractSimulationCache{A, P, T}
+struct SingleDomainSimulationCache{A, P1, P2, T} <: AbstractSimulationCache{A, P1, P2, T}
     assembler::A
-    parameters::P
+    parameters::P1
+    post_processor::P2
     time::T
 end
 
-function SingleDomainSimulationCache(sim::SingleDomainSimulation)
+function SingleDomainSimulationCache(
+    sim::SingleDomainSimulation;
+    output_file = nothing
+)
+    # handle keywords
+    if output_file === nothing
+        output_file = splitext(sim.mesh_file)[1] * "-output.exo"
+    end
+
+    if isfile(output_file)
+        rm(output_file, force=true)
+    end
+
+    @info output_file
+
     mesh = UnstructuredMesh(sim.mesh_file)
     fspace = FunctionSpace(mesh, H1Field, Lagrange)
 
@@ -44,8 +59,10 @@ function SingleDomainSimulationCache(sim::SingleDomainSimulation)
     # setup dof manager, note all dofs are unknown at init
     if length(funcs) > 1
         dof = DofManager(func...)
+        post_processor = PostProcessor(mesh, output_file, func...)
     else
         dof = DofManager(func)
+        post_processor = PostProcessor(mesh, output_file, func)
     end
 
     assembler = SparseMatrixAssembler(dof, H1Field)
@@ -55,13 +72,13 @@ function SingleDomainSimulationCache(sim::SingleDomainSimulation)
         neumann_bcs=sim.neumann_bcs,
         times=sim.times
     )
-    return SingleDomainSimulationCache(assembler, parameters, TimerOutput())
+    return SingleDomainSimulationCache(assembler, parameters, post_processor, TimerOutput())
 end
 
-function evolve!(sim_cache::SingleDomainSimulationCache, solver, pp, Uu, p)
+function evolve!(sim_cache::SingleDomainSimulationCache, solver, Uu, p)
     # Uu, = create_unknowns(sim_cache)
     # p = parameters(sim_cache)
-
+    pp = sim_cache.post_processor
     # TODO need to reset time. Probably a better way to force reset all paramters
     fill!(p.times.time_current, zero(eltype(p.times.time_current)))
 
@@ -75,4 +92,5 @@ function evolve!(sim_cache::SingleDomainSimulationCache, solver, pp, Uu, p)
         write_field(pp, n, p.h1_field)
         n = n + 1
     end
+    close(sim_cache.post_processor)
 end

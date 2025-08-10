@@ -1,9 +1,10 @@
 abstract type AbstractSimulation end
 
 abstract type AbstractSimulationCache{
-    A <: FiniteElementContainers.AbstractAssembler, 
-    P <: Parameters,
-    T <: TimerOutput
+    A  <: FiniteElementContainers.AbstractAssembler, 
+    P1 <: Parameters,
+    P2 <: FiniteElementContainers.PostProcessor,
+    T  <: TimerOutput
 } end
 
 function FiniteElementContainers.create_unknowns(sim::AbstractSimulationCache)
