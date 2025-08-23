@@ -45,8 +45,6 @@ function SingleDomainSimulationCache(
         rm(output_file, force=true)
     end
 
-    @info output_file
-
     mesh = UnstructuredMesh(sim.mesh_file)
     fspace = FunctionSpace(mesh, H1Field, Lagrange)
 
@@ -76,15 +74,26 @@ function SingleDomainSimulationCache(
 end
 
 function evolve!(sim_cache::SingleDomainSimulationCache, solver, Uu, p)
-    # Uu, = create_unknowns(sim_cache)
-    # p = parameters(sim_cache)
     pp = sim_cache.post_processor
     # TODO need to reset time. Probably a better way to force reset all paramters
     fill!(p.times.time_current, zero(eltype(p.times.time_current)))
 
+    time_start = sum(p.times.time_start)
+    time_end = sum(p.times.time_end)
+
     n = 1
-    while FiniteElementContainers.current_time(p.times) < sum(p.times.time_end)
+    while FiniteElementContainers.current_time(p.times) < time_end
         FiniteElementContainers.update_time!(p)
+
+        time_curr = FiniteElementContainers.current_time(p.times)
+        str = "\n" * repeat('=', 132) * "\n"
+        str = str * "Start time       = $time_start\n"
+        str = str * "Current time     = $time_curr\n"
+        str = str * "End time         = $time_end\n"
+        str = str * "Percent complete = $(time_curr / time_end * 100)%\n"
+        str = str * repeat('=', 132) * "\n"
+        @info str
+
         FiniteElementContainers.update_bc_values!(p)
         Cthonios.solve!(solver, Uu, p)
 

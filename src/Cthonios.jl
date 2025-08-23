@@ -6,9 +6,13 @@ using DocStringExtensions
 using Enzyme
 using Exodus
 using FiniteElementContainers
+using IncompleteLU
+using KernelAbstractions
+using Krylov
 using LinearAlgebra
 using NLopt
 using Printf
+using SparseArrays
 using StaticArrays
 using TimerOutputs
 using YAML

@@ -22,14 +22,16 @@ end
 
 function gradient(o::QuadratureLevelObjectiveCache, Uu, p)
     @timeit o.timer "Objective - gradient!" begin
-        assemble_vector!(assembler(o), Uu, p, H1Field, o.objective.gradient_u)
+        # assemble_vector!(assembler(o), Uu, p, H1Field, o.objective.gradient_u)
+        assemble_vector!(assembler(o), o.objective.gradient_u, Uu, p, H1Field)
     end
     return residual(assembler(o))
 end
 
 function hessian(o::QuadratureLevelObjectiveCache, Uu, p)
-    @timeit o.timer "Objective - gradient!" begin
-        assemble_matrix!(assembler(o), Uu, p, H1Field, o.objective.hessian_u)
+    @timeit o.timer "Objective - hessian!" begin
+        # assemble_matrix!(assembler(o), Uu, p, H1Field, o.objective.hessian_u)
+        assemble_stiffness!(assembler(o), o.objective.hessian_u, Uu, p, H1Field)
     end
     return stiffness(assembler(o)) |> Symmetric # needed for cholesky
 end
@@ -39,14 +41,15 @@ function hvp(o::QuadratureLevelObjectiveCache, Uu, p, Vu)
         # this first one allocates for some reason
         # assemble_matrix_action!(o.assembler, Uu, p, Vu, H1Field, o.hessian_u)
         # this one does not
-        assemble!(assembler(o), Uu, p, Vu, Val{:stiffness_action}(), H1Field)
+        # assemble!(assembler(o), Uu, p, Vu, Val{:stiffness_action}(), H1Field)
+        assemble_matrix_action!(assembler(o), o.objective.hessian_u, Uu, Vu, p, H1Field)
     end
     return FiniteElementContainers.hvp(assembler(o))
 end
 
 function value(o::QuadratureLevelObjectiveCache, Uu, p)
     @timeit o.timer "Objective - value!" begin
-        assemble_scalar!(assembler(o), Uu, p, H1Field, o.objective.value)
+        assemble_scalar!(assembler(o), o.objective.value, Uu, p, H1Field)
     end
     val = mapreduce(x -> sum(x), sum, assembler(o).scalar_quadarature_storage)
     return val

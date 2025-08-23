@@ -6,7 +6,7 @@ end
 function SolidMechanics(formulation, model)
     NF = num_dimensions(formulation)
     NP = ConstitutiveModels.num_properties(model)
-    NS = ConstitutiveModels.num_state_vars(model)
+    NS = ConstitutiveModels.num_state_variables(model)
     return SolidMechanics{NF, NP, NS, typeof(formulation), typeof(model)}(
         formulation, model
     )
@@ -33,12 +33,12 @@ end
   
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    F_q = ∇u_q + one(∇u_q)
+    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0.0 # TODO
     ψ_q, state_new_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, props_el, dt, F_q, θ, state_old_q
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
     )  
     return JxW * ψ_q, state_new_q
 end
@@ -52,12 +52,12 @@ end
   
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    F_q = ∇u_q + one(∇u_q)
+    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0.0 # TODO
     P_q, state_new_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, props_el, dt, F_q, θ, state_old_q
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
     )    
     # turn into voigt notation
     P_q = extract_stress(physics.formulation, P_q)
@@ -75,12 +75,12 @@ end
     
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    F_q = ∇u_q + one(∇u_q)
+    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0. # TODO
     A_q, state_new_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, props_el, dt, F_q, θ, state_old_q
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
     )
     # turn into voigt notation
     K_q = extract_stiffness(physics.formulation, A_q)

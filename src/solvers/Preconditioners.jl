@@ -15,20 +15,25 @@ mutable struct CholeskyPreconditioner{A, P, T} <: AbstractPreconditioner
   timer::T
 end
 
+function _cholesky(A::SparseMatrixCSC; shift=0.0)
+  return cholesky(A |> Symmetric; shift=shift)
+end
+
 """
 $(TYPEDSIGNATURES)
 """
 function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
-    # asm = StaticAssembler(obj.domain)
-    # asm = obj.assembler
     asm = assembler(obj)
     # update_unknown_dofs!(obj.domain, asm)
     # TODO need stuff here
     # inefficiency here by creating these copies
     Uu = create_unknowns(asm, H1Field)
-    H = hessian(obj, Uu, p)
-    P = cholesky(H)
+    # H = hessian(obj, Uu, p)
+    # P = cholesky(H)
+    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p, H1Field)
+    H = stiffness(asm)
+    P = _cholesky(H)
   end
   return CholeskyPreconditioner(asm, P, timer)
 end
@@ -38,15 +43,27 @@ $(TYPEDSIGNATURES)
 """
 function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
   @timeit timer(P) "CholeskyPreconditioner - ldiv!" begin
-    y .= P.preconditioner \ v
+    # y .= P.preconditioner \ v
+    _ldiv!(y, P, v, get_backend(y))
   end
+  return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function _ldiv!(y, P::CholeskyPreconditioner, v, ::CPU)
+  y .= P.preconditioner \ v
   return nothing
 end
 
 function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=false)
   @timeit timer(P) "CholeskyPreconditioner - update_preconditioner!" begin
     # H = hessian!(P.assembler, obj, Uu, p)
-    H = hessian(obj, Uu, p)
+    # H = hessian(obj, Uu, p)
+    asm = assembler(obj)
+    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p, H1Field)
+    H = stiffness(asm)
     attempt = 1
     while attempt < 10
       if verbose
@@ -54,10 +71,10 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
       end
       try
         if attempt == 1
-          P.preconditioner = cholesky(H)
+          P.preconditioner = _cholesky(H)
         else
           shift = 10.0^(-5 + attempt)
-          P.preconditioner = cholesky(H; shift=shift)
+          P.preconditioner = _cholesky(H; shift=shift)
         end
         return nothing
       catch e
@@ -68,4 +85,25 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
     end
   end
   return nothing
+end
+
+
+#
+struct IncompleteLUPreconditioner{A, P, T}
+  assembler::A
+  preconditioner::P
+  timer::T
+end
+
+function IncompleteLUPreconditioner(obj::AbstractObjectiveCache, p, timer)
+  @timeit timer "IncompleteLUPreconditioner - setup" begin
+    asm = assembler(obj)
+    Uu = create_unknowns(asm, H1Field)
+    H = hessian(obj, Uu, p)
+
+  end
+end
+
+function _incomplete_lu_setup(H, backend::CPU)
+  return ilu0(H)
 end

@@ -1,23 +1,29 @@
+using Adapt
+using AMDGPU
 using ConstitutiveModels
 using Cthonios
+using FiniteElementContainers
 
 # Mesh
 mesh_file = Base.source_dir() * "/hole_array.exo"
 mesh = UnstructuredMesh(mesh_file)
 
 # Times
-times = TimeStepper(0., 1., 40)
+times = TimeStepper(0., 1., 100)
 
 # Physics
 physics = (;
     Block1 = SolidMechanics(
         PlaneStrain(), NeoHookean()
+        # PlaneStrain(), LinearElastic()
     )
 )
 props = (;
     Block1 = Dict{String, Any}(
-        "bulk modulus" => 10.,
-        "shear modulus" => 1.
+        # "bulk modulus" => 10.,
+        # "shear modulus" => 1.
+        "Young's modulus" => 1.,
+        "Poisson's ratio" => 0.3
     )
 )
 props = Cthonios.create_properties(physics, props)
@@ -41,8 +47,13 @@ sim = SingleDomainSimulation(
     dirichlet_bcs=dirichlet_bcs
 )
 objective_cache = Cthonios.QuadratureLevelObjectiveCache(objective, sim)
+# objective_cache = objective_cache |> rocm
+# objective_cache = adapt(ROCArray, objective_cache)
+
 Uu = create_unknowns(objective_cache)
 p = parameters(objective_cache)
 
 solver = TrustRegionSolver(objective_cache, p, TimerOutput())
-evolve!(objective_cache.sim_cache, solver, Uu, p)
+# solver = Cthonios.TrustRegionSolverGPU(objective_cache, p)
+# Cthonios.solve!(solver, Uu, p)
+Cthonios.evolve!(objective_cache.sim_cache, solver, Uu, p)

@@ -18,7 +18,7 @@ function assemble_scalar_for_ad!(storage, assembler, Uu, p, func)
         backend = FiniteElementContainers._check_backends(assembler, p.h1_field, p.h1_coords, state_old, state_new, conns)
         FiniteElementContainers._assemble_block_scalar!(
             field, block_physics, ref_fe, 
-            p.h1_field, p.h1_coords, state_old, state_new, props, t, Δt,
+            p.h1_field, p.h1_field_old, p.h1_coords, state_old, state_new, props, t, Δt,
             # conns, b, residual,
             conns, b, func,
             backend
@@ -43,7 +43,7 @@ function assemble_vector_for_ad!(storage, assembler, Uu, p, func)
         backend = FiniteElementContainers._check_backends(assembler, p.h1_field, p.h1_coords, state_old, state_new, conns)
         FiniteElementContainers._assemble_block_vector!(
             storage, block_physics, ref_fe, 
-            p.h1_field, p.h1_coords, state_old, state_new, props, t, Δt,
+            p.h1_field, p.h1_field_old, p.h1_coords, state_old, state_new, props, t, Δt,
             # conns, b, residual,
             conns, b, func,
             backend
