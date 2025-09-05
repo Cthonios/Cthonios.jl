@@ -71,13 +71,18 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
     # p.t.current_time_step[1] = p.t.current_time_step[1] - 1
 
     # TODO needs to be updated for GPUs
-    R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
+    # R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
+    R = dR[objective.sim_cache.assembler.dof.unknown_dofs]
     # R = residual(assembler)
 
     # K = Cthonios.hessian!(solver.assembler, objective, Uu, p)
-    K = hessian(objective, Uu, p)
+    assemble_stiffness!(assembler, objective.objective.hessian_u, Uu, p)
+    # K = hessian(objective, Uu, p)
+    # TODO below will fail for dynamics
+    K = stiffness(assembler)
     @timeit objective.timer "WarmStart - solve" begin
       ΔUu .= K \ R
+      # ldiv!(ΔUu, K, R)
       # ldiv!(K, R)
       # copyto!(ΔUu, R)
       # ldiv!(ΔUu, K, R)

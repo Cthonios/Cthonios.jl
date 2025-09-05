@@ -9,7 +9,7 @@ mesh_file = Base.source_dir() * "/hole_array.exo"
 mesh = UnstructuredMesh(mesh_file)
 
 # Times
-times = TimeStepper(0., 1., 100)
+times = TimeStepper(0., 1., 20)
 
 # Physics
 physics = (;
@@ -29,7 +29,7 @@ props = (;
 props = Cthonios.create_properties(physics, props)
 
 # Boundary Conditions
-func_1(x, t) = -5. * t#(0., -5. * t)
+func_1(x, t) = -7.5 * t#(0., -5. * t)
 func_2(x, t) = 0.0
 func_3(x, t) = @SVector [0., -0.025 * t]
 

@@ -63,8 +63,9 @@ function SingleDomainSimulationCache(
         post_processor = PostProcessor(mesh, output_file, func)
     end
 
-    assembler = SparseMatrixAssembler(dof, H1Field)
+    assembler = SparseMatrixAssembler(dof)
     parameters = create_parameters(
+        mesh,
         assembler, sim.physics, sim.properties; 
         dirichlet_bcs=sim.dirichlet_bcs,
         neumann_bcs=sim.neumann_bcs,
@@ -98,7 +99,8 @@ function evolve!(sim_cache::SingleDomainSimulationCache, solver, Uu, p)
         Cthonios.solve!(solver, Uu, p)
 
         write_times(pp, n, FiniteElementContainers.current_time(p.times))
-        write_field(pp, n, p.h1_field)
+        # TODO fix this for 3D as well
+        write_field(pp, n, ("displ_x", "displ_y"), p.h1_field)
         n = n + 1
     end
     close(sim_cache.post_processor)

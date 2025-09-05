@@ -95,7 +95,7 @@ function minimize!(
 
         ldiv!(Pr, P, r)
         copyto!(d, -Pr)
-        copyto!(cp, Pr)
+        copyto!(cp, -Pr)
         rPr = dot(r, Pr)
 
         zz = 0.0
@@ -300,14 +300,10 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
             hess_vec_func = v -> hvp(solver.objective_cache, Uu, p, v)
 
             # TODO need to fix below
-            # K = hessian!(solver.preconditioner.assembler, solver.objective, x, p)
-            # mult_by_approx_hessian = v -> (K + 0.0 * I) * v
-            # mult_by_approx_hessian = v -> K \ v
-            # mult_by_approx_hessian = v -> hvp(solver.objective, x, p, v)
-            mult_by_approx_hessian = v -> v
+            mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, p, v)
+            # mult_by_approx_hessian = v -> v
 
             # calculate cauchy point
-            # cp_norm_sq = calculate!(solver.cauchy_point, g, hess_vec_func, mult_by_approx_hessian, tr_size)
             cp_norm_sq = calculate!(
                 solver.cauchy_point, 
                 solver.objective_cache, Uu, p, g,
@@ -431,7 +427,6 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
                 end
             end
         end
-        @assert false "Finish implementing TrustRegionSolverGPU"
     end
 
     @assert false "reached maximum tr iterations"

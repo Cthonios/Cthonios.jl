@@ -28,7 +28,7 @@ end
 
 function assemble_vector_for_ad!(storage, assembler, Uu, p, func)
     fill!(storage, zero(eltype(storage)))
-    fspace = FiniteElementContainers.function_space(assembler, H1Field)
+    fspace = FiniteElementContainers.function_space(assembler.dof)
     t = FiniteElementContainers.current_time(p.times)
     Δt = FiniteElementContainers.time_step(p.times)
     update_bcs!(p)

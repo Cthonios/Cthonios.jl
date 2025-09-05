@@ -28,10 +28,10 @@ function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
     # update_unknown_dofs!(obj.domain, asm)
     # TODO need stuff here
     # inefficiency here by creating these copies
-    Uu = create_unknowns(asm, H1Field)
+    Uu = create_unknowns(asm)
     # H = hessian(obj, Uu, p)
     # P = cholesky(H)
-    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p, H1Field)
+    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
     H = stiffness(asm)
     P = _cholesky(H)
   end
@@ -54,6 +54,9 @@ $(TYPEDSIGNATURES)
 """
 function _ldiv!(y, P::CholeskyPreconditioner, v, ::CPU)
   y .= P.preconditioner \ v
+  # below doesn't work. I guess we just have to accept these allocations
+  # ldiv!(y, P.preconditioner.L, v)
+  # ldiv!(y, P.preconditioner.L')
   return nothing
 end
 
@@ -62,7 +65,7 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
     # H = hessian!(P.assembler, obj, Uu, p)
     # H = hessian(obj, Uu, p)
     asm = assembler(obj)
-    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p, H1Field)
+    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
     H = stiffness(asm)
     attempt = 1
     while attempt < 10

@@ -1,6 +1,5 @@
 module Cthonios
 
-using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
 using Enzyme
@@ -12,10 +11,12 @@ using Krylov
 using LinearAlgebra
 using NLopt
 using Printf
+using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
 using TimerOutputs
-using YAML
+
+RuntimeGeneratedFunctions.init(@__MODULE__)
 
 # Re-exports
 export DirichletBC
@@ -61,6 +62,7 @@ include("qoi_extractors/QOIExtractors.jl")
 include("optimizations/Optimizations.jl")
 
 # CLI
-include("Main.jl")
+# include("Main.jl")
+function cthonios_main end
 
 end # module
