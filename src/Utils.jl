@@ -5,7 +5,7 @@ function assemble_scalar_for_ad!(storage, assembler, Uu, p, func)
     fspace = FiniteElementContainers.function_space(assembler, H1Field)
     t = FiniteElementContainers.current_time(p.times)
     Δt = FiniteElementContainers.time_step(p.times)
-    update_bcs!(p)
+    update_field_dirichlet_bcs!(p.h1_field, p.dirichlet_bcs)
     update_field_unknowns!(p.h1_field, assembler.dof, Uu)
     for (b, (field, conns, block_physics, state_old, state_new, props)) in enumerate(zip(
         values(storage),
@@ -31,7 +31,7 @@ function assemble_vector_for_ad!(storage, assembler, Uu, p, func)
     fspace = FiniteElementContainers.function_space(assembler.dof)
     t = FiniteElementContainers.current_time(p.times)
     Δt = FiniteElementContainers.time_step(p.times)
-    update_bcs!(p)
+    update_field_dirichlet_bcs!(p.h1_field, p.dirichlet_bcs)
     update_field_unknowns!(p.h1_field, assembler.dof, Uu)
     for (b, (conns, block_physics, state_old, state_new, props)) in enumerate(zip(
         values(fspace.elem_conns), 

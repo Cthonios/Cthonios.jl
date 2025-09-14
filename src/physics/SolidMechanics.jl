@@ -87,3 +87,29 @@ end
     G_q = discrete_gradient(physics.formulation, ∇N_X)
     return JxW * G_q * K_q * G_q', state_new_q
 end
+
+@inline function _kinetic_energy(
+    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+)
+    interps = map_interpolants(interps, x_el)
+    (; X_q, N, ∇N_X, JxW) = interps
+    v_q = interpolate_field_values(physics, interps, v_el)
+
+    # TODO
+    rho = 1.
+    return 0.5 * JxW * rho * dot(v_q, v_q)
+end
+
+@inline function kinetic_energy(
+    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+)
+    return _kinetic_energy(physics, interps, v_el, x_el, state_old_q, props_el, t, dt), state_old_q
+end
+
+function mass(
+    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+)
+    return ForwardDiff.hessian(z -> _kinetic_energy(
+        physics, interps, z, x_el, state_old_q, props_el, t, dt
+    ), v_el), state_old_q
+end

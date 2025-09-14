@@ -5,8 +5,6 @@ struct QuadratureLevelObjective{F1, F2, F3} <: AbstractObjective{F1}
 end
 
 struct QuadratureLevelObjectiveCache{O, S, T} <: AbstractObjectiveCache{O, S, T}
-    # assembler::A
-    # cache::C
     objective::O
     sim_cache::S
     timer::T

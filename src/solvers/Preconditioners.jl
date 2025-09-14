@@ -22,9 +22,10 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
+function CholeskyPreconditioner(obj, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = assembler(obj)
+    p = parameters(obj)
     # update_unknown_dofs!(obj.domain, asm)
     # TODO need stuff here
     # inefficiency here by creating these copies

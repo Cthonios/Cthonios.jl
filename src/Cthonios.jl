@@ -1,12 +1,15 @@
 module Cthonios
 
+import KernelAbstractions as KA
+import KernelAbstractions: CPU
 using ConstitutiveModels
 using DocStringExtensions
 using Enzyme
 using Exodus
 using FiniteElementContainers
+using ForwardDiff
 using IncompleteLU
-using KernelAbstractions
+# using KernelAbstractions
 using Krylov
 using LinearAlgebra
 using NLopt
@@ -54,6 +57,9 @@ include("simulations/Simulations.jl")
 
 # solvers
 include("solvers/Solvers.jl")
+
+# # integrators
+# include("integrators/Integrators.jl")
 
 #
 include("qoi_extractors/QOIExtractors.jl")

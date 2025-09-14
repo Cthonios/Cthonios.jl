@@ -1,0 +1,70 @@
+cthonios:
+  simulation type: SingleDomainSimulation
+
+  mesh:
+    type: UnstructuredMesh
+    file name: examples/hole_array/hole_array_tri6.exo
+
+  function spaces:
+    - name: V1
+      mesh: mesh_1
+      field type: H1Field
+      interpolation type: Lagrange
+    - name: V2
+      mesh: mesh_1
+      field type: L2QuadratureField
+      interpolation type: Lagrange
+
+  solution fields:
+    - name: displ
+      type: VectorFunction
+      function space: V1
+
+  materials:
+    - name: mat_1
+      material model: NeoHookean
+      material model properties:
+        density: 1.0
+        Young's modulus: 1.
+        Poisson's ratio: 0.3
+
+  physics:
+    type: SolidMechanics
+    formulation: PlaneStrain
+    material assignment:
+      mat_1: [Block1]
+
+  nonlinear solvers:
+    - name: trs
+      type: TrustRegionSolver
+      settings:
+        warm start:
+          relative residual: 1.0e-8
+        # etc.
+
+  objective:
+    type: QuadratureLevelObjective
+    value: energy
+    gradient: residual
+    hessian: stiffness
+
+  time integrator:
+    type: QuasiStatic
+    start time: 0.0
+    end time: 1.0
+    time increment: 0.0125
+
+  initial conditions: []
+
+  dirichlet boundary conditions:
+    - fields: ["displ_x", "displ_y"]
+      function: (x, t) -> 0.0
+      sidesets: [yminus_nodeset]
+    - fields: ["displ_x", "displ_y"]
+      function: (x, t) -> 0.0
+      sidesets: [yplus_nodeset]
+    - fields: ["displ_y"]
+      function: (x, t) -> -5. * t
+      sidesets: [yminus_nodeset]
+
+  neumann boundary conditions: []

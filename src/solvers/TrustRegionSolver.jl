@@ -68,7 +68,7 @@ $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(
-  objective::AbstractObjectiveCache, p, timer; 
+  objective, p, timer; 
   preconditioner=CholeskyPreconditioner,
   use_warm_start=true,
   verbose=true,
@@ -78,7 +78,7 @@ function TrustRegionSolver(
     # domain = objective.domain
     # settings       = TrustRegionSolverSettings() # TODO add non-defaults
     # TODO eventually write a custom linear solver for this one
-    precond        = preconditioner(objective, p, timer)
+    precond        = preconditioner(objective, timer)
     ΔUu            = create_unknowns(objective)
     # TODO
     warm_start     = WarmStart(objective, p)
@@ -215,7 +215,7 @@ function print_min_banner(
   end
 
   if solver.verbose
-    str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
+    str = @sprintf "%1.6e    %1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
     @info str
   end
 end

@@ -25,5 +25,35 @@ function parameters(o::AbstractObjectiveCache)
     return o.sim_cache.parameters
 end
 
+# new cache implementation
+abstract type AbstractObjectiveCache2{
+    A, # Assembler type
+    O  <: AbstractObjective,
+    P  <: FiniteElementContainers.Parameters,
+    RT <: Number,
+    RV <: AbstractArray{RT, 1}
+} end
+
+function FiniteElementContainers.create_field(o::AbstractObjectiveCache2)
+    return FiniteElementContainers.create_field(o.assembler)
+end
+
+function FiniteElementContainers.create_unknowns(o::AbstractObjectiveCache2)
+    return FiniteElementContainers.create_unknowns(o.assembler)
+end
+
+function assembler(o::AbstractObjectiveCache2)
+    return o.assembler
+end
+
+function parameters(o::AbstractObjectiveCache2)
+    return o.parameters
+end
+
 include("QuadratureLevelObjective.jl")
+
+include("ImplicitDynamicsObjective.jl")
+include("QuasiStaticObjective.jl")
+
+
 include("UnconstrainedObjective.jl")

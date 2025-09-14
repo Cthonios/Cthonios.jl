@@ -7,7 +7,7 @@ struct WarmStart{RT, Uu, p}#, S}
   # solver::S
 end
 
-function WarmStart(o::AbstractObjectiveCache, p)
+function WarmStart(o, p)
   R = create_field(o)
   dR = create_field(o)
   dUu = create_unknowns(o)
@@ -24,7 +24,8 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
       @info "Warm start"
     end
 
-    assembler = objective.sim_cache.assembler
+    # assembler = objective.sim_cache.assembler
+    asm = assembler(objective)
 
     (; R, dR, dUu, dp, ΔUu) = warm_start
     fill!(R, zero(eltype(R)))
@@ -60,7 +61,7 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
       autodiff(
         Forward, assemble_vector_for_ad!,
         Duplicated(R, dR),
-        Const(assembler),
+        Const(asm),
         Duplicated(Uu, dUu),
         Duplicated(p, dp),
         Const(residual)
@@ -72,14 +73,14 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
 
     # TODO needs to be updated for GPUs
     # R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
-    R = dR[objective.sim_cache.assembler.dof.unknown_dofs]
+    R = dR[asm.dof.unknown_dofs]
     # R = residual(assembler)
 
     # K = Cthonios.hessian!(solver.assembler, objective, Uu, p)
-    assemble_stiffness!(assembler, objective.objective.hessian_u, Uu, p)
+    assemble_stiffness!(asm, objective.objective.hessian_u, Uu, p)
     # K = hessian(objective, Uu, p)
     # TODO below will fail for dynamics
-    K = stiffness(assembler)
+    K = stiffness(asm)
     @timeit objective.timer "WarmStart - solve" begin
       ΔUu .= K \ R
       # ldiv!(ΔUu, K, R)

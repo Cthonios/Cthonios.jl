@@ -6,10 +6,9 @@ using FiniteElementContainers
 
 # Mesh
 mesh_file = Base.source_dir() * "/hole_array.exo"
-mesh = UnstructuredMesh(mesh_file)
 
 # Times
-times = TimeStepper(0., 1., 20)
+times = TimeStepper(0., 1., 100)
 
 # Physics
 physics = (;
@@ -20,8 +19,6 @@ physics = (;
 )
 props = (;
     Block1 = Dict{String, Any}(
-        # "bulk modulus" => 10.,
-        # "shear modulus" => 1.
         "Young's modulus" => 1.,
         "Poisson's ratio" => 0.3
     )
@@ -46,14 +43,24 @@ sim = SingleDomainSimulation(
     mesh_file, times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache = Cthonios.QuadratureLevelObjectiveCache(objective, sim)
-# objective_cache = objective_cache |> rocm
-# objective_cache = adapt(ROCArray, objective_cache)
+objective_cache  = Cthonios.QuasiStaticObjectiveCache(sim)
+solver = Cthonios.TrustRegionSolver(objective_cache, Cthonios.parameters(objective_cache), TimerOutput())
+# solver = Cthonios.NewtonSolver(objective_cache)
+# Cthonios.step!(objective_cache, solver)
+mesh = UnstructuredMesh(mesh_file)
+pp = PostProcessor(mesh, "output.e", objective_cache.assembler.dof.var)
+Cthonios.run!(solver, pp)
 
-Uu = create_unknowns(objective_cache)
-p = parameters(objective_cache)
+# objective_cache = Cthonios.QuadratureLevelObjectiveCache(objective, sim)
+# # objective_cache = objective_cache |> rocm
+# # objective_cache = adapt(ROCArray, objective_cache)
 
-solver = TrustRegionSolver(objective_cache, p, TimerOutput())
-# solver = Cthonios.TrustRegionSolverGPU(objective_cache, p)
-# Cthonios.solve!(solver, Uu, p)
-Cthonios.evolve!(objective_cache.sim_cache, solver, Uu, p)
+# Uu = create_unknowns(objective_cache)
+# p = parameters(objective_cache)
+
+# solver = TrustRegionSolver(objective_cache, p, TimerOutput())
+# # solver = Cthonios.TrustRegionSolverGPU(objective_cache, p)
+# # Cthonios.solve!(solver, Uu, p)
+# # Cthonios.evolve!(objective_cache.sim_cache, solver, Uu, p)
+# integrator = Cthonios.QuasiStaticIntegrator(solver)
+# Cthonios.integrate!(integrator)
