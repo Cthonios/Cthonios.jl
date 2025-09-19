@@ -16,7 +16,8 @@ function parameters(sim::AbstractSimulationCache)
 end
 
 function run!(solver, pp)
-    objective_cache = solver.objective
+    objective_cache = solver.objective_cache
+    # objective_cache = solver.objective
     initialize!(objective_cache)
     p = objective_cache.parameters
     fill!(p.times.time_current, zero(eltype(p.times.time_current)))
@@ -25,22 +26,26 @@ function run!(solver, pp)
     time_end = sum(p.times.time_end)
 
     n = 1
-    while FiniteElementContainers.current_time(p.times) < time_end
-        step!(objective_cache, solver)
+    try
+        while FiniteElementContainers.current_time(p.times) < time_end
+            step!(objective_cache, solver)
 
-        # post-processing
-        write_times(pp, n, sum(p.times.time_current))
-        write_field(pp, n, ("displ_x", "displ_y"), p.h1_field)
-        n = n + 1
+            # post-processing
+            write_times(pp, n, sum(p.times.time_current))
+            write_field(pp, n, ("displ_x", "displ_y"), p.h1_field)
+            n = n + 1
+        end
+    finally
+        close(pp)
     end
-    close(pp)
     return nothing
 end
 
 function _setup_simulation_common(
     sim::AbstractSimulation,
     output_file;
-    return_post_processor = true
+    return_post_processor = true,
+    use_condensed = false
 )
     # handle keywords
     if output_file === nothing
@@ -61,7 +66,7 @@ function _setup_simulation_common(
     func = funcs[1]
 
     # setup dof manager and assembler
-    dof = DofManager(func)
+    dof = DofManager(func; use_condensed=use_condensed)
     assembler = SparseMatrixAssembler(dof)
     
     # finally setup parameters

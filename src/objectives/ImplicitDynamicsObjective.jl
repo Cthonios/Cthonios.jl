@@ -113,12 +113,12 @@ function value(o::ImplicitDynamicsObjectiveCache, Uu, p)
 
     # strain energy
     assemble_scalar!(assembler(o), o.objective.value, Uu, p)
-    val_internal = mapreduce(x -> sum(x), sum, assembler(o).scalar_quadarature_storage)
+    val_internal = mapreduce(x -> sum(x), sum, assembler(o).scalar_quadrature_storage)
     fill!(o.internal_energy, val_internal)
 
     # kinetic energy
     assemble_scalar!(assembler(o), kinetic_energy, o.solution_rate, p)
-    val_inertial = mapreduce(x -> sum(x), sum, assembler(o).scalar_quadarature_storage)
+    val_inertial = mapreduce(x -> sum(x), sum, assembler(o).scalar_quadrature_storage)
     fill!(o.kinetic_energy, val_inertial)
 
     # TODO add in external energy

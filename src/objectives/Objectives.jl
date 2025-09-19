@@ -53,7 +53,9 @@ end
 include("QuadratureLevelObjective.jl")
 
 include("ImplicitDynamicsObjective.jl")
+include("ImplicitDynamicsObjectiveNew.jl")
 include("QuasiStaticObjective.jl")
+include("QuasiObjectiveNew.jl")
 
 
 include("UnconstrainedObjective.jl")

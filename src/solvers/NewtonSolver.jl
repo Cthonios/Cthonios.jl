@@ -1,21 +1,21 @@
 Base.@kwdef struct NewtonSolverSettings
-    max_iters::Int = 10
-    rel_tol::Float64 = 1e-8
-    abs_tol::Float64 = 1e-8
+    max_iters::Int = 50
+    rel_tol::Float64 = 1e-5
+    abs_tol::Float64 = 1e-6
 end
 
 struct NewtonSolver{O, S}
-    objective::O
+    objective_cache::O
     settings::S
 end
 
-function NewtonSolver(objective)
-    return NewtonSolver(objective, NewtonSolverSettings())
+function NewtonSolver(objective_cache)
+    return NewtonSolver(objective_cache, NewtonSolverSettings())
 end 
 
 function solve!(solver::NewtonSolver, Uu, p)
-    objective = solver.objective
-    R = gradient(objective, Uu, p)
+    objective_cache = solver.objective_cache
+    R = gradient(objective_cache, Uu, p)
     res_norm0 = norm(R)
 
     if res_norm0 == 0.0
@@ -28,8 +28,8 @@ function solve!(solver::NewtonSolver, Uu, p)
     @info "=============================================================================================================================="
 
     while n <= solver.settings.max_iters
-        R = gradient(objective, Uu, p)
-        K = hessian(objective, Uu, p)
+        R = gradient(objective_cache, Uu, p)
+        K = hessian(objective_cache, Uu, p)
         dUu = -K \ R
         # @show norm(R) norm(R) / res_norm0 norm(dUu) 
         # copyto!(solver.solution, -K \ R)
@@ -41,7 +41,7 @@ function solve!(solver::NewtonSolver, Uu, p)
             res_norm < 1.e-8
             Uu .+= dUu
             @show "Converged"
-            break
+            return nothing
         end
         # objective.solution .+= dUu
         Uu .+= dUu
@@ -49,5 +49,7 @@ function solve!(solver::NewtonSolver, Uu, p)
         # if norm(R) 
         n = n + 1
     end
+
+    error("Newton solver failed to converge")
     return nothing
 end

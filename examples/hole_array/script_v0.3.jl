@@ -8,7 +8,7 @@ using FiniteElementContainers
 mesh_file = Base.source_dir() * "/hole_array.exo"
 
 # Times
-times = TimeStepper(0., 1., 100)
+times = TimeStepper(0., 1., 20)
 
 # Physics
 physics = (;
@@ -20,7 +20,7 @@ physics = (;
 props = (;
     Block1 = Dict{String, Any}(
         "Young's modulus" => 1.,
-        "Poisson's ratio" => 0.3
+        "Poisson's ratio" => 0.495
     )
 )
 props = Cthonios.create_properties(physics, props)
@@ -43,7 +43,7 @@ sim = SingleDomainSimulation(
     mesh_file, times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache  = Cthonios.QuasiStaticObjectiveCache(sim)
+objective_cache  = Cthonios.QuasiStaticObjectiveCacheNew(sim)
 solver = Cthonios.TrustRegionSolver(objective_cache, Cthonios.parameters(objective_cache), TimerOutput())
 # solver = Cthonios.NewtonSolver(objective_cache)
 # Cthonios.step!(objective_cache, solver)

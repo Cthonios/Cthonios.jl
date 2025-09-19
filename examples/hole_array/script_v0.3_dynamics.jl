@@ -24,15 +24,15 @@ props = (;
 props = Cthonios.create_properties(physics, props)
 
 # Boundary Conditions
-# func_1(x, t) = -7.5 * t#(0., -5. * t)
-# func_2(x, t) = 0.0
-# func_3(x, t) = @SVector [0., -0.025 * t]
+func_1(x, t) = -1. * t#(0., -5. * t)
+func_2(x, t) = 0.0
+func_3(x, t) = @SVector [0., -0.025 * t]
 
 dirichlet_bcs = DirichletBC[
-    # DirichletBC("displ_x", "yminus_sideset", func_2),
-    # DirichletBC("displ_y", "yminus_sideset", func_2),
-    # DirichletBC("displ_x", "yplus_sideset", func_2),
-    # DirichletBC("displ_y", "yplus_sideset", func_1)
+    DirichletBC("displ_x", "yminus_sideset", func_2),
+    DirichletBC("displ_y", "yminus_sideset", func_2),
+    DirichletBC("displ_x", "yplus_sideset", func_2),
+    DirichletBC("displ_y", "yplus_sideset", func_1)
 ]
 
 # Simulation setup
@@ -41,11 +41,11 @@ sim = SingleDomainSimulation(
     mesh_file, times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache  = Cthonios.ImplicitDynamicsObjectiveCache(sim)
+objective_cache  = Cthonios.ImplicitDynamicsObjectiveCacheNew(sim)
 solver = Cthonios.NewtonSolver(objective_cache)
 
-fill!(objective_cache.solution_rate, 10.)
-fill!(objective_cache.solution_rate_old, 10.)
+# fill!(objective_cache.solution_rate, 10.)
+# fill!(objective_cache.solution_rate_old, 10.)
 
 # set initial conditions
 mesh = UnstructuredMesh(mesh_file)

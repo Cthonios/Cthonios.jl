@@ -8,11 +8,15 @@ struct WarmStart{RT, Uu, p}#, S}
 end
 
 function WarmStart(o, p)
-  R = create_field(o)
-  dR = create_field(o)
-  dUu = create_unknowns(o)
+  # R = create_field(o)
+  # dR = create_field(o)
+  # dUu = create_unknowns(o)
+  R = make_zero(o.gradient)
+  dR = make_zero(o.gradient)
+  dUu = make_zero(o.solution.data)
   dp = make_zero(p)
-  ΔUu = create_unknowns(o)
+  # ΔUu = create_unknowns(o)
+  ΔUu = make_zero(o.solution.data)
   # solver = GmresSolver(length(dUu), length(dUu), length(dUu), typeof(dUu))
   return WarmStart(R, dR, dUu, dp, ΔUu)#, solver)
 end
@@ -73,7 +77,12 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
 
     # TODO needs to be updated for GPUs
     # R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
-    R = dR[asm.dof.unknown_dofs]
+    if FiniteElementContainers._is_condensed(asm.dof)
+      # do nothing
+      R = dR.data
+    else
+      R = dR[asm.dof.unknown_dofs]
+    end
     # R = residual(assembler)
 
     # K = Cthonios.hessian!(solver.assembler, objective, Uu, p)
