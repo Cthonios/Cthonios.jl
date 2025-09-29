@@ -1,10 +1,11 @@
-struct SingleDomainSimulation{M, T, P1, P2, D, N} <: AbstractSimulation
+struct SingleDomainSimulation{M, T, P1, P2, D, N, C} <: AbstractSimulation
     mesh_file::M
     times::T
     physics::P1
     properties::P2
     dirichlet_bcs::D
     neumann_bcs::N
+    contact_pairs::C
 end
 
 function SingleDomainSimulation(
@@ -13,29 +14,11 @@ function SingleDomainSimulation(
     physics::NamedTuple,
     properties::NamedTuple;
     dirichlet_bcs::Vector{<:DirichletBC} = DirichletBC[],
-    neumann_bcs::Vector{<:NeumannBC} = NeumannBC[]
+    neumann_bcs::Vector{<:NeumannBC} = NeumannBC[],
+    contact_pairs::Vector{<:ContactPair} = ContactPair[]
 )
     return SingleDomainSimulation(
         mesh_file, times, physics, properties,
-        dirichlet_bcs, neumann_bcs
+        dirichlet_bcs, neumann_bcs, contact_pairs
     )
-end
-
-function simulation_cache(sim::SingleDomainSimulation)
-    return SingleDomainSimulationCache(sim)
-end
-
-struct SingleDomainSimulationCache{A, P1, P2, T} <: AbstractSimulationCache{A, P1, P2, T}
-    assembler::A
-    parameters::P1
-    post_processor::P2
-    time::T
-end
-
-function SingleDomainSimulationCache(
-    sim::SingleDomainSimulation;
-    output_file = nothing
-)
-    assembler, parameters, post_processor = _setup_simulation_common(sim, output_file)
-    return SingleDomainSimulationCache(assembler, parameters, post_processor, TimerOutput())
 end

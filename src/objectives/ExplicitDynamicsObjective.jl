@@ -5,7 +5,7 @@ end
 struct ExplicitDynamicsObjectiveCache{
     A, O, P,
     RT, RV <: AbstractArray{RT, 1}, NF
-} <: AbstractObjectiveCache2{A, O, P, RT, RV}
+} <: AbstractObjectiveCache{A, O, P, RT, RV}
     assembler::A
     objective::O
     parameters::P

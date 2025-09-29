@@ -44,7 +44,7 @@ struct TrustRegionSolver{
   S <: TrustRegionSolverSettings
 } #<: AbstractNonlinearSolver{L, O, U, W, T}
   preconditioner::L
-  objective::O
+  objective_cache::O
   ΔUu::U
   warm_start::W
   timer::T
@@ -329,8 +329,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
   @timeit timer(solver) "TrustRegionSolver - solve!" begin
     if solver.use_warm_start
       @timeit timer(solver) "TrustRegionSolver - warm start" begin
-        # solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
-        solve!(solver.warm_start, solver.objective, Uu, p; verbose=solver.verbose)
+        # solve!(solver.warm_start, solver.preconditioner, solver.objective_cache, Uu, p)
+        solve!(solver.warm_start, solver.objective_cache, Uu, p; verbose=solver.verbose)
       end
     end
 
@@ -343,8 +343,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     x = Uu
 
     # saving initial objective and gradient
-    o = value(solver.objective, x, p)
-    g = gradient(solver.objective, x, p)
+    o = value(solver.objective_cache, x, p)
+    g = gradient(solver.objective_cache, x, p)
     g_norm = norm(g)
 
     if solver.verbose
@@ -353,7 +353,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     end
 
     # preconditioner
-    update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+    update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p)
     P = solver.preconditioner.preconditioner
     # this could potentially return an unstable solution
     if is_converged(solver, value, x, 0.0, 0.0, g, g, 0, tr_size, settings)
@@ -379,15 +379,15 @@ function solve!(solver::TrustRegionSolver, Uu, p)
       if settings.use_incremental_objective
         @assert false "not implemented yet"
       else
-        increment_objective = d -> value(solver.objective, x + d, p) - o
+        increment_objective = d -> value(solver.objective_cache, x + d, p) - o
       end
 
-      hess_vec_func = v -> hvp(solver.objective, x, p, v)
+      hess_vec_func = v -> hvp(solver.objective_cache, x, p, v)
       # TODO need to fix below
-      # K = hessian!(solver.preconditioner.assembler, solver.objective, x, p)
+      # K = hessian!(solver.preconditioner.assembler, solver.objective_cache, x, p)
       # mult_by_approx_hessian = v -> (K + 0.0 * I) * v
       # mult_by_approx_hessian = v -> K \ v
-      # mult_by_approx_hessian = v -> hvp(solver.objective, x, p, v)
+      # mult_by_approx_hessian = v -> hvp(solver.objective_cache, x, p, v)
       mult_by_approx_hessian = v -> v
 
       # calculate cauchy point
@@ -439,11 +439,11 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         
         y = x + d
         realObjective = increment_objective(d)
-        gy = gradient(solver.objective, y, p)
+        gy = gradient(solver.objective_cache, y, p)
         
         if is_converged(
           solver,
-          solver.objective, y, realObjective, modelObjective,
+          solver.objective_cache, y, realObjective, modelObjective,
           gy, g + Jd, cgIters, trSizeUsed, settings
         )
           # if callback
@@ -491,7 +491,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         if willAccept
           x = y
           g = gy
-          o = value(solver.objective, x, p)
+          o = value(solver.objective_cache, x, p)
           g_norm = realResNorm
           triedNewPrecond = false
           happyAboutTrSize = true
@@ -507,7 +507,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
         if cgIters >= settings.max_cg_iters || cumulativeCgIters >= settings.max_cumulative_cg_iters
           # objective.update_precond(x)
-          update_preconditioner!(solver.preconditioner, solver.objective, x, p; verbose=solver.verbose)
+          update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p; verbose=solver.verbose)
           P = solver.preconditioner.preconditioner
           cumulativeCgIters=0
         end
@@ -518,7 +518,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
           if !triedNewPrecond
             @info "The trust region is too small, updating precond and trying again."
-            update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+            update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p)
             P = solver.preconditioner.preconditioner
             cumulativeCgIters = 0
             triedNewPrecond = true

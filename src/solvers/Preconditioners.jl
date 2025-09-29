@@ -93,21 +93,21 @@ end
 
 
 #
-struct IncompleteLUPreconditioner{A, P, T}
-  assembler::A
-  preconditioner::P
-  timer::T
-end
+# struct IncompleteLUPreconditioner{A, P, T}
+#   assembler::A
+#   preconditioner::P
+#   timer::T
+# end
 
-function IncompleteLUPreconditioner(obj::AbstractObjectiveCache, p, timer)
-  @timeit timer "IncompleteLUPreconditioner - setup" begin
-    asm = assembler(obj)
-    Uu = create_unknowns(asm, H1Field)
-    H = hessian(obj, Uu, p)
+# function IncompleteLUPreconditioner(obj::AbstractObjectiveCache, p, timer)
+#   @timeit timer "IncompleteLUPreconditioner - setup" begin
+#     asm = assembler(obj)
+#     Uu = create_unknowns(asm, H1Field)
+#     H = hessian(obj, Uu, p)
 
-  end
-end
+#   end
+# end
 
-function _incomplete_lu_setup(H, backend::CPU)
-  return ilu0(H)
-end
+# function _incomplete_lu_setup(H, backend::CPU)
+#   return ilu0(H)
+# end

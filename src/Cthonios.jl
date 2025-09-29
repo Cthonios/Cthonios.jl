@@ -1,5 +1,6 @@
 module Cthonios
 
+import FiniteElementContainers: AbstractField, BCBookKeeping
 import KernelAbstractions as KA
 import KernelAbstractions: CPU
 using ConstitutiveModels
@@ -9,14 +10,16 @@ using Exodus
 using FiniteElementContainers
 using ForwardDiff
 using IncompleteLU
-# using KernelAbstractions
 using Krylov
 using LinearAlgebra
 using NLopt
 using Printf
+using ReferenceFiniteElements
 using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
+using StructArrays
+using Tensors
 using TimerOutputs
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
@@ -24,6 +27,8 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 # Re-exports
 export DirichletBC
 export PlaneStrain
+export QuasiStaticObjective
+export QuasiStaticObjectiveCache
 export ThreeDimensional
 export TimerOutput
 export TimeStepper
@@ -34,11 +39,11 @@ export stiffness
 export @SVector
 
 # Cthonios exports
+export ContactPair
 export QuadratureLevelObjective
 export SingleDomainSimulation
 export SolidMechanics
 export TrustRegionSolver
-export UnconstrainedObjective
 export create_unknowns
 export evolve!
 export parameters
@@ -52,14 +57,14 @@ include("objectives/Objectives.jl")
 # physics
 include("physics/Physics.jl")
 
+# contact
+include("contact/Contact.jl")
+
 # simulations
 include("simulations/Simulations.jl")
 
 # solvers
 include("solvers/Solvers.jl")
-
-# # integrators
-# include("integrators/Integrators.jl")
 
 #
 include("qoi_extractors/QOIExtractors.jl")
@@ -67,8 +72,7 @@ include("qoi_extractors/QOIExtractors.jl")
 # optimizations
 include("optimizations/Optimizations.jl")
 
-# CLI
-# include("Main.jl")
+# methods defined in extensions
 function cthonios_main end
 
 end # module
