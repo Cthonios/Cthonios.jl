@@ -41,7 +41,7 @@ sim = SingleDomainSimulation(
     mesh_file, times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache  = Cthonios.ImplicitDynamicsObjectiveCacheNew(sim)
+objective_cache  = Cthonios.ImplicitDynamicsObjectiveCache(sim)
 solver = Cthonios.NewtonSolver(objective_cache)
 
 # fill!(objective_cache.solution_rate, 10.)

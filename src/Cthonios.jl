@@ -3,13 +3,13 @@ module Cthonios
 import FiniteElementContainers: AbstractField, BCBookKeeping
 import KernelAbstractions as KA
 import KernelAbstractions: CPU
+using ArgParse
 using ConstitutiveModels
 using DocStringExtensions
 using Enzyme
 using Exodus
 using FiniteElementContainers
 using ForwardDiff
-using IncompleteLU
 using Krylov
 using LinearAlgebra
 using NLopt
@@ -21,6 +21,7 @@ using StaticArrays
 using StructArrays
 using Tensors
 using TimerOutputs
+using YAML
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -71,6 +72,8 @@ include("qoi_extractors/QOIExtractors.jl")
 
 # optimizations
 include("optimizations/Optimizations.jl")
+
+include("cli/CLI.jl")
 
 # methods defined in extensions
 function cthonios_main end

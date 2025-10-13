@@ -68,20 +68,23 @@ $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(
-  objective, p, timer; 
+  objective; 
   preconditioner=CholeskyPreconditioner,
   use_warm_start=true,
   verbose=true,
   settings=TrustRegionSolverSettings()
 )
+  timer = TimerOutput()
+
   @timeit timer "TrustRegionSolver - setup" begin
     # domain = objective.domain
     # settings       = TrustRegionSolverSettings() # TODO add non-defaults
     # TODO eventually write a custom linear solver for this one
+    p              = objective.parameters
     precond        = preconditioner(objective, timer)
     ΔUu            = create_unknowns(objective)
     # TODO
-    warm_start     = WarmStart(objective, p)
+    warm_start     = WarmStart(objective)
     # warm_start     = nothing
     o              = zeros(1)
     g              = create_field(objective) # gradient
@@ -110,7 +113,7 @@ end
 
 function TrustRegionSolver(
   inputs::Dict{Symbol, Any},
-  objective::AbstractObjectiveCache, p, timer
+  objective::AbstractObjectiveCache
 )
   preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
   warm_start = inputs[Symbol("warm start")]
@@ -122,7 +125,7 @@ function TrustRegionSolver(
     end
   end
 
-  return TrustRegionSolver(objective, p, timer; preconditioner=preconditioner, use_warm_start=warm_start, settings=settings)
+  return TrustRegionSolver(objective; preconditioner=preconditioner, use_warm_start=warm_start, settings=settings)
 end
 
 timer(solver::TrustRegionSolver) = solver.timer

@@ -1,11 +1,9 @@
-using Adapt
-using AMDGPU
 using ConstitutiveModels
 using Cthonios
-using FiniteElementContainers
 
-# Mesh
-mesh_file = Base.source_dir() * "/hole_array.exo"
+# file management
+mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
+output_file = Base.source_dir() * "/output.exo"
 
 # Times
 times = TimeStepper(0., 1., 20)
@@ -14,21 +12,18 @@ times = TimeStepper(0., 1., 20)
 physics = (;
     Block1 = SolidMechanics(
         PlaneStrain(), NeoHookean()
-        # PlaneStrain(), LinearElastic()
     )
 )
 props = (;
     Block1 = Dict{String, Any}(
         "Young's modulus" => 1.,
-        "Poisson's ratio" => 0.495
+        "Poisson's ratio" => 0.45
     )
 )
-props = Cthonios.create_properties(physics, props)
 
 # Boundary Conditions
-func_1(x, t) = -7.5 * t#(0., -5. * t)
+func_1(x, t) = -5. * t
 func_2(x, t) = 0.0
-func_3(x, t) = @SVector [0., -0.025 * t]
 
 dirichlet_bcs = [
     DirichletBC("displ_x", "yminus_sideset", func_2),
@@ -37,30 +32,11 @@ dirichlet_bcs = [
     DirichletBC("displ_y", "yplus_sideset", func_1)
 ]
 
-# Simulation setup
-objective = QuadratureLevelObjective(energy, residual, stiffness)
+# Simulation
 sim = SingleDomainSimulation(
-    mesh_file, times, physics, props;
+    mesh_file, output_file, 
+    times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache  = Cthonios.QuasiStaticObjectiveCacheNew(sim)
-solver = Cthonios.TrustRegionSolver(objective_cache, Cthonios.parameters(objective_cache), TimerOutput())
-# solver = Cthonios.NewtonSolver(objective_cache)
-# Cthonios.step!(objective_cache, solver)
-mesh = UnstructuredMesh(mesh_file)
-pp = PostProcessor(mesh, "output.e", objective_cache.assembler.dof.var)
-Cthonios.run!(solver, pp)
-
-# objective_cache = Cthonios.QuadratureLevelObjectiveCache(objective, sim)
-# # objective_cache = objective_cache |> rocm
-# # objective_cache = adapt(ROCArray, objective_cache)
-
-# Uu = create_unknowns(objective_cache)
-# p = parameters(objective_cache)
-
-# solver = TrustRegionSolver(objective_cache, p, TimerOutput())
-# # solver = Cthonios.TrustRegionSolverGPU(objective_cache, p)
-# # Cthonios.solve!(solver, Uu, p)
-# # Cthonios.evolve!(objective_cache.sim_cache, solver, Uu, p)
-# integrator = Cthonios.QuasiStaticIntegrator(solver)
-# Cthonios.integrate!(integrator)
+solver = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
+timer = Cthonios.run!(sim, QuasiStaticObjectiveCache, solver)

@@ -9,7 +9,7 @@ timer(P::T) where T <: AbstractPreconditioner = P.timer
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-mutable struct CholeskyPreconditioner{A, P, T} <: AbstractPreconditioner
+struct CholeskyPreconditioner{A, P, T} <: AbstractPreconditioner
   assembler::A
   preconditioner::P
   timer::T
@@ -17,6 +17,10 @@ end
 
 function _cholesky(A::SparseMatrixCSC; shift=0.0)
   return cholesky(A |> Symmetric; shift=shift)
+end
+
+function _cholesky!(F, A::SparseMatrixCSC; shift=0.0)
+  cholesky!(F, A |> Symmetric; shift=shift)
 end
 
 """
@@ -45,7 +49,7 @@ $(TYPEDSIGNATURES)
 function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
   @timeit timer(P) "CholeskyPreconditioner - ldiv!" begin
     # y .= P.preconditioner \ v
-    _ldiv!(y, P, v, get_backend(y))
+    _ldiv!(y, P, v, KA.get_backend(y))
   end
   return nothing
 end
@@ -55,6 +59,7 @@ $(TYPEDSIGNATURES)
 """
 function _ldiv!(y, P::CholeskyPreconditioner, v, ::CPU)
   y .= P.preconditioner \ v
+
   # below doesn't work. I guess we just have to accept these allocations
   # ldiv!(y, P.preconditioner.L, v)
   # ldiv!(y, P.preconditioner.L')
@@ -75,10 +80,12 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
       end
       try
         if attempt == 1
-          P.preconditioner = _cholesky(H)
+          # P.preconditioner = _cholesky(H)
+          _cholesky!(P.preconditioner, H)
         else
           shift = 10.0^(-5 + attempt)
-          P.preconditioner = _cholesky(H; shift=shift)
+          # P.preconditioner = _cholesky(H; shift=shift)
+          _cholesky!(P.preconditioner, H; shift=shift)
         end
         return nothing
       catch e
@@ -90,24 +97,3 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
   end
   return nothing
 end
-
-
-#
-# struct IncompleteLUPreconditioner{A, P, T}
-#   assembler::A
-#   preconditioner::P
-#   timer::T
-# end
-
-# function IncompleteLUPreconditioner(obj::AbstractObjectiveCache, p, timer)
-#   @timeit timer "IncompleteLUPreconditioner - setup" begin
-#     asm = assembler(obj)
-#     Uu = create_unknowns(asm, H1Field)
-#     H = hessian(obj, Uu, p)
-
-#   end
-# end
-
-# function _incomplete_lu_setup(H, backend::CPU)
-#   return ilu0(H)
-# end

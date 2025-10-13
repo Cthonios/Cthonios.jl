@@ -1,6 +1,6 @@
-struct CauchyPoint{C, T}
+struct CauchyPoint{C <: AbstractArray{<:Number, 1}}
     cauchy_point::C
-    timer::T
+    timer::TimerOutput
 end
 
 function calculate!(
@@ -9,19 +9,19 @@ function calculate!(
     Uu,
     p,
     g, 
-    # hess_vec_func,
+    hess_vec_func,
     mult_by_approx_hessian,
     tr_size
 )
     @timeit cauchy_point.timer "Cauchy Point" begin
         cp = cauchy_point.cauchy_point
         Kg = hvp(objective_cache, Uu, p, g)
-        # gKg = dot(g, hess_vec_func(g))
+        # Kg = hess_vec_func(g)
         gKg = dot(g, Kg)
         if gKg > 0
             alpha = -dot(g, g) / gKg
-            # cauchyPoint = alpha * g
-            copyto!(cp, alpha * g)
+            # @time copyto!(cp, alpha .* g)
+            cp .= alpha .* g
             cp_norm_sq = dot(cp, mult_by_approx_hessian(cp))
         else
             # cauchyPoint =  -g * (tr_size / sqrt.(dot(g, mult_by_approx_hessian(g))))
@@ -34,43 +34,69 @@ function calculate!(
     end
 end
 
-struct DogLegStep{T}
-    timer::T
+struct DogLegStep{R <: AbstractArray{<:Number, 1}}
+    d::R
+    result::R
+    timer::TimerOutput
 end
 
-function solve!(::DogLegStep, cp, newton_p, tr_size, mat_mul)
-    cc = dot(cp, mat_mul(cp))
-    nn = dot(newtonP, mat_mul(newton_p))
-    tt = tr_size * tr_size
-      
-    if cc >= tt #return cauchy point if it extends outside the tr
-        #print('cp on boundary')
-        return cp * sqrt(tt/cc)
-    end
-  
-    if cc > nn # return cauchy point?  seems the preconditioner was not accurate?
-        @warn "cp outside newton, preconditioner likely inaccurate"
-        return cp
-    end
-  
-    if nn > tt # on the dogleg (we have nn >= cc, and tt >= cc)
-        return preconditioned_project_to_boundary(
-            cp,
-            newtonP-cp,
-            trSize,
-            cc,
-            mat_mul
-        )
-    end
-    return newtonP  
+function preconditioned_project_to_boundary!(r, z, d, tr_size, zz, mult_by_approx_hessian)
+    Pd = mult_by_approx_hessian(d)
+    dd = dot(d, Pd)
+    zd = dot(z, Pd)
+    tau = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
+    r .= z .+ tau .* d
+    return nothing
 end
 
-struct TrustRegionModelProblem{V, T}
+function solve!(dogleg::DogLegStep, cp, newton_p, tr_size, mat_mul)
+    @timeit dogleg.timer "DogLegStep - solve!" begin
+        cp = cp.cauchy_point
+        cc = dot(cp, mat_mul(cp))
+        nn = dot(newton_p, mat_mul(newton_p))
+        tt = tr_size * tr_size
+        
+        if cc >= tt #return cauchy point if it extends outside the tr
+            dogleg.result .= cp .* sqrt(tt / cc)
+            return dogleg.result
+        end
+    
+        if cc > nn # return cauchy point?  seems the preconditioner was not accurate?
+            @warn "cp outside newton, preconditioner likely inaccurate"
+            return cp
+        end
+    
+        if nn > tt # on the dogleg (we have nn >= cc, and tt >= cc)
+            dogleg.d .= newton_p .- cp
+            preconditioned_project_to_boundary!(
+                dogleg.result,
+                cp,
+                dogleg.d,
+                tr_size,
+                cc,
+                mat_mul
+            )
+            return dogleg.result
+        end
+    end
+    copyto!(dogleg.result, newton_p)
+    return dogleg.result
+end
+
+struct TrustRegionModelProblem{V}
     cp::V
     d::V
     Pr::V
     z::V
-    timer::T
+    zNp1::V
+    zOut::V
+    timer::TimerOutput
+end
+
+function project_to_boundary_with_coefs!(r, z, d, tr_size, zz, zd, dd)
+    tau = (sqrt((tr_size^2 - zz) * dd + zd^2) - zd) / dd
+    r .= z .+ tau .* d
+    return nothing
 end
 
 function minimize!(
@@ -82,6 +108,7 @@ function minimize!(
         d = model_problem.d
         Pr = model_problem.Pr
         z = model_problem.z
+        zNp1 = model_problem.zNp1
 
         fill!(z, zero(eltype(x))) # z = 0. * x
         zz = 0.
@@ -114,23 +141,30 @@ function minimize!(
             curvature = dot(d, hess_vec_func(d))
             alpha = rPr / curvature
                 
-            zNp1 = z + alpha*d
+            # zNp1 = z + alpha*d
+            zNp1 .= z .+ alpha .* d
             zzNp1 = update_step_length_squared(alpha, zz, zd, dd)
         
             if curvature <= 0
-                zOut = project_to_boundary_with_coefs(z, d, tr_size,
-                                                      zz, zd, dd)
+                # zOut = project_to_boundary_with_coefs(z, d, tr_size,
+                #                                       zz, zd, dd)
+                zOut = model_problem.zOut
+                project_to_boundary_with_coefs!(zOut, z, d, tr_size, zz, zd, dd)
                 return zOut, cp, negCurveString, i
             end
             if zzNp1 > tr_size^2
-                zOut = project_to_boundary_with_coefs(z, d, tr_size,
-                                                      zz, zd, dd)
+                zOut = model_problem.zOut
+                # zOut = project_to_boundary_with_coefs(z, d, tr_size,
+                #                                       zz, zd, dd)
+                project_to_boundary_with_coefs!(zOut, z, d, tr_size, zz, zd, dd)
                 return zOut, cp, boundaryString, i
             end
             # z = zNp1 # z + alpha*d
             copyto!(z, zNp1)
-                
+            
             r += alpha * hess_vec_func(d)
+            # r .= r .+ alpha .* hess_vec_func(d)
+            
             # Pr = P \ r
             ldiv!(Pr, P, r)
             rPrNp1 = dot(r, Pr)
@@ -141,7 +175,8 @@ function minimize!(
             beta = rPrNp1 / rPr
             rPr = rPrNp1
             # d = -Pr + beta*d
-            copyto!(d, -Pr + beta * d)
+            # copyto!(d, -Pr + beta * d)
+            d .= -Pr .+ beta .* d
         
             zz = zzNp1
             zd, dd = cg_inner_products(alpha, beta, zd, dd, rPr, z, d)
@@ -156,70 +191,94 @@ struct TrustRegionSolverGPU{
     ObjectiveCache,
     Precond,
     Settings,
-    Timer
+    WS <: Union{Nothing, WarmStart}
 }
-    cauchy_point::CauchyPoint{V, Timer}
-    dogleg_step::DogLegStep{Timer}
-    model_problem::TrustRegionModelProblem{V, Timer}
+    cauchy_point::CauchyPoint{V}
+    dogleg_step::DogLegStep
+    model_problem::TrustRegionModelProblem{V}
     objective_cache::ObjectiveCache
     preconditioner::Precond
     settings::Settings
-    timer::Timer
-    use_warm_start::Bool
+    timer::TimerOutput
     verbose::Bool
+    warm_start::WS
 end
 
 function TrustRegionSolverGPU(
-    objective_cache, p;
+    objective_cache;
     preconditioner = CholeskyPreconditioner,
     settings = TrustRegionSolverSettings(),
     timer = TimerOutput(),
     use_warm_start = false,
     verbose = true
 )
-    cauchy_point = CauchyPoint(create_unknowns(objective_cache), timer)
-    dogleg_step = DogLegStep(timer)
-    model_problem = TrustRegionModelProblem(
-        create_unknowns(objective_cache),
-        create_unknowns(objective_cache),
-        create_unknowns(objective_cache),
-        create_unknowns(objective_cache),
-        timer
-    )
-    precond = preconditioner(objective_cache, p, timer)
+    @timeit timer "TrustRegionSolver - setup" begin
+        p = objective_cache.parameters
+        cauchy_point = CauchyPoint(
+            create_unknowns(objective_cache), 
+            timer
+        )
+        dogleg_step = DogLegStep(
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            timer
+        )
+        model_problem = TrustRegionModelProblem(
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            create_unknowns(objective_cache),
+            timer
+        )
+        precond = preconditioner(objective_cache, timer)
+
+        if use_warm_start
+            warm_start = WarmStart(
+                objective_cache,
+                timer
+            )
+        else
+            warm_start = nothing
+        end
+    end
+
     return TrustRegionSolverGPU(
         cauchy_point, dogleg_step, model_problem,
         objective_cache, precond, 
-        settings, timer, use_warm_start, verbose
+        settings, timer, verbose, warm_start
     )
 end
 
 function is_converged(solver::TrustRegionSolverGPU, objective, x, realO, modelO, realRes, modelRes, cgIters, trSize)
-    gg = dot(realRes, realRes)
-    if gg < solver.settings.tol^2
-        modelResNorm = norm(modelRes)
-        realResNorm = sqrt(gg)
-        print_min_banner(
-            solver,
-            realO, modelO,
-            realResNorm,
-            modelResNorm,
-            cgIters,
-            trSize,
-            interiorString,
-            true
-        )
-    
-        if solver.verbose
-            @info "Converged"
-            println("") # a bit of output formatting
+    @timeit solver.timer "convergence check" begin
+        gg = dot(realRes, realRes)
+        if gg < solver.settings.tol^2
+            modelResNorm = norm(modelRes)
+            realResNorm = sqrt(gg)
+            print_min_banner(
+                solver,
+                realO, modelO,
+                realResNorm,
+                modelResNorm,
+                cgIters,
+                trSize,
+                interiorString,
+                true
+            )
+        
+            if solver.verbose
+                @info "Converged"
+                println("") # a bit of output formatting
+            end
+        
+            if solver.settings.check_stability
+                @assert false "hook this up"
+                # objective.check_stability(x)
+            end    
+            return true
         end
-    
-        if solver.settings.check_stability
-            @assert false "hook this up"
-            # objective.check_stability(x)
-        end    
-        return true
     end
     return false
 end
@@ -259,8 +318,19 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
         settings = solver.settings
         tr_size = settings.tr_size
 
-        if solver.use_warm_start
+
+        if solver.warm_start !== nothing
+            # preconditioner
+            # update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
+            # P = solver.preconditioner#.preconditioner
+        
             # TODO implemt GPU compatable warm start
+            solve!(
+                solver.warm_start, solver.objective_cache, 
+                Uu, p; 
+                # P=P,
+                verbose=solver.verbose
+            )
         end
 
         # calculate initial objective and gradient
@@ -300,13 +370,14 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
             hess_vec_func = v -> hvp(solver.objective_cache, Uu, p, v)
 
             # TODO need to fix below
-            mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, p, v)
-            # mult_by_approx_hessian = v -> v
+            # mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, p, v)
+            mult_by_approx_hessian = v -> v
 
             # calculate cauchy point
             cp_norm_sq = calculate!(
                 solver.cauchy_point, 
                 solver.objective_cache, Uu, p, g,
+                hess_vec_func,
                 mult_by_approx_hessian, tr_size
             )
 
@@ -330,7 +401,8 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
             happy_about_tr_size = false
 
             while !happy_about_tr_size
-                d = dogleg_step(solver.cauchy_point.cauchy_point, q_newton_point, tr_size, mult_by_approx_hessian)
+                # d = dogleg_step(solver.cauchy_point.cauchy_point, q_newton_point, tr_size, mult_by_approx_hessian)
+                d = solve!(solver.dogleg_step, solver.cauchy_point, q_newton_point, tr_size, mult_by_approx_hessian)
                 Jd = hess_vec_func(d)
                 dJd = dot(d, Jd)
                 model_objective = dot(g, d) + 0.5 * dJd

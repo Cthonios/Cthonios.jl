@@ -28,8 +28,8 @@ function run!(sim, sim_type, solver_type)
 
     display(mat_vars)
 
-    pp = PostProcessor(mesh, "output.e", disp_var, mat_vars...)
-    solver = solver_type(objective_cache, parameters(objective_cache), TimerOutput())
+    pp = PostProcessor(mesh, sim.output_file, disp_var, mat_vars...)
+    solver = solver_type(objective_cache)
 
     initialize!(objective_cache)
 
@@ -48,7 +48,7 @@ function run!(sim, sim_type, solver_type)
     finally
         close(pp)
     end
-    return nothing
+    return solver.timer
 end
 
 function _post_process_common!(pp, mat_output, mat_vars, objective_cache, n)

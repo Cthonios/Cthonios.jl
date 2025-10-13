@@ -5,30 +5,35 @@ struct WarmStart{RT, Uu, p}#, S}
   dp::p
   ΔUu::Uu
   # solver::S
+  timer::TimerOutput
 end
 
-function WarmStart(o, p)
-  # R = create_field(o)
-  # dR = create_field(o)
-  # dUu = create_unknowns(o)
-  R = make_zero(o.gradient)
-  dR = make_zero(o.gradient)
-  dUu = make_zero(o.solution.data)
-  dp = make_zero(p)
-  # ΔUu = create_unknowns(o)
-  ΔUu = make_zero(o.solution.data)
-  # solver = GmresSolver(length(dUu), length(dUu), length(dUu), typeof(dUu))
-  return WarmStart(R, dR, dUu, dp, ΔUu)#, solver)
+function WarmStart(o, timer)
+  @timeit timer "WarmStart - setup" begin
+    # Uu = o.solution
+    p = o.parameters
+    R = make_zero(o.gradient)
+    dR = make_zero(o.gradient)
+    dUu = make_zero(o.solution.data)
+    dp = make_zero(p)
+    ΔUu = make_zero(o.solution.data)
+    # solver = GmresSolver(length(dUu), length(dUu), length(dUu), typeof(dUu))
+
+    return WarmStart(R, dR, dUu, dp, ΔUu, timer)#, solver)
+  end
 end
 
 # TODO figure out a way to do it analytically
-function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
-  @timeit objective.timer "Warm start - solve!" begin
+function solve!(
+  warm_start::WarmStart, objective, Uu, p;
+  P=I,
+  verbose=false
+)
+  @timeit warm_start.timer "Warm start - solve!" begin
     if verbose
       @info "Warm start"
     end
 
-    # assembler = objective.sim_cache.assembler
     asm = assembler(objective)
 
     (; R, dR, dUu, dp, ΔUu) = warm_start
@@ -36,32 +41,36 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
     fill!(dR, zero(eltype(dR)))
     fill!(dUu, zero(eltype(dUu)))
 
-    dp = make_zero(dp)
+    # set params to zeros
     # remake_zero!(dp)
-
-    # need to set time step
-    fill!(dp.times.time_current, sum(p.times.time_current))
-    fill!(dp.times.Δt, sum(p.times.Δt))
-    FiniteElementContainers.update_time!(dp)
+    dp = make_zero(dp)
 
     # set bcs
-    FiniteElementContainers.update_bc_values!(
-      dp.dirichlet_bcs, dp.dirichlet_bc_funcs, p.h1_coords, sum(dp.times.time_current)
-    )
-    FiniteElementContainers.update_bc_values!(
-      dp.neumann_bcs, dp.neumann_bc_funcs, p.h1_coords, sum(dp.times.time_current)
-    )
+    @timeit warm_start.timer "warm start - bc updates" begin
+      # need to set time step
+      fill!(dp.times.time_current, sum(p.times.time_current))
+      fill!(dp.times.Δt, sum(p.times.Δt))
+      FiniteElementContainers.update_time!(dp)
 
-    # TODO needs to be updated for GPUs
-    for (bc, dbc) in zip(values(p.dirichlet_bcs), values(dp.dirichlet_bcs))
-      dbc.vals .= bc.vals .- dbc.vals
+      # update values
+      FiniteElementContainers.update_bc_values!(
+        dp.dirichlet_bcs, p.h1_coords, sum(dp.times.time_current)
+      )
+      FiniteElementContainers.update_bc_values!(
+        dp.neumann_bcs, p.h1_coords, sum(dp.times.time_current)
+      )
+
+      # TODO needs to be updated for GPUs
+      for (bc, dbc) in zip(values(p.dirichlet_bcs.bc_caches), values(dp.dirichlet_bcs.bc_caches))
+        dbc.vals .= bc.vals .- dbc.vals
+      end
+
+      for (bc, dbc) in zip(values(p.neumann_bcs.bc_caches), values(dp.neumann_bcs.bc_caches))
+        dbc.vals .= bc.vals .- dbc.vals
+      end
     end
 
-    for (bc, dbc) in zip(values(p.neumann_bcs), values(dp.neumann_bcs))
-      dbc.vals .= bc.vals .- dbc.vals
-    end
-
-    @timeit objective.timer "WarmStart - AD" begin
+    @timeit warm_start.timer "WarmStart - AD" begin
       autodiff(
         Forward, assemble_vector_for_ad!,
         Duplicated(R, dR),
@@ -70,34 +79,35 @@ function solve!(warm_start::WarmStart, objective, Uu, p; verbose=false)
         Duplicated(p, dp),
         Const(residual)
       )
+
+      # TODO needs to be updated for GPUs
+      if FiniteElementContainers._is_condensed(asm.dof)
+        # do nothing
+        R = dR.data
+      else
+        R = dR[asm.dof.unknown_dofs]
+      end
     end
 
-    # need to subtract 1 from teh time step int since it steps twice here
-    # p.t.current_time_step[1] = p.t.current_time_step[1] - 1
-
-    # TODO needs to be updated for GPUs
-    # R = dR[objective.sim_cache.assembler.dof.H1_unknown_dofs]
-    if FiniteElementContainers._is_condensed(asm.dof)
-      # do nothing
-      R = dR.data
-    else
-      R = dR[asm.dof.unknown_dofs]
-    end
-    # R = residual(assembler)
-
-    # K = Cthonios.hessian!(solver.assembler, objective, Uu, p)
-    assemble_stiffness!(asm, objective.objective.hessian_u, Uu, p)
-    # K = hessian(objective, Uu, p)
     # TODO below will fail for dynamics
-    K = stiffness(asm)
-    @timeit objective.timer "WarmStart - solve" begin
+    @timeit warm_start.timer "WarmStart - assembly" begin
+      assemble_stiffness!(asm, objective.objective.hessian_u, Uu, p)    
+      K = stiffness(asm)
+    end
+
+    # @timeit warm_start.timer "WarmStart - factorize" begin
+    #   P = warm_start.P
+    #   lu!(P, K)
+    # end
+
+    @timeit warm_start.timer "WarmStart - solve" begin
       ΔUu .= K \ R
-      # ldiv!(ΔUu, K, R)
-      # ldiv!(K, R)
-      # copyto!(ΔUu, R)
-      # ldiv!(ΔUu, K, R)
-      # Krylov.solve!(warm_start.solver, K, R)
-      # copyto!(ΔUu, Krylov.solution(warm_start.solver))
+
+      # Krylov.solve!(CgSolver(), K, R)
+      # P = lu(K)
+      # ΔUu, stats = Krylov.cg(K |> Symmetric, R; verbose=1, ldiv=true)
+      # K = stiffness(asm)
+      # ΔUu, state = Krylov.gmres(K, R; M=P, ldiv=true)
     end
     
     # Uu .= Uu .+ ΔUu
