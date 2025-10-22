@@ -184,7 +184,8 @@ function _parse_time(sim_settings)
     return time
 end
 
-function (@main)(ARGS)
+# function (@main)(ARGS)
+function cthonios_main(ARGS)
     cli_args = _parse_command_line()
     backend = eval(Symbol(cli_args["backend"]))
     input_settings = _parse_input_file(cli_args)
