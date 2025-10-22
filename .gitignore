@@ -5,6 +5,7 @@ port7681.jrnl
 /docs/build/
 *.aprepro
 *.csm
+*_temp.csm
 *.e
 *.eto
 *.exo

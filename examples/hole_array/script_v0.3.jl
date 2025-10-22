@@ -2,11 +2,13 @@ using ConstitutiveModels
 using Cthonios
 
 # file management
-mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
-output_file = Base.source_dir() * "/output.exo"
+# mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
+mesh_file = Base.source_dir() * "/hole_array.exo"
+# output_file = Base.source_dir() * "/output.exo"
+output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
-times = TimeStepper(0., 1., 20)
+times = TimeStepper(0., 1., 40)
 
 # Physics
 physics = (;
@@ -22,7 +24,7 @@ props = (;
 )
 
 # Boundary Conditions
-func_1(x, t) = -5. * t
+func_1(x, t) = -7.5 * t
 func_2(x, t) = 0.0
 
 dirichlet_bcs = [

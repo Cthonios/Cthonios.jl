@@ -6,10 +6,10 @@ using FiniteElementContainers
 # Setup for simulation in objective
 csm_file = Base.source_dir() * "/window_pain.csm"
 mesh_file = Base.source_dir() * "/window_pain_temp.exo"
-# mesh_file = Base.source_dir() * "/ESP_Mesh/plato/plato_CAPS.exo"
+output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Boundary conditions
-func_1(x, t) = -0.25 * t#(0., -5. * t)
+func_1(x, t) = -0.25 * t
 func_2(x, t) = 0.0
 
 dirichlet_bcs = [
@@ -32,18 +32,16 @@ props = (;
     )
 )
 
-props = map((x, y) -> create_properties(x, y), values(physics), values(props))
-props = NamedTuple{keys(physics)}(props)
-
 # Times
-times = TimeStepper(0., 1., 40)
+times = TimeStepper(0., 1., 20)
 
 # Objective
-objective = identity
+objective = energy
 
 # Simulation setup
 sim = SingleDomainSimulation(
-    mesh_file, times, physics, props;
+    mesh_file, output_file,
+    times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
 
@@ -53,17 +51,21 @@ Cthonios.optimize!(opt)
 # p = copy(opt.p)
 # # p = [.15]
 
-# results = Float64[]
+# results_ad = Float64[]
+# results_fd = Float64[]
 
 
-# function run_gradient_check!(results, opt)
-#     absteps = [1., 1.e-1, 1.e-2, 1.e-3, 1.e-4, 1.e-5, 1.e-6, 1.e-7]
+# function run_gradient_check!(results_ad, results_fd, opt)
+#     # absteps = [1., 1.e-1, 1.e-2, 1.e-3, 1.e-4, 1.e-5, 1.e-6, 1.e-7]
+#     absteps = [1.e-4, 1.e-5, 1.e-6, 1.e-7, 1.e-8, 1.e-9, 5.e-9]
 #     for step in absteps
-#         g, g_fd = Cthonios.gradient_check!(opt, p, step)
-#         push!(results, g_fd[1])
+#         g_ad, g_fd = Cthonios.gradient_check!(opt, p, step)
+#         push!(results_ad, g_ad[1])
+#         push!(results_fd, g_fd[1])
 #     end
 # end
 
-# run_gradient_check!(results, opt)
-# display(results)
-# display(g_fd)
+# run_gradient_check!(results_ad, results_fd, opt)
+# display(results_ad)
+# display(results_fd)
+# # display(g_fd)
