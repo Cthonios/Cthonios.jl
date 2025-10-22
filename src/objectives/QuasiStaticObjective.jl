@@ -101,12 +101,14 @@ function initialize!(o::QuasiStaticObjectiveCache)
     return nothing
 end
 
-function step!(o::QuasiStaticObjectiveCache, solver)
+function step!(o::QuasiStaticObjectiveCache, solver; verbose=true)
     Uu = o.solution
     p = o.parameters
     FiniteElementContainers.update_time!(p)
     FiniteElementContainers.update_bc_values!(p)
-    _step_begin_banner(o)
+    if verbose
+        _step_begin_banner(o)
+    end
     solve!(solver, Uu.data, p)
 
     # update values at end of step
@@ -116,8 +118,9 @@ function step!(o::QuasiStaticObjectiveCache, solver)
     # update old solution
     copyto!(o.solution_old, o.solution)
 
-    _step_end_banner(o)
-
+    if verbose
+        _step_end_banner(o)
+    end
     return nothing
 end
 

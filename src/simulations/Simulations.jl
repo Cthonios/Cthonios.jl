@@ -26,7 +26,7 @@ function run!(sim, sim_type, solver_type)
     mat_output, mat_vars = create_material_output(objective_cache, V_q, StandardMaterialOutput{Float64})
     update_material_output!(mat_output, objective_cache)
 
-    display(mat_vars)
+    # display(mat_vars)
 
     pp = PostProcessor(mesh, sim.output_file, disp_var, mat_vars...)
     solver = solver_type(objective_cache)
@@ -41,14 +41,15 @@ function run!(sim, sim_type, solver_type)
     n = 1
     try
         while FiniteElementContainers.current_time(p.times) < time_end
-            step!(objective_cache, solver)
+            step!(objective_cache, solver; verbose=solver.verbose)
             _post_process_common!(pp, mat_output, mat_vars, objective_cache, n)
             n = n + 1
         end
     finally
         close(pp)
     end
-    return solver.timer
+    # return solver.timer
+    return objective_cache
 end
 
 function _post_process_common!(pp, mat_output, mat_vars, objective_cache, n)

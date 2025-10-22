@@ -2,7 +2,7 @@
 # being passed to assembler since this is a quadrature storage?
 function assemble_scalar_for_ad!(storage, assembler, Uu, p, func)
     # fill!(storage, zero(eltype(storage)))
-    fspace = FiniteElementContainers.function_space(assembler, H1Field)
+    fspace = FiniteElementContainers.function_space(assembler.dof)
     t = FiniteElementContainers.current_time(p.times)
     Δt = FiniteElementContainers.time_step(p.times)
     update_field_dirichlet_bcs!(p.h1_field, p.dirichlet_bcs)
@@ -16,13 +16,16 @@ function assemble_scalar_for_ad!(storage, assembler, Uu, p, func)
     ))
         ref_fe = values(fspace.ref_fes)[b]
         backend = FiniteElementContainers._check_backends(assembler, p.h1_field, p.h1_coords, state_old, state_new, conns)
-        FiniteElementContainers._assemble_block_scalar!(
+        # FiniteElementContainers._assemble_block_scalar!(
+        FiniteElementContainers._assemble_block_quadrature_quantity!(
             field, block_physics, ref_fe, 
             p.h1_field, p.h1_field_old, p.h1_coords, state_old, state_new, props, t, Δt,
             # conns, b, residual,
-            conns, b, func,
+            # conns, b, func,
+            conns, b, energy,
             backend
         )
+        # display(field)
     end
 end
 
