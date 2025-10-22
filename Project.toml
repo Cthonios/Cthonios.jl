@@ -27,11 +27,11 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-EngineeringSketchPadWrapper = "3540a255-7962-4fa4-89f2-3c2d40d9b966"
+#EngineeringSketchPadWrapper = "3540a255-7962-4fa4-89f2-3c2d40d9b966"
 
 [extensions]
 CthoniosAMDGPUExt = "AMDGPU"
-CthoniosESPExt = "EngineeringSketchPadWrapper"
+#CthoniosESPExt = "EngineeringSketchPadWrapper"
 
 [compat]
 AMDGPU = "1"
@@ -39,7 +39,7 @@ Aqua = "0.8"
 ArgParse = "1"
 ConstitutiveModels = "0.2"
 DocStringExtensions = "0.9"
-EngineeringSketchPadWrapper = "0.1"
+#EngineeringSketchPadWrapper = "0.1"
 Enzyme = "0.13"
 Exodus = "0.14"
 FiniteElementContainers = "0.9"
