@@ -1,0 +1,40 @@
+attribute capsAIM $aflr2AIM;platoAIM
+attribute capsMeshLength 1.0 
+attribute capsAIM $aflr2AIM;platoAIM
+attribute capsMeshLength 1.0 
+# v2.csm written by ocsmSave (v1.16)
+
+# Constant, Design, and Output Parameters:
+despmtr power 3.0000783 lbound 2.0 ubound 4.0 initial 3.0
+
+conpmtr cell_width 12.55
+
+# Global Attributes:
+outpmtr MeshLength
+set MeshLength 0.05*cell_width
+
+# draw border
+box -cell_width/2   -cell_width/2   0   cell_width cell_width 0
+
+# circular hole
+set thickness 1.5
+set radius 0.5*(cell_width-2.0*thickness)
+set cyl_len 1
+udprim supell rx radius ry radius n power numpnts 11
+extrude 0 0 cyl_len
+subtract
+
+# circular hole (superellipse) attributes
+select body
+select edge
+attribute capsGroup $remaining_surface_sideset
+
+select    body   4
+select    edge   2
+attribute capsGroup   $yminus_sideset
+
+select    body   4
+select    edge   3
+attribute capsGroup   $yplus_sideset
+
+end

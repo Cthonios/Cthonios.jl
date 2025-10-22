@@ -1,66 +1,81 @@
 module Cthonios
 
-# import this first since we're using it below
-using Reexport
-
+import FiniteElementContainers: AbstractField, BCBookKeeping
+import KernelAbstractions as KA
+import KernelAbstractions: CPU
 using ArgParse
-using ComponentArrays
-@reexport using ConstitutiveModels
+using ConstitutiveModels
 using DocStringExtensions
-@reexport using Exodus
-@reexport using FiniteElementContainers
+using Enzyme
+using Exodus
+using FiniteElementContainers
 using ForwardDiff
-using IterativeSolvers
-using LimitedLDLFactorizations
-using LDLFactorizations
-@reexport using LinearAlgebra
-using Parameters
+using Krylov
+using LinearAlgebra
+using NLopt
 using Printf
 using ReferenceFiniteElements
 using RuntimeGeneratedFunctions
 using SparseArrays
-@reexport using StaticArrays
-@reexport using TimerOutputs
+using StaticArrays
+using StructArrays
+using Tensors
+using TimerOutputs
 using YAML
-
-# import to avoid name conflicts with gradient, hvp
-import Enzyme
-import Enzyme: Const, Duplicated, Forward, Reverse, autodiff, make_zero, make_zero!
 
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
-# small components that make up a more complex problem
-include("bcs/BoundaryConditions.jl")
-include("physics/Physics.jl")
-include("PostProcessors.jl")
-include("Sections.jl")
+# Re-exports
+export DirichletBC
+export PlaneStrain
+export QuasiStaticObjective
+export QuasiStaticObjectiveCache
+export ThreeDimensional
+export TimerOutput
+export TimeStepper
+export UnstructuredMesh
+export energy
+export residual
+export stiffness
+export @SVector
 
-# container for small components
-include("Domains.jl")
+# Cthonios exports
+export ContactPair
+export QuadratureLevelObjective
+export SingleDomainSimulation
+export SolidMechanics
+export TrustRegionSolver
+export create_unknowns
+export evolve!
+export parameters
 
-# extra optional stuff related to constraints
-include("contact/Contact.jl")
+# utilities
+include("Utils.jl")
 
-# time integration facilities
-include("integrators/Integrators.jl")
-
-# integrals over objective function kernels
-include("integrals/Integrals.jl")
-
-# different objectives
+# objectives
 include("objectives/Objectives.jl")
 
-# integrals over objective function kernels
-# include("integrals/Integrals.jl")
+# physics
+include("physics/Physics.jl")
+
+# contact
+include("contact/Contact.jl")
+
+# simulations
+include("simulations/Simulations.jl")
 
 # solvers
 include("solvers/Solvers.jl")
 
-# different problem types
-include("Problem.jl")
-# include("SchwarzProblem.jl")
+#
+include("qoi_extractors/QOIExtractors.jl")
 
-# CLI
-include("Main.jl")
+# optimizations
+include("optimizations/Optimizations.jl")
+
+include("cli/CLI.jl")
+
+# methods defined in extensions
+function cthonios_main end
 
 end # module

@@ -1,6 +1,8 @@
-problems:
-# - type: QuasiStaticProblem
-- type: Problem
+simulations:
+- type: SingleDomainSimulation
+  mesh: examples/hole_array/hole_array_tri6.exo
+  physics: SolidMechanics
+
   domain:
     type: Domain
     mesh file: examples/hole_array/hole_array_tri6.exo
@@ -34,7 +36,7 @@ problems:
             # shear modulus: 0.3378
         formulation:
           type: PlaneStrain
-  time:
+  integrator:
     type: QuasiStatic
     start time: 0.0
     end time: 1.0

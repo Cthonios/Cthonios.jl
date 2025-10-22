@@ -1,58 +1,135 @@
-# abstract type AbstractContact
+# Organize contact as follows
+# 1. enforcement strategy, e.g. node-face, face-face, mortar
+# 2. contact formulation, e.g. penalty, AL
+#
+abstract type AbstractContactEnforcement end
+abstract type AbstractContactFormulation end
 
-abstract type AbstractContactInput end
-abstract type AbstractContactInternal end
+# only for 2D
+# assumes....
+# closest point projection distance
+include("ContactSurface.jl")
 
-struct ContactPair{S} <: AbstractContactInput
-  sset_a_name::S
-  sset_b_name::S
-end
+include("ContactPair.jl")
 
-struct ContactSet{E, S} <: AbstractContactInternal
-  elements::E
-  sides::S
-  num_nodes_per_side::S
-  side_nodes::S
-end
+include("PenaltyContact.jl")
 
-function ContactSet(mesh, sset_name)
-  sset = SideSet(mesh.mesh_obj, sset_name)
-  elements = convert.(Int64, sset.elements)
-  sides = convert.(Int64, sset.sides)
-  num_nodes_per_side = convert.(Int64, sset.num_nodes_per_side)
-  side_nodes = convert.(Int64, sset.side_nodes)
-  return ContactSet(elements, sides, num_nodes_per_side, side_nodes)
-end
+include("Mortar.jl")
+include("Search.jl")
 
-struct ContactPairInternal{S1, S2} <: AbstractContactInternal
-  side_a::S1
-  side_b::S2
-end
-
-function ContactPairInternal(mesh, dof, section, contact_pair::ContactPair)
-  sset_a = ContactSet(mesh, String(contact_pair.sset_a_name))
-  sset_b = ContactSet(mesh, String(contact_pair.sset_b_name))
-
-  sec_sset_a = SurfaceSectionInternal(mesh, dof, section, sset_a)
-  sec_sset_b = SurfaceSectionInternal(mesh, dof, section, sset_b)
-  # fspace_sset_a = 
-  return ContactPairInternal(sec_sset_a, sec_sset_b)
-end
-
-include("LevelSets.jl")
-# include("PenaltyContact.jl")
-include("Surfaces.jl")
-
-function setup_contact_pairs(sections, mesh, dof, contact_pairs_in)
-  contact_pairs = Dict{Symbol, Any}()
-  for (n, (section, c_pair)) in enumerate(Iterators.product(sections, contact_pairs_in))
-    if typeof(c_pair) <: LevelSetContactPair
-      pair_name = Symbol("level_set_contact_pair_$(n)_$(c_pair.sset_name)_$(typeof(c_pair.l_set))")
-      contact_pairs[pair_name] = LevelSetContactPairInternal(mesh, dof, section, c_pair)
-    else
-      @assert false "Unimplemented for $(typeof(c_pair))"
+function assemble_contact_matrix!(
+    enforcement::AbstractContactEnforcement,
+    formulation::AbstractContactFormulation,
+    caches::NamedTuple,
+    X, U
+)
+    for cache in values(caches)
+        assemble_contact_matrix!(enforcement, formulation, cache, X, U)
     end
-  end
-  contact_pairs = NamedTuple(contact_pairs)
-  return contact_pairs
+end
+
+function assemble_contact_scalar!(
+    enforcement::AbstractContactEnforcement,
+    formulation::AbstractContactFormulation,
+    caches::NamedTuple,
+    X, U
+)
+    for cache in values(caches)
+        assemble_contact_scalar!(enforcement, formulation, cache, X, U)
+    end
+end
+
+function assemble_contact_vector!(
+    enforcement::AbstractContactEnforcement,
+    formulation::AbstractContactFormulation,
+    caches::NamedTuple,
+    X, U
+)
+    for cache in values(caches)
+        assemble_contact_vector!(enforcement, formulation, cache, X, U)
+    end
+end
+
+function contact_residual_side_a(
+    ::AbstractContactFormulation,
+    X_a, X_b, U_a, U_b,
+    max_overlap_dist, 
+    rel_smoothing_size
+)
+    return ForwardDiff.gradient(
+        z -> contact_energy(
+            X_a, X_b, z, U_b, 
+            max_overlap_dist, rel_smoothing_size
+        ), U_a
+    )
+end
+
+function contact_residual_side_b(
+    ::AbstractContactFormulation,
+    X_a, X_b, U_a, U_b,
+    max_overlap_dist, 
+    rel_smoothing_size
+)
+    return ForwardDiff.gradient(
+        z -> contact_energy(
+            X_a, X_b, U_a, z, 
+            max_overlap_dist, rel_smoothing_size
+        ), U_b
+    )
+end
+
+function contact_stiffness_side_a_side_a(
+    ::AbstractContactFormulation,
+    X_a, X_b, U_a, U_b,
+    max_overlap_dist, 
+    rel_smoothing_size
+)
+    return ForwardDiff.hessian(
+        z -> contact_energy(
+            X_a, X_b, z, U_b, 
+            max_overlap_dist, rel_smoothing_size
+        ), U_a
+    )
+end
+
+function contact_stiffness_side_b_side_b(
+    ::AbstractContactFormulation,
+    X_a, X_b, U_a, U_b,
+    max_overlap_dist, 
+    rel_smoothing_size
+)
+    return ForwardDiff.hessian(
+        z -> contact_energy(
+            X_a, X_b, U_a, z, 
+            max_overlap_dist, rel_smoothing_size
+        ), U_b
+    )
+end
+
+function contact_stiffness_side_a_side_b(
+    ::AbstractContactFormulation,
+    X_a, X_b, U_a, U_b,
+    max_overlap_dist, 
+    rel_smoothing_size
+)
+    return ForwardDiff.jacobian(
+        z -> ForwardDiff.gradient(
+            contact_residual_side_a(
+                X_a, X_b, U_a, z, 
+                max_overlap_dist, rel_smoothing_size
+            ), U_b
+        )
+    )
+end
+
+
+# TODO contact_stiffness_side_a_side_b
+# need to be careful when facet element types differ
+
+# used to construct these guys
+function create_contact_pair_caches(mesh, contact_pairs)
+    @assert num_dimensions(mesh) == 2 "Contact is only supported in 2D currently"
+    syms = map(x -> Symbol("contact_pair_$(x.side_a)_$(x.side_b)"), contact_pairs)
+    caches = map(x -> ContactPairCache(mesh, x), contact_pairs)
+    return NamedTuple{tuple(syms...)}(tuple(caches...))
 end
