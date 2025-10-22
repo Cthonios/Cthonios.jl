@@ -1,0 +1,1 @@
+julia --project=@. -e 'using Cthonios; Cthonios.main(ARGS)' -- $@ >> error.out

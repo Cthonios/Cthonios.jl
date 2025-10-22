@@ -1,6 +1,6 @@
 simulation:
   type: SingleDomainSimulation
-  objective: QuasiStaticObjective
+  forward problem objective: QuasiStaticObjective
 
   mesh:
     type: UnstructuredMesh
@@ -9,49 +9,49 @@ simulation:
   time:
     start time: 0.0
     end time: 1.0
-    time increment: 0.0125
+    number of steps: 80
 
   materials:
     mat_1:
       NeoHookean:
         density: 1.0
         Young's modulus: 1.
-        Poisson's ratio: 0.3
+        Poisson's ratio: 0.495
       Gent:
         density: 1.0
         Young's modulus: 1.
-        Poisson's ratio: 0.3
-        Jm parameter: 3.
+        Poisson's ratio: 0.495
+        Jm: 3.
 
   physics:
     type: SolidMechanics
-    formulation: PlaneStrain
+    kinematics formulation: PlaneStrain
     material assignment:
       mat_1:
         blocks: [Block1]
-        model: NeoHookean
+        model: Gent
 
   nonlinear solvers:
-    - name: trs
-      type: TrustRegionSolver
-      settings:
-        warm start:
-          relative residual: 1.0e-8
-        # etc.
+    trs:
+      type: TrustRegionSolverGPU
+      verbose: true
+      use_warm_start: true
 
   initial conditions: []
 
   dirichlet boundary conditions:
     - fields: ["displ_x", "displ_y"]
       function: (x, t) -> 0.0
-      sidesets: [yminus_nodeset]
-    - fields: ["displ_x", "displ_y"]
+      sidesets: [yminus_sideset]
+    - fields: ["displ_x"]
       function: (x, t) -> 0.0
-      sidesets: [yplus_nodeset]
+      sidesets: [yplus_sideset]
     - fields: ["displ_y"]
-      function: (x, t) -> -5. * t
-      sidesets: [yminus_nodeset]
+      function: (x, t) -> -9. * t
+      sidesets: [yplus_sideset]
 
   neumann boundary conditions: []
 
   contact pairs: []
+
+  nonlinear solver: trs

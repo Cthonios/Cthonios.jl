@@ -29,6 +29,7 @@ function run!(sim, sim_type, solver_type)
     # display(mat_vars)
 
     pp = PostProcessor(mesh, sim.output_file, disp_var, mat_vars...)
+    _post_process_common!(pp, mat_output, mat_vars, objective_cache, 1)
     solver = solver_type(objective_cache)
 
     initialize!(objective_cache)
@@ -38,9 +39,9 @@ function run!(sim, sim_type, solver_type)
     time_start = sum(p.times.time_start)
     time_end = sum(p.times.time_end)
 
-    n = 1
+    n = 2
     try
-        while FiniteElementContainers.current_time(p.times) < time_end
+        while FiniteElementContainers.current_time(p.times) < time_end - 1e3 * eps(time_end)
             step!(objective_cache, solver; verbose=solver.verbose)
             _post_process_common!(pp, mat_output, mat_vars, objective_cache, n)
             n = n + 1

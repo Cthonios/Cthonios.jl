@@ -1,7 +1,15 @@
-struct SingleDomainSimulation{T, P1, P2, D, N, C} <: AbstractSimulation
+struct SingleDomainSimulation{
+    RT <: Number, 
+    RV <: AbstractArray{RT, 1},
+    P1 <: NamedTuple, 
+    P2 <: NamedTuple, 
+    D, 
+    N, 
+    C
+} <: AbstractSimulation
     mesh_file::String
     output_file::String
-    times::T
+    times::TimeStepper{RV}
     physics::P1
     properties::P2
     dirichlet_bcs::D

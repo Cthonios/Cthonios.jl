@@ -36,13 +36,7 @@ function _parse_materials(settings)
     material_settings = settings[:materials]
     material_models = Dict{Symbol, Any}()
     material_model_properties = Dict{Symbol, Any}()
-    # for material in material_settings
-    #     name = Symbol(material[:name])
-    #     material_models[name] = eval(Symbol(material[Symbol("material model")]))
-    #     material_model_properties[name] = material[Symbol("material model properties")]
-    # end
     for (name, material) in material_settings
-        # name = Symbol(material[:name])
         material_models[name] = Dict{Symbol, Any}()
         material_model_properties[name] = Dict{Symbol, Any}()
         for key in keys(material)
@@ -54,6 +48,12 @@ function _parse_materials(settings)
             material_model_properties[name][key] = material[key]
         end
     end
+    material_models = NamedTuple{tuple(keys(material_models)...)}(
+        tuple(values(material_models)...)
+    )
+    material_model_properties = NamedTuple{tuple(keys(material_model_properties)...)}(
+        tuple(values(material_model_properties)...)
+    )
     return material_models, material_model_properties
 end
 
@@ -61,7 +61,8 @@ function _parse_mesh(settings)
     mesh_settings = settings[:mesh]
     type = eval(Symbol(mesh_settings[:type]))
     file_name = mesh_settings[Symbol("file name")]
-    return type(file_name)
+    # return type(file_name)
+    return type, file_name
 end  
 
 function _parse_neumann_bcs(settings)
@@ -78,10 +79,15 @@ function _parse_neumann_bcs(settings)
     return bcs
 end
 
+function _parse_nonlinear_solvers(sim_settings)
+    nonlinear_solvers = sim_settings[Symbol("nonlinear solvers")]
+    return nonlinear_solvers
+end
+
 function _parse_physics(settings, material_models, material_model_properties)
     physics_settings = settings[:physics]
     type = eval(Symbol(physics_settings[:type]))
-    formulation = eval(Symbol(physics_settings[:formulation]))()
+    formulation = eval(Symbol(physics_settings[Symbol("kinematics formulation")]))()
     materials = physics_settings[Symbol("material assignment")]
     physics = Dict{Symbol, Any}()
     props = Dict{Symbol, Any}()
@@ -103,15 +109,14 @@ function _parse_physics(settings, material_models, material_model_properties)
 
     physics = NamedTuple(physics)
     props = NamedTuple(props)
-    props = Cthonios.create_properties(physics, props)
+    # props = Cthonios.create_properties(physics, props)
     return physics, props
 end
 
 function _parse_single_domain_simulation(sim_settings)
-    mesh = _parse_mesh(sim_settings)
-    @info "Mesh:"
-    # display(mesh)
-  
+    mesh_type, mesh_file = _parse_mesh(sim_settings)
+    times = _parse_time(sim_settings)
+
     material_models, material_model_properties = _parse_materials(sim_settings)
     @info "Materials:"
     for (name, model, props) in zip(keys(material_models), values(material_models), values(material_model_properties))
@@ -126,26 +131,27 @@ function _parse_single_domain_simulation(sim_settings)
         end
     end
   
-    physics, props = _parse_physics(sim_settings, material_models, material_model_properties)
+    physics, properties = _parse_physics(sim_settings, material_models, material_model_properties)
     @info "Physics:"
-    for (name, physics, props) in zip(keys(physics), values(physics), values(props))
+    for (name, physics, props) in zip(keys(physics), values(physics), values(properties))
         @info "  Block: $name"
         @info "    Physics: $physics"
         @info "    Properties: $props"
     end
   
-    # objective = _parse_objective(sim_settings)
-    # @info "Objective: $objective"
-  
-    # TODO initial conditions
-
-    # TODO time integrator
-  
     # TODO initial conditions
     dirichlet_bcs = _parse_dirichclet_bcs(sim_settings)
     @info "Dirichlet Boundary Conditions:"
-    for bc in dirichlet_bcs
-        @info bc
+    for (n, bc) in enumerate(dirichlet_bcs)
+        # @info bc
+        @info "  Dirichlet BC $n"
+        @info "    Entity name   = $(bc.sset_name)"
+        if isa(bc.func, RuntimeGeneratedFunction)
+            @info "    Function      = $(bc.func.body.args[2])"
+        else
+            @info "    Function      = $(bc.func)"
+        end
+        @info "    Variable name = $(bc.var_name)"
     end
     dirichlet_bcs = convert(Vector{DirichletBC}, dirichlet_bcs)
   
@@ -159,6 +165,23 @@ function _parse_single_domain_simulation(sim_settings)
     # TODO add contact pairs
 
     # TODO solver
+    output_file = splitext(mesh_file)[1] * "-output.$(splitext(mesh_file)[2])"
+    sim = SingleDomainSimulation(
+        mesh_file, output_file, times,
+        physics, properties; 
+        dirichlet_bcs=dirichlet_bcs
+        # neumann_bcs=neumann_bcs
+    )
+    return sim
+end
+
+function _parse_time(sim_settings)
+    time_settings = sim_settings[:time]
+    start_time = time_settings[Symbol("start time")]
+    end_time = time_settings[Symbol("end time")]
+    number_of_steps = time_settings[Symbol("number of steps")]
+    time = TimeStepper(start_time, end_time, number_of_steps)
+    return time
 end
 
 function (@main)(ARGS)
@@ -169,12 +192,33 @@ function (@main)(ARGS)
     @info "Input file = $(cli_args["input-file"])"
     sim_settings = input_settings[:simulation]
     sim_type = sim_settings[:type]
-    sim_obj = sim_settings[:objective]
+    sim_obj = sim_settings[Symbol("forward problem objective")]
     @info "  Simulation type      = $sim_type"
     @info "  Simulation objective = $sim_obj"
 
     if sim_type == "SingleDomainSimulation"
-        _parse_single_domain_simulation(sim_settings)
+        sim = _parse_single_domain_simulation(sim_settings)
+        solvers = _parse_nonlinear_solvers(sim_settings)
+        @info "Nonlinear solvers:"
+        for (k, v) in solvers
+            @info "  $k:"
+            @info "    $v"
+        end
+
+        requested_solver = sim_settings[Symbol("nonlinear solver")]
+        solver_settings = solvers[Symbol(requested_solver)]
+        solver_type = eval(Symbol(solver_settings[:type]))
+        
+        kwargs = Dict{Symbol, Any}()
+        for (k, v) in solver_settings
+            if k == :type
+                continue
+            end
+            kwargs[k] = v
+        end
+        kwargs = NamedTuple{tuple(keys(kwargs)...)}(tuple(values(kwargs)...))
+        solver = x -> solver_type(x; kwargs...)
+        Cthonios.run!(sim, QuasiStaticObjectiveCache, solver)
     else
         @assert false "Unsupported simulation type $sim_type"
     end

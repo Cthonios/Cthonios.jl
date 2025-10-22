@@ -13,6 +13,7 @@ port7681.jrnl
 *.jl.cov
 *.jl.mem
 *.log
+*.out
 *.so
 build/
 cubit*.jou
