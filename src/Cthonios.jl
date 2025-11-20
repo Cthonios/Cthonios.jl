@@ -4,6 +4,7 @@ import FiniteElementContainers: AbstractField, BCBookKeeping
 import KernelAbstractions as KA
 import KernelAbstractions: CPU
 using ArgParse
+using Arpack
 using ConstitutiveModels
 using DocStringExtensions
 using Enzyme
@@ -41,7 +42,6 @@ export @SVector
 
 # Cthonios exports
 export ContactPair
-export QuadratureLevelObjective
 export SingleDomainSimulation
 export SolidMechanics
 export TrustRegionSolver
@@ -62,6 +62,7 @@ include("physics/Physics.jl")
 include("contact/Contact.jl")
 
 # simulations
+include("PostProcessor.jl")
 include("simulations/Simulations.jl")
 
 # solvers

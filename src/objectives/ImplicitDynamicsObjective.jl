@@ -1,5 +1,15 @@
+struct ImplicitDynamicsObjective{
+    F1 <: Function,
+    F2 <: Function,
+    F3 <: Function
+} <: AbstractObjective{F1}
+    value::F1
+    gradient_u::F2
+    hessian_u::F3
+end
+
 function ImplicitDynamicsObjective()
-    return QuadratureLevelObjective(energy, residual, stiffness)
+    return ImplicitDynamicsObjective(energy, residual, stiffness)
 end
 
 struct ImplicitDynamicsObjectiveCache{

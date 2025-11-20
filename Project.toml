@@ -1,10 +1,11 @@
 name = "Cthonios"
 uuid = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
-version = "0.3.0"
 authors = ["Craig M. Hamel <cmhamel32@gmail.com> and contributors"]
+version = "0.3.1"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
@@ -27,19 +28,17 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-#EngineeringSketchPadWrapper = "3540a255-7962-4fa4-89f2-3c2d40d9b966"
 
 [extensions]
 CthoniosAMDGPUExt = "AMDGPU"
-#CthoniosESPExt = "EngineeringSketchPadWrapper"
 
 [compat]
 AMDGPU = "1"
 Aqua = "0.8"
 ArgParse = "1"
+Arpack = "0.5"
 ConstitutiveModels = "0.2"
 DocStringExtensions = "0.9"
-#EngineeringSketchPadWrapper = "0.1"
 Enzyme = "0.13"
 Exodus = "0.14"
 FiniteElementContainers = "0.9"
@@ -53,10 +52,9 @@ ReferenceFiniteElements = "0.13"
 RuntimeGeneratedFunctions = "0.5"
 SparseArrays = "1"
 StaticArrays = "1"
-StructArrays = "0.7.1"
+StructArrays = "0.7"
 Tensors = "1"
 Test = "1"
-TestSetExtensions = "2"
 TimerOutputs = "0.5"
 YAML = "0.4"
 julia = "1"
@@ -66,7 +64,6 @@ julia = "1"
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-TestSetExtensions = "98d24dd4-01ad-11ea-1b02-c9a08f80db04"
 
 [targets]
-test = ["Aqua", "Test", "TestSetExtensions"]
+test = ["Aqua", "Test"]

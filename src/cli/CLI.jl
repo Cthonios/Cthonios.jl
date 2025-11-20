@@ -193,12 +193,17 @@ function cthonios_main(ARGS)
     @info "Input file = $(cli_args["input-file"])"
     sim_settings = input_settings[:simulation]
     sim_type = sim_settings[:type]
-    sim_obj = sim_settings[Symbol("forward problem objective")]
+    
     @info "  Simulation type      = $sim_type"
-    @info "  Simulation objective = $sim_obj"
+    # @info "  Simulation objective = $sim_obj"
 
     if sim_type == "SingleDomainSimulation"
         sim = _parse_single_domain_simulation(sim_settings)
+        # TODO
+        # sim_obj = sim_settings[Symbol("forward problem objective")]
+        sim_obj = QuasiStaticObjective()
+        obj_cache = setup_cache(sim_obj, sim)
+
         solvers = _parse_nonlinear_solvers(sim_settings)
         @info "Nonlinear solvers:"
         for (k, v) in solvers
@@ -218,8 +223,10 @@ function cthonios_main(ARGS)
             kwargs[k] = v
         end
         kwargs = NamedTuple{tuple(keys(kwargs)...)}(tuple(values(kwargs)...))
-        solver = x -> solver_type(x; kwargs...)
-        Cthonios.run!(sim, QuasiStaticObjectiveCache, solver)
+        # solver = x -> solver_type(x; kwargs...)
+        solver = TrustRegionSolverGPU(obj_cache; kwargs...)
+        # Cthonios.run!(sim, QuasiStaticObjectiveCache, solver)
+        Cthonios.run!(obj_cache, solver, sim)
     else
         @assert false "Unsupported simulation type $sim_type"
     end

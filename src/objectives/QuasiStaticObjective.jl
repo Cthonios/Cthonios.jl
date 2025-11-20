@@ -1,5 +1,15 @@
+struct QuasiStaticObjective{
+    F1 <: Function,
+    F2 <: Function,
+    F3 <: Function
+} <: AbstractObjective{F1}
+    value::F1
+    gradient_u::F2
+    hessian_u::F3
+end
+
 function QuasiStaticObjective()
-    return QuadratureLevelObjective(energy, residual, stiffness)
+    return QuasiStaticObjective(energy, residual, stiffness)
 end
 
 struct QuasiStaticObjectiveCache{
@@ -24,11 +34,14 @@ struct QuasiStaticObjectiveCache{
     timer::TimerOutput
 end
 
-function QuasiStaticObjectiveCache(sim)
-    objective = QuasiStaticObjective()
+function QuasiStaticObjectiveCache(
+    objective::QuasiStaticObjective,
+    sim
+)
+    # objective = QuasiStaticObjective()
     assembler, parameters = _setup_simulation_common(
         sim, nothing; 
-        return_post_processor=false,
+        # return_post_processor=false,
         use_condensed=true
     )
 
@@ -57,6 +70,11 @@ function QuasiStaticObjectiveCache(sim)
     )
 end
 
+# cache hook
+function setup_cache(objective::O, sim) where O <: QuasiStaticObjective
+    return QuasiStaticObjectiveCache(objective, sim)
+end
+
 # objective hooks
 function gradient(o::QuasiStaticObjectiveCache, U, p)
     RT = eltype(U)
@@ -77,9 +95,21 @@ function hessian(o::QuasiStaticObjectiveCache, U, p)
     return H
 end
 
-function hvp(o::QuasiStaticObjectiveCache, U, p, V)
+function hvp(o::QuasiStaticObjectiveCache, U, V, p)
     assemble_matrix_action!(assembler(o), o.objective.hessian_u, U, V, p)
     return FiniteElementContainers.hvp(assembler(o), V)
+end
+
+function mass_matrix(o::QuasiStaticObjectiveCache, U, p)
+    assemble_mass!(assembler(o), o.objective.hessian_u, U, p)
+    # M = FiniteElementContainers.mass(assembler(o)) |> Symmetric
+    # really passing displacement below instead of velocity to save
+    # on having to store the solution_rate for quasi-statics
+    # this method is mainly so you can construct a mass matrix
+    # if you want one. Should add abstract types in the future
+    assemble_mass!(assembler(o), mass, o.solution, o.parameters)
+    M = FiniteElementContainers.mass(assembler(o))
+    return M |> Symmetric
 end
 
 function value(o::QuasiStaticObjectiveCache, U, p)
@@ -144,12 +174,4 @@ function _step_end_banner(o::QuasiStaticObjectiveCache)
     @info "External energy        = $(sum(o.external_energy))"
     @info "Internal energy        = $(sum(o.internal_energy))"
     @info "Total energy           = $(sum(o.value))"
-end
-
-# post-processing hooks
-function write_standard_outputs(pp, n, o::QuasiStaticObjectiveCache)
-    p = o.parameters
-    t = sum(p.times.time_current)
-    write_times(pp, n, t)
-
 end

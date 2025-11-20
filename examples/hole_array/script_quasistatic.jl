@@ -2,9 +2,7 @@ using ConstitutiveModels
 using Cthonios
 
 # file management
-# mesh_file = Base.source_dir() * "/hole_array_tri6.exo"
-mesh_file = Base.source_dir() * "/hole_array.exo"
-# output_file = Base.source_dir() * "/output.exo"
+mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
@@ -40,5 +38,12 @@ sim = SingleDomainSimulation(
     times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-solver = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
-timer = Cthonios.run!(sim, QuasiStaticObjectiveCache, solver)
+objective = Cthonios.QuasiStaticObjective()
+objective_cache = Cthonios.setup_cache(objective, sim)
+
+qoi = Cthonios.ScalarQOIExtractor(objective_cache, energy, sum, sum)
+
+solver = Cthonios.TrustRegionSolverGPU(objective_cache; use_warm_start=true)
+# solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
+# solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
+Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call

@@ -6,7 +6,6 @@ using FiniteElementContainers
 using ReferenceFiniteElements
 using StaticArrays
 using Test
-using TestSetExtensions
 using TimerOutputs
 
 # include("TestBoundaryConditions.jl")
@@ -17,8 +16,8 @@ using TimerOutputs
 # include("TestProblems.jl")
 # include("TestSections.jl")
 
-# include("TestContact.jl")
+include("TestContact.jl")
 
-@testset ExtendedTestSet "Aqua.jl" begin
+@testset "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)
 end

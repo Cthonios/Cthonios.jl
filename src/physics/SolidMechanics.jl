@@ -33,7 +33,6 @@ end
   
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0.0 # TODO
@@ -52,7 +51,6 @@ end
   
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0.0 # TODO
@@ -75,7 +73,6 @@ end
     
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0. # TODO
