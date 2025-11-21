@@ -71,13 +71,22 @@ function solve!(
     end
 
     @timeit warm_start.timer "WarmStart - AD" begin
+      # autodiff(
+      #   Forward, assemble_vector_for_ad!,
+      #   Duplicated(R, dR),
+      #   Const(asm),
+      #   Duplicated(Uu, dUu),
+      #   Duplicated(p, dp),
+      #   Const(residual)
+      # )
       autodiff(
-        Forward, assemble_vector_for_ad!,
+        Forward, 
+        assemble_vector!,
         Duplicated(R, dR),
-        Const(asm),
+        Const(asm.dof),
+        Const(residual),
         Duplicated(Uu, dUu),
-        Duplicated(p, dp),
-        Const(residual)
+        Duplicated(p, dp)
       )
 
       # TODO needs to be updated for GPUs

@@ -15,7 +15,8 @@ function calculate!(
 )
     @timeit cauchy_point.timer "Cauchy Point" begin
         cp = cauchy_point.cauchy_point
-        Kg = hvp(objective_cache, Uu, p, g)
+        # Kg = hvp(objective_cache, Uu, p, g)
+        Kg = hvp(objective_cache, Uu, g, p)
         # Kg = hess_vec_func(g)
         gKg = dot(g, Kg)
         if gKg > 0
@@ -367,7 +368,8 @@ function solve!(solver::TrustRegionSolverGPU, Uu, p)
                 increment_objective = d -> value(solver.objective_cache, Uu + d, p) - o
             end
 
-            hess_vec_func = v -> hvp(solver.objective_cache, Uu, p, v)
+            # hess_vec_func = v -> hvp(solver.objective_cache, Uu, p, v)
+            hess_vec_func = v -> hvp(solver.objective_cache, Uu, v, p)
 
             # TODO need to fix below
             # mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, p, v)

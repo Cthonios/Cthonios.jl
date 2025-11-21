@@ -1,64 +1,57 @@
-simulations:
-- type: SingleDomainSimulation
-  mesh: examples/hole_array/hole_array_tri6.exo
-  physics: SolidMechanics
+simulation:
+  type: SingleDomainSimulation
+  forward problem objective: QuasiStaticObjective
 
-  domain:
-    type: Domain
-    mesh file: examples/hole_array/hole_array_tri6.exo
-    dirichlet boundary conditions:
-    - type: DirichletBC
-      nodeset: yminus_nodeset
-      dofs: [1, 2]
-      function: (x, t) -> 0.0
-    - type: DirichletBC
-      nodeset: yplus_nodeset
-      dofs: [1]
-      function: (x, t) -> 0.0
-    - type: DirichletBC
-      nodeset: yplus_nodeset
-      dofs: [2]
-      function: (x, t) -> -7.5 * t
-    neumann boundary conditions: []
-    sections:
-    - type: Section
-      block: Block1
-      quadrature order: 2
-      physics:
-        type: SolidMechanics
-        material:
-          type: NeoHookean
-          properties:
-            type: MaterialProperties
-            bulk modulus: 1000.0
-            shear modulus: 1.0
-            # bulk modulus: 8.333
-            # shear modulus: 0.3378
-        formulation:
-          type: PlaneStrain
-  integrator:
-    type: QuasiStatic
+  mesh:
+    type: UnstructuredMesh
+    file name: examples/hole_array/mesh/hole_array_tri6.exo
+
+  time:
     start time: 0.0
     end time: 1.0
-    time increment: 0.0125
-  objective:
-    type: UnconstrainedObjective
-    value: energy
+    number of steps: 80
 
-  nonlinear solver:
-    type: TrustRegionSolver
-    tol: 1e-8
+  materials:
+    mat_1:
+      NeoHookean:
+        density: 1.0
+        Young's modulus: 1.
+        Poisson's ratio: 0.495
+      Gent:
+        density: 1.0
+        Young's modulus: 1.
+        Poisson's ratio: 0.495
+        Jm: 3.
 
-    preconditioner: 
-      type: CholeskyPreconditioner
-    
-    # TODO make a whole block for warmstart 
-    # with solvers as options
-    warm start: true
+  physics:
+    type: SolidMechanics
+    kinematics formulation: PlaneStrain
+    material assignment:
+      mat_1:
+        blocks: [Block1]
+        model: NeoHookean
 
-  postprocessor:
-    type: ExodusPostProcessor
-    output file: output.e
-    field variables:
-    - displ_x
-    - displ_y
+  nonlinear solvers:
+    trs:
+      type: TrustRegionSolverGPU
+      verbose: true
+      use_warm_start: true
+
+  initial conditions: []
+
+  dirichlet boundary conditions:
+    - fields: ["displ_x", "displ_y"]
+      function: (x, t) -> 0.0
+      sidesets: [yminus_sideset]
+    - fields: ["displ_x"]
+      function: (x, t) -> 0.0
+      sidesets: [yplus_sideset]
+    - fields: ["displ_y"]
+      function: (x, t) -> -8. * t
+      sidesets: [yplus_sideset]
+
+  neumann boundary conditions: []
+
+  contact pairs: []
+
+  nonlinear solver: trs

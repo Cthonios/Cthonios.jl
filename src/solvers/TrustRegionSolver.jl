@@ -84,7 +84,7 @@ function TrustRegionSolver(
     precond        = preconditioner(objective, timer)
     ΔUu            = create_unknowns(objective)
     # TODO
-    warm_start     = WarmStart(objective)
+    warm_start     = WarmStart(objective, timer)
     # warm_start     = nothing
     o              = zeros(1)
     g              = create_field(objective) # gradient
@@ -385,7 +385,9 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         increment_objective = d -> value(solver.objective_cache, x + d, p) - o
       end
 
-      hess_vec_func = v -> hvp(solver.objective_cache, x, p, v)
+      # hess_vec_func = v -> hvp(solver.objective_cache, x, p, v)
+      hess_vec_func = v -> hvp(solver.objective_cache, x, v, p)
+
       # TODO need to fix below
       # K = hessian!(solver.preconditioner.assembler, solver.objective_cache, x, p)
       # mult_by_approx_hessian = v -> (K + 0.0 * I) * v

@@ -27,7 +27,7 @@ function SingleDomainSimulation(
     neumann_bcs::Vector{<:NeumannBC} = NeumannBC[],
     contact_pairs::Vector{<:ContactPair} = ContactPair[]
 )
-    properties = create_properties(physics, properties)
+    properties = _create_properties(physics, properties)
 
     return SingleDomainSimulation(
         mesh_file, output_file,
