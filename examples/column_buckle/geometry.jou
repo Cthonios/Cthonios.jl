@@ -1,0 +1,45 @@
+reset
+
+#w = {w = 0.1}
+#h = {h = 1.5}
+#t = {t = 0.1}
+
+brick x {w} y {h} z {t}
+
+volume 1 seed {w / 3}
+mesh volume 1
+
+block 1 add volume 1
+block 1 element type hex8
+block 1 name "block_1"
+
+nodeset 1 add surface 1
+nodeset 2 add surface 2
+nodeset 3 add surface 3
+nodeset 4 add surface 4
+nodeset 5 add surface 5
+nodeset 6 add surface 6
+
+nodeset 1 name "nset_z_positive"
+nodeset 2 name "nset_z_negative"
+nodeset 3 name "nset_y_negative"
+nodeset 4 name "nset_x_negative"
+nodeset 5 name "nset_y_positive"
+nodeset 6 name "nset_x_positive"
+
+sideset 1 add surface 1
+sideset 2 add surface 2
+sideset 3 add surface 3
+sideset 4 add surface 4
+sideset 5 add surface 5
+sideset 6 add surface 6
+
+sideset 1 name "sset_z_positive"
+sideset 2 name "sset_z_negative"
+sideset 3 name "sset_y_negative"
+sideset 4 name "sset_x_negative"
+sideset 5 name "sset_y_positive"
+sideset 6 name "sset_x_positive"
+
+export genesis "mesh.g" overwrite
+
