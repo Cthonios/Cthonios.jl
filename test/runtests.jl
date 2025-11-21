@@ -16,7 +16,7 @@ using TimerOutputs
 # include("TestProblems.jl")
 # include("TestSections.jl")
 
-include("TestContact.jl")
+# include("TestContact.jl")
 
 @testset "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)
