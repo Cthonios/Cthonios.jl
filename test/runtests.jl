@@ -5,8 +5,12 @@ using FiniteElementContainers
 using StaticArrays
 using Test
 
-@testset "Physics.jl" begin
+@testset "Physics" begin
   include("TestPhysics.jl")
+end
+
+@testset "Simulations" begin
+  include("TestSimulations.jl")
 end
 
 @testset "Aqua.jl" begin
