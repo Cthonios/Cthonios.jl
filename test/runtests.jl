@@ -2,6 +2,8 @@ using Aqua
 using ConstitutiveModels
 using Cthonios
 using FiniteElementContainers
+using ForwardDiff
+using LinearAlgebra
 using StaticArrays
 using Test
 

@@ -5,6 +5,25 @@ function update_preconditioner! end
 LinearAlgebra.ldiv!(y, P::AbstractPreconditioner, x) = ldiv!(y, P.preconditioner, x)
 timer(P::T) where T <: AbstractPreconditioner = P.timer
 
+struct NoPreconditioner <: AbstractPreconditioner
+  timer::TimerOutput
+end
+
+function NoPreconditioner(obj, timer)
+  return NoPreconditioner(timer)
+end
+
+function LinearAlgebra.ldiv!(y, P::NoPreconditioner, v)
+  @timeit timer(P) "NoPreconditioner - ldiv!" begin
+    ldiv!(y, I, v)
+  end
+  return nothing
+end
+
+function update_preconditioner!(P::NoPreconditioner, obj, Uu, p; verbose=false)
+  return nothing
+end
+
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)

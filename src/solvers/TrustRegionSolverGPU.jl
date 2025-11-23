@@ -214,7 +214,7 @@ function TrustRegionSolverGPU(
     verbose = true
 )
     @timeit timer "TrustRegionSolver - setup" begin
-        p = objective_cache.parameters
+        # p = objective_cache.parameters
         cauchy_point = CauchyPoint(
             create_unknowns(objective_cache), 
             timer
