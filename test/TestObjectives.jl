@@ -1,7 +1,3 @@
-struct MyBadObjective{F} <: Cthonios.AbstractObjective{F}
-    func::F
-end
-
 function sim_helper()
     mesh_file = dirname(Base.source_dir()) * "/examples/column_buckle/mesh.g"
     output_file = splitext(mesh_file)[1] * "-output.exo"

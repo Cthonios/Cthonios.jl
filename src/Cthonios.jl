@@ -41,6 +41,7 @@ export @SVector
 
 # Cthonios exports
 export ContactPair
+# export NewtonSolver # name conflict with FiniteElementContainers
 export SingleDomainSimulation
 export SolidMechanics
 export TrustRegionSolver

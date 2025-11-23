@@ -2,15 +2,16 @@ Base.@kwdef struct NewtonSolverSettings
     max_iters::Int = 50
     rel_tol::Float64 = 1e-5
     abs_tol::Float64 = 1e-6
+    verbose::Bool = true
 end
 
-struct NewtonSolver{O, S}
+struct NewtonSolver{O}
     objective_cache::O
-    settings::S
+    settings::NewtonSolverSettings
 end
 
-function NewtonSolver(objective_cache)
-    return NewtonSolver(objective_cache, NewtonSolverSettings())
+function NewtonSolver(objective_cache; kwargs...)
+    return NewtonSolver(objective_cache, NewtonSolverSettings(; kwargs...))
 end 
 
 function solve!(solver::NewtonSolver, Uu, p)
@@ -23,9 +24,11 @@ function solve!(solver::NewtonSolver, Uu, p)
     end
     n = 1
 
-    @info "=============================================================================================================================="
-    @info "Iteration |R|          |R| / |R0|   |dUu|        Reference"
-    @info "=============================================================================================================================="
+    if solver.settings.verbose
+        @info "=============================================================================================================================="
+        @info "Iteration |R|          |R| / |R0|   |dUu|        Reference"
+        @info "=============================================================================================================================="
+    end
 
     while n <= solver.settings.max_iters
         R = gradient(objective_cache, Uu, p)
@@ -35,12 +38,18 @@ function solve!(solver::NewtonSolver, Uu, p)
         # copyto!(solver.solution, -K \ R)
         res_norm = norm(R)
         rel_res_norm = res_norm / res_norm0
-        str = @sprintf "%8d  %1.6e %1.6e %1.6e %1.6e" n res_norm rel_res_norm norm(dUu) res_norm0
-        @info str
+
+        if solver.settings.verbose
+            str = @sprintf "%8d  %1.6e %1.6e %1.6e %1.6e" n res_norm rel_res_norm norm(dUu) res_norm0
+            @info str
+        end
+
         if rel_res_norm < solver.settings.rel_tol ||
             res_norm < 1.e-8
             Uu .+= dUu
-            @show "Converged"
+            if solver.settings.verbose
+                @info "Converged"
+            end
             return nothing
         end
         # objective.solution .+= dUu

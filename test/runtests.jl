@@ -17,6 +17,10 @@ end
   include("TestSimulations.jl")
 end
 
+@testset "Solvers" begin
+  include("TestSolvers.jl")
+end
+
 @testset "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)
 end
