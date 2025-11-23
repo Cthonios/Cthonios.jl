@@ -58,6 +58,55 @@ function test_newton_solver()
     test_newton_solver_func_2()
 end
 
+struct MyDummyObjectiveCache3
+end
+
+function Cthonios.value(::MyDummyObjectiveCache3, x, p)
+    p = 1.
+    return x[1] * (x[1] + 1) + 
+           0.3 * x[2] * (x[2] - 0.2) + 
+           0.2 * x[3] * (x[3] - 0.5) + 
+           x[1] * x[1] * x[2] * x[2] + 
+           p * x[1] * x[2] + 
+           sin(x[1])
+
+end
+
+function Cthonios.gradient(o::MyDummyObjectiveCache3, x, p)
+    return ForwardDiff.gradient(z -> Cthonios.value(o, z, p), x)
+end
+
+function Cthonios.hessian(o::MyDummyObjectiveCache3, x, p)
+    return ForwardDiff.hessian(z -> Cthonios.value(o, z, p), x)
+end
+
+function Cthonios.hvp(o::MyDummyObjectiveCache3, x, v, p)
+    return Cthonios.hessian(o, x, p) * v
+end
+
+function FiniteElementContainers.create_unknowns(::MyDummyObjectiveCache3)
+    return zeros(3)
+end
+
+function test_trust_region_solver(verbose)
+    objective_cache = MyDummyObjectiveCache3()
+    solver = Cthonios.TrustRegionSolverGPU(
+        objective_cache;
+        preconditioner=Cthonios.NoPreconditioner,
+        verbose=verbose
+    )
+    x = [2., 7., -1.]
+    p = nothing
+    Cthonios.solve!(solver, x, p)
+    g = Cthonios.gradient(objective_cache, x, p)
+    @test isapprox(norm(g), 0.; rtol=1.e7)
+end
+
 @testset "Newton solver" begin
     test_newton_solver()
+end
+
+@testset "Trust region solver" begin
+    test_trust_region_solver(false)
+    test_trust_region_solver(true)
 end
