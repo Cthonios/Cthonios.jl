@@ -14,10 +14,6 @@ abstract type AbstractObjectiveCache{
     RV <: AbstractArray{RT, 1}
 } end
 
-function setup_cache(::Type{O}, sim) where O <: AbstractObjective
-    @assert false "Need to define _cache_type for type $O"
-end
-
 function FiniteElementContainers.create_field(o::AbstractObjectiveCache)
     return FiniteElementContainers.create_field(o.assembler)
 end
