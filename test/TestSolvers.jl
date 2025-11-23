@@ -18,6 +18,15 @@ function test_newton_solver_func_1(verbose)
     @test x[1] ≈ 2.094551481
 end
 
+function test_newton_solver_func_1_bad_guess()
+    objective_cache = MyDummyObjectiveCache1()
+    solver = Cthonios.NewtonSolver(objective_cache; verbose=false)
+    x = zeros(1)
+    p = nothing
+    @test_throws ErrorException Cthonios.solve!(solver, x, p)
+    # @test x[1] ≈ 2.094551481
+end
+
 struct MyDummyObjectiveCache2
 end
 
@@ -32,9 +41,9 @@ function Cthonios.hessian(::MyDummyObjectiveCache2, x, p)
     ]
 end
 
-function test_newton_solver_func_2(verbose)
+function test_newton_solver_func_2()
     objective_cache = MyDummyObjectiveCache2()
-    solver = Cthonios.NewtonSolver(objective_cache; verbose=verbose)
+    solver = Cthonios.NewtonSolver(objective_cache)
     x = ones(2)
     p = nothing
     Cthonios.solve!(solver, x, p)
@@ -45,8 +54,8 @@ end
 function test_newton_solver()
     test_newton_solver_func_1(false)
     test_newton_solver_func_1(true)
-    test_newton_solver_func_2(false)
-    test_newton_solver_func_2(true)
+    test_newton_solver_func_1_bad_guess()
+    test_newton_solver_func_2()
 end
 
 @testset "Newton solver" begin
