@@ -30,7 +30,6 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 export DirichletBC
 export PlaneStrain
 export QuasiStaticObjective
-export QuasiStaticObjectiveCache
 export ThreeDimensional
 export TimerOutput
 export TimeStepper

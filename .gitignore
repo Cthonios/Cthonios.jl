@@ -3,12 +3,14 @@ Manifest.toml
 port7681.jrnl
 /docs/Manifest.toml
 /docs/build/
+/venv
 *.aprepro
 *.csm
 *_temp.csm
 *.e
 *.eto
 *.exo
+*.gif
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
