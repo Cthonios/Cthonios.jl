@@ -30,13 +30,13 @@ struct ContactPairCache{
 end
 
 function ContactPairCache(
-    mesh, contact_pair::ContactPair;
+    mesh, dof, var_name, contact_pair::ContactPair;
     max_neighbors=1,
     q_order=1,
     self_contact=false
 )
-    side_a = ContactSurface(mesh, contact_pair.side_a, q_order)
-    side_b = ContactSurface(mesh, contact_pair.side_b, q_order)
+    side_a = ContactSurface(mesh, dof, var_name, contact_pair.side_a, q_order)
+    side_b = ContactSurface(mesh, dof, var_name, contact_pair.side_b, q_order)
     return ContactPairCache(
         side_a, side_b;
         max_neighbors=max_neighbors,

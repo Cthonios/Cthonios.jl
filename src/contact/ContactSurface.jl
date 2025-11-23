@@ -9,8 +9,8 @@ struct ContactSurface{
     sides::IV
 end
 
-function ContactSurface(mesh, sset_name::Symbol, q_order::Int)
-    bk = BCBookKeeping(mesh, sset_name)
+function ContactSurface(mesh, dof, var_name, sset_name::Symbol, q_order::Int)
+    bk = BCBookKeeping(mesh, dof, var_name; sset_name=sset_name)
 
     # ensure there's only one block in each surface
     # and that the element types are equivalent

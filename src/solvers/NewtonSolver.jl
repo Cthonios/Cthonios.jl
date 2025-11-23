@@ -16,12 +16,13 @@ end
 
 function solve!(solver::NewtonSolver, Uu, p)
     objective_cache = solver.objective_cache
-    R = gradient(objective_cache, Uu, p)
-    res_norm0 = norm(R)
+    # R = gradient(objective_cache, Uu, p)
+    # res_norm0 = norm(R)
 
-    if res_norm0 == 0.0
-        res_norm0 = 1.
-    end
+    # if res_norm0 == 0.0
+    #     res_norm0 = 1.
+    # end
+    res_norm0 = Inf
     n = 1
 
     if solver.settings.verbose
@@ -32,6 +33,11 @@ function solve!(solver::NewtonSolver, Uu, p)
 
     while n <= solver.settings.max_iters
         R = gradient(objective_cache, Uu, p)
+
+        if n == 1
+            res_norm0 = norm(R)
+        end
+
         K = hessian(objective_cache, Uu, p)
         dUu = -K \ R
         # @show norm(R) norm(R) / res_norm0 norm(dUu) 
@@ -60,5 +66,4 @@ function solve!(solver::NewtonSolver, Uu, p)
     end
 
     error("Newton solver failed to converge")
-    return nothing
 end
