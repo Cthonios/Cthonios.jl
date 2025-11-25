@@ -7,6 +7,10 @@ using LinearAlgebra
 using StaticArrays
 using Test
 
+@testset "CLI" begin
+  include("TestCLI.jl")
+end
+
 @testset "Contact" begin
   include("TestContact.jl")
 end
