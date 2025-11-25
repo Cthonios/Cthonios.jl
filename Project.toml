@@ -28,12 +28,14 @@ YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 
 [extensions]
-CthoniosAMDGPUExt = "AMDGPU"
+CthoniosAMDGPUExt = ["AMDGPU", "Adapt"]
 
 [compat]
-AMDGPU = "1"
+AMDGPU = "2"
+Adapt = "4"
 Aqua = "0.8"
 ArgParse = "1"
 Arpack = "0.5"

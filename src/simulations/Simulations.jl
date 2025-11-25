@@ -30,7 +30,7 @@ function run!(objective_cache, solver, sim)
     n = 2
     try
         while FiniteElementContainers.current_time(p.times) < time_end - 1e3 * eps(time_end)
-            step!(objective_cache, solver; verbose=solver.verbose)
+            step!(objective_cache, solver; verbose=solver.settings.verbose)
             post_process(pp, objective_cache, n)
             n = n + 1
         end

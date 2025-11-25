@@ -1,12 +1,12 @@
 # TODO
 # make not global ASAP
-negCurveString = "neg curve"
-boundaryString = "boundary"
-interiorString = "interior"
+const negCurveString = "neg curve"
+const boundaryString = "boundary"
+const interiorString = "interior"
 
 
-struct CauchyPoint{C <: AbstractArray{<:Number, 1}}
-    cauchy_point::C
+struct CauchyPoint{RV <: AbstractArray{<:Number, 1}}
+    cauchy_point::RV
     timer::TimerOutput
 end
 
@@ -42,9 +42,9 @@ function calculate!(
     end
 end
 
-struct DogLegStep{R <: AbstractArray{<:Number, 1}}
-    d::R
-    result::R
+struct DogLegStep{RV <: AbstractArray{<:Number, 1}}
+    d::RV
+    result::RV
     timer::TimerOutput
 end
 
@@ -91,13 +91,13 @@ function solve!(dogleg::DogLegStep, cp, newton_p, tr_size, mat_mul)
     return dogleg.result
 end
 
-struct TrustRegionModelProblem{V}
-    cp::V
-    d::V
-    Pr::V
-    z::V
-    zNp1::V
-    zOut::V
+struct TrustRegionModelProblem{RV <: AbstractArray{<:Number, 1}}
+    cp::RV
+    d::RV
+    Pr::RV
+    z::RV
+    zNp1::RV
+    zOut::RV
     timer::TimerOutput
 end
 
@@ -243,6 +243,7 @@ Base.@kwdef mutable struct TrustRegionSolverSettings #<: NonlinearSolverSettings
     use_incremental_objective::Bool               = false
     debug_info::Bool                              = true
     over_iter::Int64                              = 0
+    verbose::Bool                                 = true
 end
 
 function Base.show(io::IO, settings::TrustRegionSolverSettings)
@@ -258,33 +259,30 @@ function is_on_boundary(stepType)
 end
 
 struct TrustRegionSolver{
-    V,
+    RV <: AbstractArray{<:Number, 1},
     ObjectiveCache,
     Precond,
-    Settings,
     WS <: Union{Nothing, WarmStart}
 }
-    cauchy_point::CauchyPoint{V}
-    dogleg_step::DogLegStep
-    model_problem::TrustRegionModelProblem{V}
+    cauchy_point::CauchyPoint{RV}
+    dogleg_step::DogLegStep{RV}
+    model_problem::TrustRegionModelProblem{RV}
     objective_cache::ObjectiveCache
     preconditioner::Precond
-    settings::Settings
+    settings::TrustRegionSolverSettings
     timer::TimerOutput
-    verbose::Bool
     warm_start::WS
 end
 
 function TrustRegionSolver(
     objective_cache;
     preconditioner = CholeskyPreconditioner,
-    settings = TrustRegionSolverSettings(),
     timer = TimerOutput(),
     use_warm_start = false,
-    verbose = true
+    kwargs...
 )
     @timeit timer "TrustRegionSolver - setup" begin
-        # p = objective_cache.parameters
+        settings = TrustRegionSolverSettings(; kwargs...)
         cauchy_point = CauchyPoint(
             create_unknowns(objective_cache), 
             timer
@@ -318,7 +316,7 @@ function TrustRegionSolver(
     return TrustRegionSolver(
         cauchy_point, dogleg_step, model_problem,
         objective_cache, precond, 
-        settings, timer, verbose, warm_start
+        settings, timer, warm_start
     )
 end
 
@@ -339,7 +337,7 @@ function is_converged(solver::TrustRegionSolver, objective, x, realO, modelO, re
                 true
             )
         
-            if solver.verbose
+            if solver.settings.verbose
                 @info "Converged"
                 println("") # a bit of output formatting
             end
@@ -355,7 +353,7 @@ function is_converged(solver::TrustRegionSolver, objective, x, realO, modelO, re
 end
 
 function print_banner(solver::TrustRegionSolver)
-    if solver.verbose
+    if solver.settings.verbose
         @info "=============================================================================================================================="
         @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
         @info "=============================================================================================================================="
@@ -377,7 +375,7 @@ function print_min_banner(
         will_accept = false
     end
 
-    if solver.verbose
+    if solver.settings.verbose
         str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
         @info str
     end
@@ -400,7 +398,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                 solver.warm_start, solver.objective_cache, 
                 Uu, p; 
                 # P=P,
-                verbose=solver.verbose
+                verbose=solver.settings.verbose
             )
         end
 
@@ -409,7 +407,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         g = gradient(solver.objective_cache, Uu, p)
         g_norm = norm(g)
 
-        if solver.verbose
+        if solver.settings.verbose
             @info @sprintf "Initial objective = %1.6e" sum(o)
             @info @sprintf "Initial residual  = %1.6e" g_norm
         end
@@ -547,7 +545,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                 if cg_iters >= settings.max_cg_iters || 
                     cumulative_cg_iters >= settings.max_cumulative_cg_iters
                     # objective.update_precond(x)
-                    update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p; verbose=solver.verbose)
+                    update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p; verbose=solver.settings.verbose)
                     P = solver.preconditioner
                     cumulative_cg_iters = 0
                 end

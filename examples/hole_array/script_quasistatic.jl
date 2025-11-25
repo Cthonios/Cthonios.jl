@@ -6,7 +6,7 @@ mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
-times = TimeStepper(0., 1., 40)
+times = TimeStepper(0., 1., 120)
 
 # Physics
 physics = (;
@@ -43,7 +43,7 @@ objective_cache = Cthonios.setup_cache(objective, sim)
 
 qoi = Cthonios.ScalarQOIExtractor(objective_cache, energy, sum, sum)
 
-solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
+solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=false)
 # solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
 # solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
 Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
