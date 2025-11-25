@@ -90,7 +90,7 @@ end
 
 function test_trust_region_solver(verbose)
     objective_cache = MyDummyObjectiveCache3()
-    solver = Cthonios.TrustRegionSolverGPU(
+    solver = Cthonios.TrustRegionSolver(
         objective_cache;
         preconditioner=Cthonios.NoPreconditioner,
         verbose=verbose

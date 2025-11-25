@@ -43,7 +43,7 @@ objective_cache = Cthonios.setup_cache(objective, sim)
 
 qoi = Cthonios.ScalarQOIExtractor(objective_cache, energy, sum, sum)
 
-solver = Cthonios.TrustRegionSolverGPU(objective_cache; use_warm_start=true)
+solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
 # solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
 # solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
 Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
