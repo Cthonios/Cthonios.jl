@@ -40,11 +40,11 @@ struct TrustRegionSolver{
   U <: AbstractVector,
   W,
   T <: TimerOutput,
-  F <: NodalField,
+  F <: H1Field,
   S <: TrustRegionSolverSettings
-} <: AbstractNonlinearSolver{L, O, U, W, T}
+} #<: AbstractNonlinearSolver{L, O, U, W, T}
   preconditioner::L
-  objective::O
+  objective_cache::O
   ΔUu::U
   warm_start::W
   timer::T
@@ -59,6 +59,7 @@ struct TrustRegionSolver{
   y_scratch_3::U
   y_scratch_4::U
   use_warm_start::Bool
+  verbose::Bool
   settings::S
 end
 
@@ -67,28 +68,34 @@ $(TYPEDSIGNATURES)
 TODO figure out which scratch arrays can be nixed
 """
 function TrustRegionSolver(
-  objective::AbstractObjective, p, timer; 
+  objective; 
   preconditioner=CholeskyPreconditioner,
   use_warm_start=true,
+  verbose=true,
   settings=TrustRegionSolverSettings()
 )
+  timer = TimerOutput()
+
   @timeit timer "TrustRegionSolver - setup" begin
-    domain = objective.domain
+    # domain = objective.domain
     # settings       = TrustRegionSolverSettings() # TODO add non-defaults
     # TODO eventually write a custom linear solver for this one
-    precond        = preconditioner(objective, p, timer)
-    ΔUu            = create_unknowns(domain)
-    warm_start     = WarmStart(objective, p)
+    p              = objective.parameters
+    precond        = preconditioner(objective, timer)
+    ΔUu            = create_unknowns(objective)
+    # TODO
+    warm_start     = WarmStart(objective, timer)
+    # warm_start     = nothing
     o              = zeros(1)
-    g              = create_fields(domain) # gradient
-    Hv             = create_fields(domain) # hessian-vector product
-    cauchy_point   = create_unknowns(domain)
-    q_newton_point = create_unknowns(domain)
-    d              = create_unknowns(domain)
-    y_scratch_1    = create_unknowns(domain)
-    y_scratch_2    = create_unknowns(domain)
-    y_scratch_3    = create_unknowns(domain)
-    y_scratch_4    = create_unknowns(domain)
+    g              = create_field(objective) # gradient
+    Hv             = create_field(objective) # hessian-vector product
+    cauchy_point   = create_unknowns(objective)
+    q_newton_point = create_unknowns(objective)
+    d              = create_unknowns(objective)
+    y_scratch_1    = create_unknowns(objective)
+    y_scratch_2    = create_unknowns(objective)
+    y_scratch_3    = create_unknowns(objective)
+    y_scratch_4    = create_unknowns(objective)
   end
   return TrustRegionSolver(
     precond, objective,
@@ -99,13 +106,14 @@ function TrustRegionSolver(
     cauchy_point, q_newton_point, d,
     y_scratch_1, y_scratch_2, y_scratch_3, y_scratch_4,
     use_warm_start,
+    verbose,
     settings
   )
 end
 
 function TrustRegionSolver(
   inputs::Dict{Symbol, Any},
-  objective::AbstractObjective, p, timer
+  objective::AbstractObjectiveCache
 )
   preconditioner = eval(Symbol(inputs[:preconditioner][:type]))
   warm_start = inputs[Symbol("warm start")]
@@ -117,7 +125,7 @@ function TrustRegionSolver(
     end
   end
 
-  return TrustRegionSolver(objective, p, timer; preconditioner=preconditioner, use_warm_start=warm_start, settings=settings)
+  return TrustRegionSolver(objective; preconditioner=preconditioner, use_warm_start=warm_start, settings=settings)
 end
 
 timer(solver::TrustRegionSolver) = solver.timer
@@ -126,12 +134,13 @@ negCurveString = "neg curve"
 boundaryString = "boundary"
 interiorString = "interior"
 
-function is_converged(objective, x, realO, modelO, realRes, modelRes, cgIters, trSize, settings)
+function is_converged(solver::TrustRegionSolver, objective, x, realO, modelO, realRes, modelRes, cgIters, trSize, settings)
   gg = dot(realRes, realRes)
   if gg < settings.tol^2
     modelResNorm = norm(modelRes)
     realResNorm = sqrt(gg)
     print_min_banner(
+      solver,
       realO, modelO,
       realResNorm,
       modelResNorm,
@@ -141,12 +150,17 @@ function is_converged(objective, x, realO, modelO, realRes, modelRes, cgIters, t
       true,
       settings
     )
-    @info "Converged"
+
+    if solver.verbose
+      @info "Converged"
+      println("") # a bit of output formatting
+    end
+
     if settings.check_stability
       @assert false "hook this up"
       # objective.check_stability(x)
     end
-    println("") # a bit of output formatting
+    
         
     return true
   end
@@ -180,13 +194,16 @@ function preconditioned_project_to_boundary(z, d, trSize, zz, mult_by_approx_hes
   return z + tau * d
 end
 
-function print_banner()
-  @info "=============================================================================================================================="
-  @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
-  @info "=============================================================================================================================="
+function print_banner(solver::TrustRegionSolver)
+  if solver.verbose
+    @info "=============================================================================================================================="
+    @info "Objective        Model Objective  Residual        Model Residual      CG    TR size"
+    @info "=============================================================================================================================="
+  end
 end
 
 function print_min_banner(
+  solver::TrustRegionSolver,
   objective, modelObjective, res, modelRes, 
   cgIters, trSize, onBoundary, willAccept, settings
 )
@@ -199,8 +216,11 @@ function print_min_banner(
   else
     will_accept = false
   end
-  str = @sprintf "% 1.6e    % 1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
-  @info str
+
+  if solver.verbose
+    str = @sprintf "%1.6e    %1.6e    %1.6e    %1.6e    %6i    %1.6e    %s    %s" objective modelObjective res modelRes cgIters trSize onBoundary will_accept
+    @info str
+  end
 end
 
 function project_to_boundary_with_coefs(z, d, trSize, zz, zd, dd)
@@ -312,7 +332,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
   @timeit timer(solver) "TrustRegionSolver - solve!" begin
     if solver.use_warm_start
       @timeit timer(solver) "TrustRegionSolver - warm start" begin
-        solve!(solver.warm_start, solver.preconditioner, solver.objective, Uu, p)
+        # solve!(solver.warm_start, solver.preconditioner, solver.objective_cache, Uu, p)
+        solve!(solver.warm_start, solver.objective_cache, Uu, p; verbose=solver.verbose)
       end
     end
 
@@ -325,47 +346,53 @@ function solve!(solver::TrustRegionSolver, Uu, p)
     x = Uu
 
     # saving initial objective and gradient
-    o = objective(solver.objective, x, p)
-    g = gradient(solver.objective, x, p)
+    o = value(solver.objective_cache, x, p)
+    g = gradient(solver.objective_cache, x, p)
     g_norm = norm(g)
 
-    @info @sprintf "Initial objective = %1.6e" o[1]
-    @info @sprintf "Initial residual  = %1.6e" g_norm
+    if solver.verbose
+      @info @sprintf "Initial objective = %1.6e" o[1]
+      @info @sprintf "Initial residual  = %1.6e" g_norm
+    end
 
     # preconditioner
-    update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+    update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p)
     P = solver.preconditioner.preconditioner
     # this could potentially return an unstable solution
-    if is_converged(objective, x, 0.0, 0.0, g, g, 0, tr_size, settings)
+    if is_converged(solver, value, x, 0.0, 0.0, g, g, 0, tr_size, settings)
       # if callback
       #   # callback(x, objective)
       #   @assert false
       # end
       # return x, True
-      @show "converged"
+      if solver.verbose
+        @show "converged"
+      end
       return nothing
     end
 
     cumulativeCgIters=0
-    print_banner()
+    print_banner(solver)
     for i in 1:settings.max_trust_iters
       if i > 1 && i % 25 == 0
-        print_banner()
+        print_banner(solver)
       end
 
       # setup some local closures to this iteration
       if settings.use_incremental_objective
         @assert false "not implemented yet"
       else
-        increment_objective = d -> objective(solver.objective, x + d, p) - o
+        increment_objective = d -> value(solver.objective_cache, x + d, p) - o
       end
 
-      hess_vec_func = v -> hvp(solver.objective, x, p, v)
+      # hess_vec_func = v -> hvp(solver.objective_cache, x, p, v)
+      hess_vec_func = v -> hvp(solver.objective_cache, x, v, p)
+
       # TODO need to fix below
-      # K = hessian!(solver.preconditioner.assembler, solver.objective, x, p)
+      # K = hessian!(solver.preconditioner.assembler, solver.objective_cache, x, p)
       # mult_by_approx_hessian = v -> (K + 0.0 * I) * v
       # mult_by_approx_hessian = v -> K \ v
-      # mult_by_approx_hessian = v -> hvp(solver.objective, x, p, v)
+      # mult_by_approx_hessian = v -> hvp(solver.objective_cache, x, p, v)
       mult_by_approx_hessian = v -> v
 
       # calculate cauchy point
@@ -417,10 +444,11 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         
         y = x + d
         realObjective = increment_objective(d)
-        gy = gradient(solver.objective, y, p)
+        gy = gradient(solver.objective_cache, y, p)
         
         if is_converged(
-          solver.objective, y, realObjective, modelObjective,
+          solver,
+          solver.objective_cache, y, realObjective, modelObjective,
           gy, g + Jd, cgIters, trSizeUsed, settings
         )
           # if callback
@@ -457,6 +485,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         willAccept = rho >= settings.η_1 || 
                      (rho >= -0 && realResNorm <= g_norm)
         print_min_banner(
+          solver,
           realObjective, modelObjective,
           realResNorm, modelResNorm,
           cgIters, trSizeUsed, stepType,
@@ -467,7 +496,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         if willAccept
           x = y
           g = gy
-          o = objective(solver.objective, x, p)
+          o = value(solver.objective_cache, x, p)
           g_norm = realResNorm
           triedNewPrecond = false
           happyAboutTrSize = true
@@ -483,7 +512,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
         if cgIters >= settings.max_cg_iters || cumulativeCgIters >= settings.max_cumulative_cg_iters
           # objective.update_precond(x)
-          update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+          update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p; verbose=solver.verbose)
           P = solver.preconditioner.preconditioner
           cumulativeCgIters=0
         end
@@ -494,7 +523,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
           if !triedNewPrecond
             @info "The trust region is too small, updating precond and trying again."
-            update_preconditioner!(solver.preconditioner, solver.objective, x, p)
+            update_preconditioner!(solver.preconditioner, solver.objective_cache, x, p)
             P = solver.preconditioner.preconditioner
             cumulativeCgIters = 0
             triedNewPrecond = true
