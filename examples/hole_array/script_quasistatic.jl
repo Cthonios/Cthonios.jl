@@ -41,9 +41,19 @@ sim = SingleDomainSimulation(
 objective = Cthonios.QuasiStaticObjective()
 objective_cache = Cthonios.setup_cache(objective, sim)
 
-qoi = Cthonios.ScalarQOIExtractor(objective_cache, energy, sum, sum)
+qoi = Cthonios.QOIExtractor(
+    objective_cache, pk1_stress, sum,
+    # L2QuadratureField, Tensor{2, 3, Float64, 9};
+    # objective_cache, helmholtz_free_energy, sum,
+    L2QuadratureField, Float64;
+    component_extractor = (1, 1),
+    reduction_2 = sum
+    # H1Field, Float64
+)
+Cthonios.value(qoi)
 
-solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=false)
-# solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
-# solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
+# solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=false)
+solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
+# # solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
 Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
+Cthonios.value(qoi)

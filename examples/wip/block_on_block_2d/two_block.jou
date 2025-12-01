@@ -1,0 +1,29 @@
+reset
+
+create surface rectangle width 1 zplane
+create surface rectangle width 1 zplane
+move surface 2 y {1. + 1.e-6}
+
+surface all scheme trimesh
+mesh surface all
+
+block 1 add surface 1
+block 2 add surface 2
+
+block 1 2 element type tri3
+block 1 name "bottom"
+block 2 name "top"
+
+sideset 1 add curve 3
+sideset 1 name "bottom"
+
+sideset 2 add curve 5
+sideset 2 name "top"
+
+sideset 3 add curve 1
+sideset 3 name "interface_bottom"
+
+sideset 4 add curve 7
+sideset 4 name "interface_top"
+
+export genesis "mesh_tri3.exo" overwrite
