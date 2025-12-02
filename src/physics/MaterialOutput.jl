@@ -9,7 +9,7 @@ struct StandardMaterialOutput{
 end
 
 @inline function standard_material_output(
-    physics, interps, u_el, x_el, state_old_q, props_el, t, dt
+    physics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -21,15 +21,15 @@ end
 
     # constitutive
     θ = 0.0 # TODO
-    ψ_q, state_new_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    ψ_q = ConstitutiveModels.helmholtz_free_energy(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
 
-    σ_q, _ = ConstitutiveModels.cauchy_stress(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    σ_q = ConstitutiveModels.cauchy_stress(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )
     σ_q = σ_q |> symmetric
-    return StandardMaterialOutput(ψ_q, σ_q, ∇u_q), state_new_q
+    return StandardMaterialOutput(ψ_q, σ_q, ∇u_q)
 end
 
 function update_material_output!(

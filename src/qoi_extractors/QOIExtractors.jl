@@ -66,13 +66,13 @@ function QOIExtractor(
 
     # TODO it won't always be a mat func
     if component_extractor !== nothing
-        function mat_func(x1, x2, x3, x4, x5, x6, x7, x8)
-            val, state = general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8)
-            return val[component_extractor...], state
+        function mat_func(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+            val = general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+            return val[component_extractor...]
         end
     else
-        mat_func = (x1, x2, x3, x4, x5, x6, x7, x8) -> 
-            general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8)
+        mat_func = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) -> 
+            general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
     end
 
     return QOIExtractor(

@@ -1,12 +1,13 @@
 using ConstitutiveModels
 using Cthonios
+using FiniteElementContainers
 
 # file management
 mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
-times = TimeStepper(0., 1., 120)
+times = TimeStepper(0., 1., 40)
 
 # Physics
 physics = (;
@@ -45,7 +46,7 @@ qoi = Cthonios.QOIExtractor(
     objective_cache, pk1_stress, sum,
     # L2QuadratureField, Tensor{2, 3, Float64, 9};
     # objective_cache, helmholtz_free_energy, sum,
-    L2QuadratureField, Float64;
+    FiniteElementContainers.L2QuadratureField, Float64;
     component_extractor = (1, 1),
     reduction_2 = sum
     # H1Field, Float64
