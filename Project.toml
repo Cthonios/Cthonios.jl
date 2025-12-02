@@ -1,7 +1,7 @@
 name = "Cthonios"
 uuid = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
 authors = ["Craig M. Hamel <cmhamel32@gmail.com> and contributors"]
-version = "0.3.1"
+version = "0.3.2"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -43,7 +43,7 @@ ConstitutiveModels = "0.2"
 DocStringExtensions = "0.9"
 Enzyme = "0.13"
 Exodus = "0.14"
-FiniteElementContainers = "0.9"
+FiniteElementContainers = "0.10"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"
 Krylov = "0.9"

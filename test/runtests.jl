@@ -23,6 +23,10 @@ end
   include("TestPhysics.jl")
 end
 
+@testset "PostProcessors" begin
+  include("TestPostProcessors.jl")
+end
+
 @testset "Simulations" begin
   include("TestSimulations.jl")
 end

@@ -25,7 +25,8 @@ function setup_function(fspace::FunctionSpace, ::SolidMechanics)
 end
 
 @inline function FiniteElementContainers.energy(
-    physics::SolidMechanics, interps, u_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
+
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -36,16 +37,16 @@ end
 
     # constitutive
     θ = 0.0 # TODO
-    ψ_q, state_new_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    ψ_q = ConstitutiveModels.helmholtz_free_energy(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
-    return JxW * ψ_q, state_new_q
+    return JxW * ψ_q
 end
 
 # NOTE this does not integrate things
 @inline function general_material_qoi(
     func,
-    physics::SolidMechanics, interps, u_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -56,14 +57,14 @@ end
 
     # constitutive
     θ = 0.0 # TODO
-    ψ_q, state_new_q = func(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    ψ_q = func(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
-    return ψ_q, state_new_q
+    return ψ_q
 end
 
 @inline function FiniteElementContainers.residual(
-    physics::SolidMechanics, interps, u_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -74,18 +75,18 @@ end
 
     # constitutive
     θ = 0.0 # TODO
-    P_q, state_new_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    P_q = ConstitutiveModels.pk1_stress(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )    
     # turn into voigt notation
     P_q = extract_stress(physics.formulation, P_q)
     G_q = discrete_gradient(physics.formulation, ∇N_X)
     f_q = G_q * P_q
-    return JxW * f_q[:], state_new_q
+    return JxW * f_q[:]
 end
 
 @inline function FiniteElementContainers.stiffness(  
-    physics::SolidMechanics, interps, u_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -96,17 +97,18 @@ end
 
     # constitutive
     θ = 0. # TODO
-    A_q, state_new_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q
+    A_q = ConstitutiveModels.material_tangent(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
     )
     # turn into voigt notation
     K_q = extract_stiffness(physics.formulation, A_q)
     G_q = discrete_gradient(physics.formulation, ∇N_X)
-    return JxW * G_q * K_q * G_q', state_new_q
+    return JxW * G_q * K_q * G_q'
 end
 
 @inline function _kinetic_energy(
-    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
+
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
@@ -118,15 +120,15 @@ end
 end
 
 @inline function kinetic_energy(
-    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
 )
-    return _kinetic_energy(physics, interps, v_el, x_el, state_old_q, props_el, t, dt), state_old_q
+    return _kinetic_energy(physics, interps, v_el, x_el, state_old_q, props_el, t, dt)
 end
 
 function mass(
-    physics::SolidMechanics, interps, v_el, x_el, state_old_q, props_el, t, dt
+    physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
 )
     return ForwardDiff.hessian(z -> _kinetic_energy(
-        physics, interps, z, x_el, state_old_q, props_el, t, dt
-    ), v_el), state_old_q
+        physics, interps, x_el, t, dt, z, u_el_old, state_old_q, state_new_q, props_el
+    ), v_el)
 end
