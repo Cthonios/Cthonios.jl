@@ -19,6 +19,10 @@ end
   include("TestObjectives.jl")
 end
 
+@testset "Patch Tests" begin
+  include("TestPatchTests.jl")
+end
+
 @testset "Physics" begin
   include("TestPhysics.jl")
 end

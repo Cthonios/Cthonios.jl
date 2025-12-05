@@ -44,6 +44,7 @@ function _setup_simulation_common(
     sim::AbstractSimulation,
     output_file;
     # return_post_processor = true,
+    q_degree = 2,
     use_condensed = false
 )
     # handle keywords
@@ -56,7 +57,7 @@ function _setup_simulation_common(
     end
 
     mesh = UnstructuredMesh(sim.mesh_file)
-    fspace = FunctionSpace(mesh, H1Field, Lagrange)
+    fspace = FunctionSpace(mesh, H1Field, Lagrange; q_degree=q_degree)
     # fspace_q = FunctionSpace(mesh, L2QuadratureField, Lagrange)
 
     # check consistent field names across physics
