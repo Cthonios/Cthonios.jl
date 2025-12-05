@@ -36,13 +36,15 @@ end
 
 function QuasiStaticObjectiveCache(
     objective::QuasiStaticObjective,
-    sim
+    sim;
+    kwargs...
 )
     # objective = QuasiStaticObjective()
     assembler, parameters = _setup_simulation_common(
         sim, nothing; 
         # return_post_processor=false,
-        use_condensed=true
+        use_condensed=true,
+        kwargs...
     )
 
     RT = eltype(parameters.h1_coords)
@@ -71,8 +73,8 @@ function QuasiStaticObjectiveCache(
 end
 
 # cache hook
-function setup_cache(objective::O, sim) where O <: QuasiStaticObjective
-    return QuasiStaticObjectiveCache(objective, sim)
+function setup_cache(objective::O, sim; kwargs...) where O <: QuasiStaticObjective
+    return QuasiStaticObjectiveCache(objective, sim; kwargs...)
 end
 
 # objective hooks
