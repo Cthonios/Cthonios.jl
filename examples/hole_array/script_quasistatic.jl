@@ -43,18 +43,23 @@ objective = Cthonios.QuasiStaticObjective()
 objective_cache = Cthonios.setup_cache(objective, sim)
 
 qoi = Cthonios.QOIExtractor(
-    objective_cache, pk1_stress, sum,
+    # objective_cache, pk1_stress, sum,
     # L2QuadratureField, Tensor{2, 3, Float64, 9};
-    # objective_cache, helmholtz_free_energy, sum,
+    objective_cache, helmholtz_free_energy, +,
     FiniteElementContainers.L2QuadratureField, Float64;
-    component_extractor = (1, 1),
-    reduction_2 = sum
+    # component_extractor = (1, 1),
+    reduction_2 = +
     # H1Field, Float64
 )
 Cthonios.value(qoi)
 
-# solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=false)
 solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
-# # solver_type = x -> Cthonios.TrustRegionSolverGPU(x; use_warm_start=true)
 Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
-Cthonios.value(qoi)
+f = Cthonios.value(qoi)
+display(f)
+f, dfdx = Cthonios.gradient_x_and_value(qoi)
+display(f)
+f, dfdp = Cthonios.gradient_props_and_value(qoi)
+display(f)
+display(dfdx)
+display(dfdp)

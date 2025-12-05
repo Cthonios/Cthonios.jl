@@ -19,13 +19,18 @@ struct QOIExtractor{
     EvalFunc   <: Function,
     Reduction1 <: Function,
     Reduction2 <: Function,
-    Storage
+    Storage,
+    dSolution,
+    dParameters
 } <: AbstractQOIExtractor
     objective_cache::O
     func::EvalFunc
     reduction_1::Reduction1
     reduction_2::Reduction2
     storage::Storage
+    dstorage::Storage # TODO allow for no gradient as well
+    dU::dSolution
+    dp::dParameters
 end
 
 function QOIExtractor(
@@ -78,17 +83,73 @@ function QOIExtractor(
     return QOIExtractor(
         objective_cache, 
         mat_func, reduction_1, reduction_2,
-        storage
+        storage, deepcopy(storage),
+        deepcopy(objective_cache.solution),
+        deepcopy(objective_cache.parameters)
     )
 end
 
-function value_from_quadrature_field!(
+# TODO eventually cache derivatives in qoi
+function _gradient_and_value_init!(::Enzyme.ReverseMode, qoi::QOIExtractor)
+    for val in values(qoi.dstorage)
+        fill!(val, zero(eltype(val)))
+    end
+    dU = make_zero(qoi.objective_cache.solution)
+    dp = make_zero(qoi.objective_cache.parameters)
+    fill!(dU, zero(eltype(dU)))
+    Enzyme.make_zero!(dp)
+    return dU, dp
+end
+
+function _gradient_and_value!(f, df, qoi::QOIExtractor)
+    Enzyme.autodiff(
+        Reverse,
+        _value!,
+        Duplicated(f, df),
+        Duplicated(qoi.storage, qoi.dstorage),
+        Const(qoi.objective_cache.assembler),
+        Const(qoi.func),
+        Duplicated(qoi.objective_cache.solution, qoi.dU),
+        Duplicated(qoi.objective_cache.parameters, qoi.dp),
+        Const(qoi.reduction_1),
+        Const(qoi.reduction_2)
+    )
+end
+
+function gradient_props_and_value(qoi::QOIExtractor)
+    f = zeros(1)
+    df = ones(1) # seeding for reverse AD
+    _gradient_and_value_init!(Reverse, qoi)
+    _gradient_and_value!(f, df, qoi)
+    return f, qoi.dp.properties
+end
+
+function gradient_u_and_value(qoi::QOIExtractor)
+    f = zeros(1)
+    df = ones(1) # seeding for reverse AD
+    _gradient_and_value_init!(Reverse, qoi)
+    _gradient_and_value!(f, df, qoi)
+    return f, qoi.dU
+end
+
+function gradient_x_and_value(qoi::QOIExtractor)
+    f = zeros(1)
+    df = ones(1) # seeding for reverse AD
+    @time _gradient_and_value_init!(Reverse, qoi)
+    @time _gradient_and_value!(f, df, qoi)
+    return f, qoi.dp.h1_coords
+end
+
+# TODO will need to specialize for GPU
+function _value!(
     f, storage, asm, func, U, p, reduction_1, reduction_2
 )
     FiniteElementContainers.assemble_quadrature_quantity!(
         storage, asm.dof, func, U, p
     )
-    fill!(f, reduction_2(map(reduction_1, storage)))
+    f_temp = mapreduce(x -> reduce(reduction_1, x), reduction_2, values(storage))
+    fill!(f, f_temp)
+    return nothing
 end
 
 function value(qoi::QOIExtractor)
@@ -96,10 +157,6 @@ function value(qoi::QOIExtractor)
     asm = assembler(qoi.objective_cache)
     U = qoi.objective_cache.solution
     p = qoi.objective_cache.parameters
-    value_from_quadrature_field!(
-        f, qoi.storage, asm, 
-        qoi.func, U, p, 
-        qoi.reduction_1, qoi.reduction_2
-    )
+    _value!(f, qoi.storage, asm, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
     return sum(f)
 end
