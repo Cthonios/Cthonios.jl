@@ -9,7 +9,7 @@ struct NoPreconditioner <: AbstractPreconditioner
   timer::TimerOutput
 end
 
-function NoPreconditioner(obj, timer)
+function NoPreconditioner(obj, p, timer)
   return NoPreconditioner(timer)
 end
 
@@ -28,10 +28,13 @@ end
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct CholeskyPreconditioner{A, P, T} <: AbstractPreconditioner
+struct CholeskyPreconditioner{
+  A <: FiniteElementContainers.AbstractAssembler, 
+  P
+} <: AbstractPreconditioner
   assembler::A
   preconditioner::P
-  timer::T
+  timer::TimerOutput
 end
 
 function _cholesky(A::SparseMatrixCSC; shift=0.0)
@@ -45,10 +48,10 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj, timer)
+function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = assembler(obj)
-    p = parameters(obj)
+    # p = parameters(obj)
     # update_unknown_dofs!(obj.domain, asm)
     # TODO need stuff here
     # inefficiency here by creating these copies
@@ -56,10 +59,16 @@ function CholeskyPreconditioner(obj, timer)
     # H = hessian(obj, Uu, p)
     # P = cholesky(H)
     assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
+
+    # NOTE:
+    # note assembling since the stiffness is assembled
+    # once already in the Parameters init method
     H = stiffness(asm)
     P = _cholesky(H)
   end
-  return CholeskyPreconditioner(asm, P, timer)
+  return CholeskyPreconditioner{
+    typeof(asm), typeof(P)
+  }(asm, P, timer)
 end
 
 """

@@ -90,13 +90,13 @@ end
 
 function test_trust_region_solver(verbose)
     objective_cache = MyDummyObjectiveCache3()
+    x = [2., 7., -1.]
+    p = nothing
     solver = Cthonios.TrustRegionSolver(
-        objective_cache;
+        objective_cache, p;
         preconditioner=Cthonios.NoPreconditioner,
         verbose=verbose
     )
-    x = [2., 7., -1.]
-    p = nothing
     Cthonios.solve!(solver, x, p)
     g = Cthonios.gradient(objective_cache, x, p)
     @test isapprox(norm(g), 0.; rtol=1.e7)

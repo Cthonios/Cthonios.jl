@@ -1,5 +1,4 @@
 function linear_patch_test_dirichlet(mesh_file, q_degree)
-    # mesh_file = Base.source_dir() * "/mesh/patch_test_mesh_quad4.g"
     output_file = splitext(mesh_file)[1] * "-output.exo"
     times = TimeStepper(0., 1., 2)
     physics = (;
@@ -37,17 +36,18 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
         dirichlet_bcs=dirichlet_bcs
     )
     objective = Cthonios.QuasiStaticObjective()
-    objective_cache = Cthonios.setup_cache(objective, sim; q_degree=q_degree)
+    objective_cache, U, p = setup_caches(objective, sim; q_degree=q_degree)
 
     target_disp_grad = @SMatrix [
         0.1 -0.2;
         0.4 -0.1
     ]
-    coords = objective_cache.parameters.h1_coords
+    coords = p.h1_coords
     U = H1Field(target_disp_grad * coords)
+    
     # now need to update bcs to reflect what's in U
     # this is hacky but will work for now
-    for bc in objective_cache.parameters.dirichlet_bcs.bc_caches
+    for bc in p.dirichlet_bcs.bc_caches
         copyto!(bc.vals, U.data[bc.dofs])
     end
 
@@ -55,18 +55,15 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     conns = values(fspace.elem_conns)[1]
     ref_fe = values(fspace.ref_fes)[1]
 
-    copyto!(objective_cache.solution, U)
     solver = Cthonios.NewtonSolver(objective_cache)
 
-    Cthonios.solve!(solver, objective_cache.solution.data, objective_cache.parameters)
+    Cthonios.solve!(solver, U.data, p)
 
-    U = objective_cache.solution
-    grad = Cthonios.gradient(objective_cache, U.data, objective_cache.parameters)
+    grad = Cthonios.gradient(objective_cache, U.data, p)
     @test isapprox(norm(grad), zero(eltype(grad)), atol=1e-12)
 
     for e in axes(conns, 2)
         for q in 1:ReferenceFiniteElements.num_quadrature_points(ref_fe)
-            # x_el = coords[:, conns[:, e]]
             u_el = FiniteElementContainers._element_level_fields_flat(U, ref_fe, conns, e)
             x_el = FiniteElementContainers._element_level_fields_flat(coords, ref_fe, conns, e)
             interps = FiniteElementContainers._cell_interpolants(ref_fe, q)

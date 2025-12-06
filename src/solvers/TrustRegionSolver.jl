@@ -275,7 +275,7 @@ struct TrustRegionSolver{
 end
 
 function TrustRegionSolver(
-    objective_cache;
+    objective_cache, parameters;
     preconditioner = CholeskyPreconditioner,
     timer = TimerOutput(),
     use_warm_start = false,
@@ -301,11 +301,14 @@ function TrustRegionSolver(
             create_unknowns(objective_cache),
             timer
         )
-        precond = preconditioner(objective_cache, timer)
+        precond = preconditioner(
+            objective_cache, parameters, timer
+        )
 
         if use_warm_start
             warm_start = WarmStart(
                 objective_cache,
+                parameters,
                 timer
             )
         else

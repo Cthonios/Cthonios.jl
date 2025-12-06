@@ -29,7 +29,6 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 # Re-exports
 export DirichletBC
 export PlaneStrain
-export QuasiStaticObjective
 export ThreeDimensional
 export TimerOutput
 export TimeStepper
@@ -42,12 +41,14 @@ export @SVector
 # Cthonios exports
 export ContactPair
 # export NewtonSolver # name conflict with FiniteElementContainers
+export QOIExtractor
+export QuasiStaticObjective
 export SingleDomainSimulation
 export SolidMechanics
 export TrustRegionSolver
 export create_unknowns
 export evolve!
-export parameters
+export setup_caches
 
 # objectives
 include("objectives/Objectives.jl")

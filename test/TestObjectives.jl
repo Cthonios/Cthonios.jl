@@ -45,7 +45,7 @@ end
 
 function test_quasistatic_objective_cache_constructors(sim)
     objective = QuasiStaticObjective()
-    cache = Cthonios.setup_cache(objective, sim)
+    cache, U, p = setup_caches(objective, sim)
 end
 
 function test_objectives()
