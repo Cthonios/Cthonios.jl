@@ -81,14 +81,35 @@ end
 function gradient(o::QuasiStaticObjectiveCache, U, p)
     RT = eltype(U)
     assemble_vector!(assembler(o), o.objective.gradient_u, U, p)
-    copyto!(o.internal_force, residual(assembler(o)))
+    # copyto!(o.internal_force, residual(assembler(o)))
+    copyto!(o.internal_force, assembler(o).residual_storage)
     fill!(o.external_force, zero(RT))
     fill!(assembler(o).residual_storage, zero(RT))
     fill!(assembler(o).residual_unknowns, zero(RT))
     assemble_vector_neumann_bc!(assembler(o), U, p)
-    copyto!(o.external_force, residual(assembler(o)))
-    o.gradient .= o.internal_force - o.external_force
-    return o.gradient.data
+    # copyto!(o.external_force, residual(assembler(o)))
+    copyto!(o.external_force, assembler(o).residual_storage)
+    o.gradient .= o.internal_force .- o.external_force
+
+    # return FiniteElementContainers.residual(assembler(o))
+
+    # return o.gradient.data
+
+    if FiniteElementContainers._is_condensed(assembler(o).dof)
+        FiniteElementContainers._adjust_vector_entries_for_constraints!(
+          o.gradient, assembler(o).constraint_storage,
+          KA.get_backend(assembler(o))
+        )
+        return o.gradient.data
+      else
+        # extract_field_unknowns!(
+        #   asm.residual_unknowns, 
+        #   asm.dof, 
+        #   asm.residual_storage
+        # )
+        # return asm.residual_unknowns
+        @assert false "Finish or remove me."
+    end
 end
 
 function hessian(o::QuasiStaticObjectiveCache, U, p)
