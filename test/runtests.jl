@@ -72,10 +72,6 @@ end
   include("TestPostProcessors.jl")
 end
 
-# @testset "Sensitivities" begin
-#   include("TestSensitivities.jl")
-# end
-
 @testset "Simulations" begin
   include("TestSimulations.jl")
 end
