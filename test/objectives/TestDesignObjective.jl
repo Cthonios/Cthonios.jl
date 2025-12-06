@@ -41,7 +41,7 @@ end
 
 function strain_energy_objective_with_coords!(f, qois, Us, ps, params)
     U, p = Us[end], ps[end]
-    copyto!(p.h1_coords, params)
+    copyto!(p.h1_coords.data, params.data)
     Cthonios._value!(f, qois[1], U, p)
     return nothing
 end
