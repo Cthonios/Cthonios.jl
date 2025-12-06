@@ -14,7 +14,9 @@ struct Sensitivity{
     dp::dParameters
     # stored states
     stored_parameters::Parameters
+    dstored_parameters::Parameters
     stored_solutions::Solutions
+    dstored_solutions::Solutions
     # TODO need to also store state variables
     # should probably put a switch for
     # whether or not we have path-dependence
@@ -26,11 +28,14 @@ function Sensitivity(qoi::QOIExtractor, U, p)
     dp = deepcopy(p)
 
     stored_parameters = typeof(p)[]
+    dstored_parameters = typeof(p)[]
     stored_solutions = typeof(U)[]
+    dstored_solutions = typeof(U)[]
     return Sensitivity(
         qoi, 
         dstorage, dU, dp,
-        stored_parameters, stored_solutions
+        stored_parameters, dstored_parameters,
+        stored_solutions, dstored_solutions
     )
 end
 
@@ -49,7 +54,7 @@ function _gradient_and_value!(f, df, sens::Sensitivity, U, p, ::Enzyme.ReverseMo
         _value!,
         Duplicated(f, df),
         Duplicated(sens.qoi.storage, sens.dstorage),
-        Const(sens.qoi.objective_cache.assembler),
+        Const(sens.qoi.assembler),
         Const(sens.qoi.func),
         Duplicated(U, sens.dU),
         Duplicated(p, sens.dp),

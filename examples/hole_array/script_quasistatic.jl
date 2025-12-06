@@ -48,19 +48,43 @@ qoi = QOIExtractor(
     FiniteElementContainers.L2QuadratureField, Float64;
     reduction_2 = +
 )
-sens = Cthonios.Sensitivity(qoi, U, p)
 
 solver = TrustRegionSolver(objective_cache, p; use_warm_start=true)
 Cthonios.run!(solver, objective_cache, U, p, sim) # eventually remove sim from call
 
-f = Cthonios.value(sens, U, p)
-f, dfdp = Cthonios.gradient_props_and_value(sens, U, p)
-f, dfdx = Cthonios.gradient_x_and_value(sens, U, p)
-f, dfdu = Cthonios.gradient_u_and_value(sens, U, p)
+function design_objective!(f, qois, Us, ps, params)
+    U, p = Us[end], ps[end]
+
+    # example for setting coords as params
+    copyto!(p.h1_coords, params)
+
+    # example for setting properties as params
+    # for (n, val) in enumerate(values(params))
+    #     copyto!(values(p.properties)[n], val)
+    # end
+    Cthonios._value!(f, qois[1], U, p)
+    return nothing
+end
+
+obj = Cthonios.DesignObjective(design_objective!, [qoi], U, p)
+
+coord_params = deepcopy(p.h1_coords)
+props_params = deepcopy(p.properties)
+display(props_params)
+push!(obj.stored_solutions, deepcopy(U))
+push!(obj.stored_parameters, deepcopy(p))
+
+
+
+# obj = Cthonios.DesignObjective(design_objective!, sens)
+
+f = Cthonios.value(obj, coord_params)
+f, dfdX = Cthonios.gradient_and_value(obj, coord_params)
+# f, dfdp = Cthonios.gradient_and_value(obj, props_params)
+
 
 display(f)
-display(dfdp)
-display(dfdx)
-display(dfdu)
-# end
-# sim_test()
+display(dfdX)
+# # display(dfdU)
+# # end
+# # sim_test()

@@ -10,13 +10,13 @@
 abstract type AbstractQOIExtractor end
 
 struct QOIExtractor{
-    O          <: AbstractObjectiveCache,
+    A          <: FiniteElementContainers.AbstractAssembler,
     EvalFunc   <: Function,
     Reduction1 <: Function,
     Reduction2 <: Function,
     Storage
 } <: AbstractQOIExtractor
-    objective_cache::O
+    assembler::A
     func::EvalFunc
     reduction_1::Reduction1
     reduction_2::Reduction2
@@ -71,7 +71,7 @@ function QOIExtractor(
     end
 
     return QOIExtractor(
-        objective_cache, 
+        objective_cache.assembler, 
         mat_func, reduction_1, reduction_2,
         storage
     )
@@ -85,7 +85,7 @@ function _value!(
     # ideally below line is not necessary
     # but we need to handle the differences between
     # condensed or not in update_for_assembly!
-    FiniteElementContainers.update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
+    # FiniteElementContainers.update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
     FiniteElementContainers.assemble_quadrature_quantity!(
         storage, asm.dof, func, U, p
     )
@@ -94,9 +94,21 @@ function _value!(
     return nothing
 end
 
+function _value!(
+    f, qoi::QOIExtractor, U, p
+)
+    FiniteElementContainers.assemble_quadrature_quantity!(
+        qoi.storage, qoi.assembler.dof, qoi.func, U, p
+    )
+    f_temp = mapreduce(x -> reduce(qoi.reduction_1, x), qoi.reduction_2, values(qoi.storage))
+    fill!(f, f_temp)
+    return nothing
+end
+
 function value(qoi::QOIExtractor, U, p)
     f = zeros(1)
-    asm = assembler(qoi.objective_cache)
-    _value!(f, qoi.storage, asm, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
+    # asm = assembler(qoi.objective_cache)
+    # _value!(f, qoi.storage, qoi.assembler, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
+    _value!(f, qoi, U, p)
     return f[1]
 end

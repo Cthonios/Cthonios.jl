@@ -30,6 +30,6 @@ end
 #     return o.parameters
 # end
 
-# include("DesignObjective.jl")
+include("DesignObjective.jl")
 # include("ImplicitDynamicsObjective.jl")
 include("QuasiStaticObjective.jl")
