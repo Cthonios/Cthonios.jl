@@ -17,7 +17,6 @@ end
     
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-    # F_q = ∇u_q + one(∇u_q)
 
     # constitutive
     θ = 0.0 # TODO
@@ -34,11 +33,8 @@ end
 
 function update_material_output!(
     mat_output::NamedTuple,
-    objective_cache
+    objective_cache, U, p
 )
-    T = eltype(values(mat_output)[1])
-    U = objective_cache.solution
-    p = objective_cache.parameters
     FiniteElementContainers.assemble_quadrature_quantity!(
         mat_output, assembler(objective_cache).dof,
         standard_material_output,
@@ -71,6 +67,5 @@ function create_material_output(obj_cache, V_q, ::Type{T}) where T <: AbstractMa
 
     mat_outputs = NamedTuple{syms}(tuple(mat_outputs...))
 
-    # V = FunctionSpace()
     return mat_outputs, mat_vars
 end

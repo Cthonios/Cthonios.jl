@@ -17,21 +17,19 @@ abstract type AbstractSimulation end
 # abstract type AbstractSimulationCache end
 
 # function run!(sim, objective_type, solver_type)
-function run!(objective_cache, solver, sim)
-    pp = PostProcessor(objective_cache, sim)
-    post_process(pp, objective_cache, 1)
+function run!(solver, objective_cache, U, p, sim)
+    pp = PostProcessor(objective_cache, U, p, sim)
+    post_process(pp, objective_cache, U, p, 1)
 
-    initialize!(objective_cache)
-
-    p = objective_cache.parameters
+    initialize!(objective_cache, U, p)
 
     time_end = sum(p.times.time_end)
 
     n = 2
     try
         while FiniteElementContainers.current_time(p.times) < time_end - 1e3 * eps(time_end)
-            step!(objective_cache, solver; verbose=solver.settings.verbose)
-            post_process(pp, objective_cache, n)
+            step!(solver, objective_cache, U, p; verbose=solver.settings.verbose)
+            post_process(pp, objective_cache, U, p, n)
             n = n + 1
         end
     finally
@@ -40,21 +38,11 @@ function run!(objective_cache, solver, sim)
     return nothing
 end
 
-function _setup_simulation_common(
-    sim::AbstractSimulation,
-    output_file;
-    # return_post_processor = true,
+function _setup_assembler_and_parameters(
+    sim::AbstractSimulation;
     q_degree = 2,
     use_condensed = false
 )
-    # handle keywords
-    if output_file === nothing
-        output_file = splitext(sim.mesh_file)[1] * "-output.exo"
-    end
-
-    if isfile(output_file)
-        rm(output_file, force=true)
-    end
 
     mesh = UnstructuredMesh(sim.mesh_file)
     fspace = FunctionSpace(mesh, H1Field, Lagrange; q_degree=q_degree)
@@ -80,6 +68,23 @@ function _setup_simulation_common(
     )
 
     return assembler, parameters
+end
+
+# function setup_parameters(
+#     mesh
+# )
+
+# end
+
+function setup_caches(obj, sim; kwargs...)
+    asm, p = _setup_assembler_and_parameters(
+        sim; 
+        use_condensed = true,
+        kwargs...
+    )
+    objective_cache = setup_cache(asm, obj)
+    U = create_field(asm)
+    return objective_cache, U, p
 end
 
 include("SingleDomainSimulation.jl")

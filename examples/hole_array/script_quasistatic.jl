@@ -2,7 +2,7 @@ using ConstitutiveModels
 using Cthonios
 using FiniteElementContainers
 
-function sim_test()
+# function sim_test()
 # file management
 mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
@@ -40,21 +40,18 @@ sim = SingleDomainSimulation(
     times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective = Cthonios.QuasiStaticObjective()
-objective_cache = Cthonios.setup_cache(objective, sim)
+objective = QuasiStaticObjective()
+objective_cache, U, p = setup_caches(objective, sim)
 
-qoi = Cthonios.QOIExtractor(
+qoi = QOIExtractor(
     objective_cache, helmholtz_free_energy, +,
     FiniteElementContainers.L2QuadratureField, Float64;
     reduction_2 = +
 )
-sens = Cthonios.Sensitivity(qoi)
+sens = Cthonios.Sensitivity(qoi, U, p)
 
-solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
-Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
-
-U = objective_cache.solution
-p = objective_cache.parameters
+solver = TrustRegionSolver(objective_cache, p; use_warm_start=true)
+Cthonios.run!(solver, objective_cache, U, p, sim) # eventually remove sim from call
 
 f = Cthonios.value(sens, U, p)
 f, dfdp = Cthonios.gradient_props_and_value(sens, U, p)
@@ -65,5 +62,5 @@ display(f)
 display(dfdp)
 display(dfdx)
 display(dfdu)
-end
-sim_test()
+# end
+# sim_test()

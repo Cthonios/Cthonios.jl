@@ -73,9 +73,7 @@ function QOIExtractor(
     return QOIExtractor(
         objective_cache, 
         mat_func, reduction_1, reduction_2,
-        storage#, deepcopy(storage),
-        # deepcopy(objective_cache.solution),
-        # deepcopy(objective_cache.parameters)
+        storage
     )
 end
 
@@ -83,6 +81,11 @@ end
 function _value!(
     f, storage, asm, func, U, p, reduction_1, reduction_2
 )
+    # TODO
+    # ideally below line is not necessary
+    # but we need to handle the differences between
+    # condensed or not in update_for_assembly!
+    FiniteElementContainers.update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
     FiniteElementContainers.assemble_quadrature_quantity!(
         storage, asm.dof, func, U, p
     )
@@ -94,8 +97,6 @@ end
 function value(qoi::QOIExtractor, U, p)
     f = zeros(1)
     asm = assembler(qoi.objective_cache)
-    # U = qoi.objective_cache.solution
-    # p = qoi.objective_cache.parameters
     _value!(f, qoi.storage, asm, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
     return f[1]
 end

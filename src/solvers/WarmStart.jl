@@ -8,15 +8,17 @@ struct WarmStart{RT, Uu, p}#, S}
   timer::TimerOutput
 end
 
-function WarmStart(o, timer)
+function WarmStart(o, p, timer)
   @timeit timer "WarmStart - setup" begin
     # Uu = o.solution
-    p = o.parameters
+    # p = o.parameters
     R = make_zero(o.gradient)
     dR = make_zero(o.gradient)
-    dUu = make_zero(o.solution.data)
+    # dUu = make_zero(o.solution_old.data)
+    dUu = create_unknowns(o)
     dp = make_zero(p)
-    ΔUu = make_zero(o.solution.data)
+    # ΔUu = make_zero(o.solution_old.data)
+    ΔUu = create_unknowns(o)
     # solver = GmresSolver(length(dUu), length(dUu), length(dUu), typeof(dUu))
 
     return WarmStart(R, dR, dUu, dp, ΔUu, timer)#, solver)

@@ -8,20 +8,20 @@ struct PostProcessor{
     mat_vars::MV
 end
 
-function PostProcessor(objective_cache, sim)
+function PostProcessor(objective_cache, U, p, sim)
     mesh = UnstructuredMesh(sim.mesh_file)
     V_q = FunctionSpace(mesh, L2QuadratureField, Lagrange)
     disp_var = objective_cache.assembler.dof.var
 
     mat_outputs, mat_vars = create_material_output(objective_cache, V_q, StandardMaterialOutput{Float64})
-    update_material_output!(mat_outputs, objective_cache)
+    update_material_output!(mat_outputs, objective_cache, U, p)
 
     exodus_pp = FiniteElementContainers.PostProcessor(
         mesh, sim.output_file, 
         disp_var, mat_vars...
     )
     pp = PostProcessor(exodus_pp, mat_outputs, mat_vars)
-    _post_process_common!(pp, objective_cache, 1)
+    _post_process_common!(pp, objective_cache, U, p, 1)
 
     return pp
 end
@@ -32,19 +32,19 @@ end
 
 function post_process(
     pp::PostProcessor,
-    objective_cache, n
+    objective_cache, U, p, n
 )
-    _post_process_common!(pp, objective_cache, n)
+    _post_process_common!(pp, objective_cache, U, p, n)
 end
 
-function _post_process_common!(pp, objective_cache, n)
+function _post_process_common!(pp, objective_cache, U, p, n)
     mat_outputs, mat_vars = pp.mat_outputs, pp.mat_vars
 
     U_names = names(assembler(objective_cache).dof.var)
     # U = objective_cache.solution
-    p = objective_cache.parameters
-    U = p.h1_field
-    update_material_output!(mat_outputs, objective_cache)
+    # p = objective_cache.parameters
+    # U = p.h1_field
+    update_material_output!(mat_outputs, objective_cache, U, p)
 
     write_times(pp.exodus_pp, n, sum(p.times.time_current))
     write_field(pp.exodus_pp, n, U_names, U)
