@@ -1,9 +1,11 @@
 using Aqua
 using ConstitutiveModels
 using Cthonios
+using Distributions
 using FiniteElementContainers
 using ForwardDiff
 using LinearAlgebra
+using Random
 using StaticArrays
 using Test
 
@@ -29,6 +31,10 @@ end
 
 @testset "PostProcessors" begin
   include("TestPostProcessors.jl")
+end
+
+@testset "Sensitivities" begin
+  include("TestSensitivities.jl")
 end
 
 @testset "Simulations" begin

@@ -67,6 +67,7 @@ include("solvers/Solvers.jl")
 
 #
 include("qoi_extractors/QOIExtractors.jl")
+include("sensitivities/Sensitivities.jl")
 
 # optimizations
 include("optimizations/Optimizations.jl")

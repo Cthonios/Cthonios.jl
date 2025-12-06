@@ -63,6 +63,25 @@ end
     return ψ_q
 end
 
+@inline function general_integrated_material_qoi(
+    func,
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
+)
+    interps = map_interpolants(interps, x_el)
+    (; X_q, N, ∇N_X, JxW) = interps
+    ∇u_q = interpolate_field_gradients(physics, interps, u_el)
+  
+    # kinematics
+    ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
+
+    # constitutive
+    θ = 0.0 # TODO
+    ψ_q = func(
+        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+    )  
+    return JxW * ψ_q
+end
+
 @inline function FiniteElementContainers.residual(
     physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )

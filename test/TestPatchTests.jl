@@ -1,11 +1,3 @@
-using Cthonios
-using ConstitutiveModels
-using FiniteElementContainers
-using LinearAlgebra
-using ReferenceFiniteElements
-using StaticArrays
-using Test
-
 function linear_patch_test_dirichlet(mesh_file, q_degree)
     # mesh_file = Base.source_dir() * "/mesh/patch_test_mesh_quad4.g"
     output_file = splitext(mesh_file)[1] * "-output.exo"
@@ -26,6 +18,7 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     # we're hacking things below to conform with
     # the patch test
     func_1(x, t) = 0.
+    func_2(x, t) = 0.5 * t
 
     dirichlet_bcs = [
         DirichletBC("displ_x", "sset_1", func_1)

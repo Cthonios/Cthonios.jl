@@ -9,28 +9,18 @@
 
 abstract type AbstractQOIExtractor end
 
-# function value end
-# function value! end
-
-# include("ScalarQOIExtractor.jl")
-
 struct QOIExtractor{
     O          <: AbstractObjectiveCache,
     EvalFunc   <: Function,
     Reduction1 <: Function,
     Reduction2 <: Function,
-    Storage,
-    dSolution,
-    dParameters
+    Storage
 } <: AbstractQOIExtractor
     objective_cache::O
     func::EvalFunc
     reduction_1::Reduction1
     reduction_2::Reduction2
     storage::Storage
-    dstorage::Storage # TODO allow for no gradient as well
-    dU::dSolution
-    dp::dParameters
 end
 
 function QOIExtractor(
@@ -72,72 +62,21 @@ function QOIExtractor(
     # TODO it won't always be a mat func
     if component_extractor !== nothing
         function mat_func(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
-            val = general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+            val = general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
             return val[component_extractor...]
         end
     else
         mat_func = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) -> 
-            general_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+            general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
     end
 
     return QOIExtractor(
         objective_cache, 
         mat_func, reduction_1, reduction_2,
-        storage, deepcopy(storage),
-        deepcopy(objective_cache.solution),
-        deepcopy(objective_cache.parameters)
+        storage#, deepcopy(storage),
+        # deepcopy(objective_cache.solution),
+        # deepcopy(objective_cache.parameters)
     )
-end
-
-# TODO eventually cache derivatives in qoi
-function _gradient_and_value_init!(::Enzyme.ReverseMode, qoi::QOIExtractor)
-    for val in values(qoi.dstorage)
-        fill!(val, zero(eltype(val)))
-    end
-    dU = make_zero(qoi.objective_cache.solution)
-    dp = make_zero(qoi.objective_cache.parameters)
-    fill!(dU, zero(eltype(dU)))
-    Enzyme.make_zero!(dp)
-    return dU, dp
-end
-
-function _gradient_and_value!(f, df, qoi::QOIExtractor)
-    Enzyme.autodiff(
-        Reverse,
-        _value!,
-        Duplicated(f, df),
-        Duplicated(qoi.storage, qoi.dstorage),
-        Const(qoi.objective_cache.assembler),
-        Const(qoi.func),
-        Duplicated(qoi.objective_cache.solution, qoi.dU),
-        Duplicated(qoi.objective_cache.parameters, qoi.dp),
-        Const(qoi.reduction_1),
-        Const(qoi.reduction_2)
-    )
-end
-
-function gradient_props_and_value(qoi::QOIExtractor)
-    f = zeros(1)
-    df = ones(1) # seeding for reverse AD
-    _gradient_and_value_init!(Reverse, qoi)
-    _gradient_and_value!(f, df, qoi)
-    return f, qoi.dp.properties
-end
-
-function gradient_u_and_value(qoi::QOIExtractor)
-    f = zeros(1)
-    df = ones(1) # seeding for reverse AD
-    _gradient_and_value_init!(Reverse, qoi)
-    _gradient_and_value!(f, df, qoi)
-    return f, qoi.dU
-end
-
-function gradient_x_and_value(qoi::QOIExtractor)
-    f = zeros(1)
-    df = ones(1) # seeding for reverse AD
-    @time _gradient_and_value_init!(Reverse, qoi)
-    @time _gradient_and_value!(f, df, qoi)
-    return f, qoi.dp.h1_coords
 end
 
 # TODO will need to specialize for GPU
@@ -152,11 +91,11 @@ function _value!(
     return nothing
 end
 
-function value(qoi::QOIExtractor)
+function value(qoi::QOIExtractor, U, p)
     f = zeros(1)
     asm = assembler(qoi.objective_cache)
-    U = qoi.objective_cache.solution
-    p = qoi.objective_cache.parameters
+    # U = qoi.objective_cache.solution
+    # p = qoi.objective_cache.parameters
     _value!(f, qoi.storage, asm, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
-    return sum(f)
+    return f[1]
 end

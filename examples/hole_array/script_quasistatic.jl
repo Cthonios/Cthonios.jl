@@ -2,6 +2,7 @@ using ConstitutiveModels
 using Cthonios
 using FiniteElementContainers
 
+function sim_test()
 # file management
 mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
@@ -43,23 +44,26 @@ objective = Cthonios.QuasiStaticObjective()
 objective_cache = Cthonios.setup_cache(objective, sim)
 
 qoi = Cthonios.QOIExtractor(
-    # objective_cache, pk1_stress, sum,
-    # L2QuadratureField, Tensor{2, 3, Float64, 9};
     objective_cache, helmholtz_free_energy, +,
     FiniteElementContainers.L2QuadratureField, Float64;
-    # component_extractor = (1, 1),
     reduction_2 = +
-    # H1Field, Float64
 )
-Cthonios.value(qoi)
+sens = Cthonios.Sensitivity(qoi)
 
 solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
 Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
-f = Cthonios.value(qoi)
+
+U = objective_cache.solution
+p = objective_cache.parameters
+
+f = Cthonios.value(sens, U, p)
+f, dfdp = Cthonios.gradient_props_and_value(sens, U, p)
+f, dfdx = Cthonios.gradient_x_and_value(sens, U, p)
+f, dfdu = Cthonios.gradient_u_and_value(sens, U, p)
+
 display(f)
-f, dfdx = Cthonios.gradient_x_and_value(qoi)
-display(f)
-f, dfdp = Cthonios.gradient_props_and_value(qoi)
-display(f)
-display(dfdx)
 display(dfdp)
+display(dfdx)
+display(dfdu)
+end
+sim_test()
