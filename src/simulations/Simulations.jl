@@ -70,12 +70,6 @@ function _setup_assembler_and_parameters(
     return assembler, parameters
 end
 
-# function setup_parameters(
-#     mesh
-# )
-
-# end
-
 function setup_caches(obj, sim; kwargs...)
     asm, p = _setup_assembler_and_parameters(
         sim; 

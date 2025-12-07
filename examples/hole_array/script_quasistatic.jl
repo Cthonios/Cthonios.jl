@@ -50,7 +50,6 @@ qoi = QOIExtractor(
 )
 
 solver = TrustRegionSolver(objective_cache, p; use_warm_start=true)
-Cthonios.run!(solver, objective_cache, U, p, sim) # eventually remove sim from call
 
 function design_objective!(f, qois, Us, ps, params)
     U, p = Us[end], ps[end]
@@ -67,24 +66,18 @@ function design_objective!(f, qois, Us, ps, params)
 end
 
 obj = Cthonios.DesignObjective(design_objective!, [qoi], U, p)
+Cthonios.forward_problem!(obj, solver, objective_cache, U, p)
 
+# pick out parameters for design objective function
 coord_params = deepcopy(p.h1_coords)
-props_params = deepcopy(p.properties)
-display(props_params)
-push!(obj.stored_solutions, deepcopy(U))
-push!(obj.stored_parameters, deepcopy(p))
-
-
-
-# obj = Cthonios.DesignObjective(design_objective!, sens)
+# props_params = deepcopy(p.properties)
 
 f = Cthonios.value(obj, coord_params)
 f, dfdX = Cthonios.gradient_and_value(obj, coord_params)
-# f, dfdp = Cthonios.gradient_and_value(obj, props_params)
+# # f, dfdp = Cthonios.gradient_and_value(obj, props_params)
 
-
-display(f)
-display(dfdX)
-# # display(dfdU)
-# # end
-# # sim_test()
+# display(f)
+# display(dfdX)
+# # # display(dfdU)
+# # # end
+# # # sim_test()

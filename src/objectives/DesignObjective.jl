@@ -1,8 +1,8 @@
 struct DesignObjective{
     F <: Function,
-    Q,
+    Q <: AbstractArray,
     P,
-    S
+    S <: AbstractArray{<:AbstractField, 1}
 }
     func::F
     qois::Q
@@ -12,6 +12,7 @@ struct DesignObjective{
     stored_solutions::S
     dstored_solutions::S
 end
+
 function DesignObjective(func, qois, U, p)
     dqois = Enzyme.make_zero(qois)
     stored_parameters = typeof(p)[]
@@ -23,6 +24,23 @@ function DesignObjective(func, qois, U, p)
         stored_parameters, dstored_parameters,
         stored_solutions, dstored_solutions
     )
+end
+
+function forward_problem!(obj::DesignObjective, solver, objective_cache, U, p)
+    empty!(obj.stored_parameters)
+    empty!(obj.dstored_parameters)
+    empty!(obj.stored_solutions)
+    empty!(obj.dstored_solutions)
+    initialize!(objective_cache, U, p)
+
+    time_end = sum(p.times.time_end)
+
+    while FiniteElementContainers.current_time(p.times) < time_end - 1e3 * eps(time_end)
+        step!(solver, objective_cache, U, p; verbose=true)
+        push!(obj.stored_solutions, deepcopy(U))
+        push!(obj.stored_parameters, deepcopy(p))
+    end
+    return nothing
 end
 
 function _gradient_and_value_init!(obj::DesignObjective, ::Enzyme.ReverseMode)
