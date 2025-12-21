@@ -26,10 +26,10 @@ func_1(x, t) = 1.0 * t
 func_2(x, t) = 0.0
 
 dirichlet_bcs = [
-    DirichletBC("displ_x", "ssx-", func_2),
-    DirichletBC("displ_y", "ssy-", func_2),
-    DirichletBC("displ_z", "ssz-", func_2),
-    DirichletBC("displ_z", "ssz+", func_1)
+    DirichletBC("displ_x", func_2; sideset_name = "ssx-"),
+    DirichletBC("displ_y", func_2; sideset_name = "ssy-"),
+    DirichletBC("displ_z", func_2; sideset_name = "ssz-"),
+    DirichletBC("displ_z", func_1; sideset_name = "ssz+")
 ]
 
 # Simulation
@@ -38,7 +38,7 @@ sim = SingleDomainSimulation(
     times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective = Cthonios.QuasiStaticObjective()
-objective_cache = Cthonios.setup_cache(objective, sim)
-solver = Cthonios.TrustRegionSolver(objective_cache; use_warm_start=true)
-Cthonios.run!(objective_cache, solver, sim) # eventually remove sim from call
+objective = QuasiStaticObjective()
+objective_cache, U, p = Cthonios.setup_caches(objective, sim)
+solver = TrustRegionSolver(objective_cache, p; use_warm_start=true)
+Cthonios.run!(solver, objective_cache, U, p, sim) # eventually remove sim from call

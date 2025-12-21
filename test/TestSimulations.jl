@@ -11,8 +11,9 @@ function test_single_domain_simulation()
     )
     props = (;
         block_1 = Dict{String, Any}(
-        "bulk modulus"  => 10.0,
-        "shear modulus" => 1.0
+            "density"       => 1.0,
+            "bulk modulus"  => 10.0,
+            "shear modulus" => 1.0
         )
     )
 
@@ -20,12 +21,12 @@ function test_single_domain_simulation()
     func_2(x, t) = -0.5 * t
 
     dirichlet_bcs = [
-        DirichletBC("displ_x", "sset_y_negative", func_1)
-        DirichletBC("displ_y", "sset_y_negative", func_1)
-        DirichletBC("displ_z", "sset_y_negative", func_1)
-        DirichletBC("displ_x", "sset_y_positive", func_1)
-        DirichletBC("displ_z", "sset_y_positive", func_1)
-        DirichletBC("displ_y", "sset_y_positive", func_2)
+        DirichletBC("displ_x", func_1; sideset_name = "sset_y_negative")
+        DirichletBC("displ_y", func_1; sideset_name = "sset_y_negative")
+        DirichletBC("displ_z", func_1; sideset_name = "sset_y_negative")
+        DirichletBC("displ_x", func_1; sideset_name = "sset_y_positive")
+        DirichletBC("displ_z", func_1; sideset_name = "sset_y_positive")
+        DirichletBC("displ_y", func_2; sideset_name = "sset_y_positive")
     ]
 
     sim = SingleDomainSimulation(
@@ -38,7 +39,7 @@ function test_single_domain_simulation()
     @test sim.output_file == output_file
     @test sim.times == times
     @test sim.physics == physics
-    @test sim.properties == (; block_1 = [10., 1.])
+    @test sim.properties == (; block_1 = [1., 10., 1.])
     # TODO add more testing on ics, bcs, and contact pairs
 end
 

@@ -85,6 +85,7 @@ function solve!(
         Forward, 
         assemble_vector!,
         Duplicated(R, dR),
+        Const(asm.vector_pattern),
         Const(asm.dof),
         Const(residual),
         Duplicated(Uu, dUu),

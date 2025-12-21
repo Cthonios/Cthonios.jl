@@ -13,21 +13,17 @@ function QuasiStaticObjective()
 end
 
 struct QuasiStaticObjectiveCache{
-    # A, O, P,
     A, O,
     RT, RV <: AbstractArray{RT, 1},
     NF
 } <: AbstractObjectiveCache{A, O, RT, RV}
-# } <: AbstractObjectiveCache{A, O, P, RT, RV}
     assembler::A
     objective::O
-    # parameters::P
     #
     external_energy::RV
     internal_energy::RV
     external_force::H1Field{RT, RV, NF}
     internal_force::H1Field{RT, RV, NF}
-    # solution::H1Field{RT, RV, NF}
     solution_old::H1Field{RT, RV, NF}
     # solver helpers
     value::RV
@@ -36,36 +32,17 @@ struct QuasiStaticObjectiveCache{
     timer::TimerOutput
 end
 
-# function QuasiStaticObjectiveCache(
-#     objective::QuasiStaticObjective,
-#     sim;
-#     kwargs...
-# )
-#     # objective = QuasiStaticObjective()
-#     # assembler, parameters = _setup_simulation_common(
-#     #     sim, nothing; 
-#     #     # return_post_processor=false,
-#     #     use_condensed=true,
-#     #     kwargs...
-#     # )
-#     assembler = _setup_assembler(
-#         sim;
-#         use_condensed=true,
-#         kwargs...
-#     )
 function QuasiStaticObjectiveCache(
     assembler,
     objective::QuasiStaticObjective
 )
     RT = eltype(assembler.constraint_storage)
 
-    # backend = KA.get_backend(parameters.h1_coords)
     backend = KA.get_backend(assembler)
     external_energy = KA.zeros(backend, RT, 1)
     internal_energy = KA.zeros(backend, RT, 1)
     external_force = create_field(assembler)
     internal_force = create_field(assembler)
-    # solution = create_field(assembler)
     solution_old = create_field(assembler)
 
     value = KA.zeros(backend, RT, 1)
@@ -74,10 +51,9 @@ function QuasiStaticObjectiveCache(
     timer = TimerOutput()
 
     return QuasiStaticObjectiveCache(
-        assembler, objective, #parameters,
+        assembler, objective,
         external_energy, internal_energy,
         external_force, internal_force,
-        # solution, solution_old,
         solution_old,
         value, gradient,
         timer
@@ -85,13 +61,9 @@ function QuasiStaticObjectiveCache(
 end
 
 # cache hook
-function setup_cache(assembler, objective)
+function setup_cache(assembler, objective::QuasiStaticObjective)
     return QuasiStaticObjectiveCache(assembler, objective)
 end
-
-# function setup_cache(objective::O, sim; kwargs...) where O <: QuasiStaticObjective
-#     return QuasiStaticObjectiveCache(objective, sim; kwargs...)
-# end
 
 # objective hooks
 function gradient(o::QuasiStaticObjectiveCache, U, p)
@@ -128,9 +100,13 @@ function gradient(o::QuasiStaticObjectiveCache, U, p)
     end
 end
 
-function hessian(o::QuasiStaticObjectiveCache, U, p)
+function hessian(o::QuasiStaticObjectiveCache, U, p; symmetric = true)
     assemble_stiffness!(assembler(o), o.objective.hessian_u, U, p)
-    H = stiffness(assembler(o)) |> Symmetric
+    if symmetric
+        H = stiffness(assembler(o)) |> Symmetric
+    else
+        H = stiffness(assembler(o))
+    end
     return H
 end
 
@@ -153,7 +129,7 @@ end
 
 function value(o::QuasiStaticObjectiveCache, U, p)
     assemble_scalar!(assembler(o), o.objective.value, U, p)
-    val = mapreduce(sum, sum, values(assembler(o).scalar_quadrature_storage))
+    val = mapreduce(sum, +, values(assembler(o).scalar_quadrature_storage))
     fill!(o.internal_energy, val)
     # assemble_scalar!(assembler(o), #neumann energy, U, p)
 
@@ -164,35 +140,24 @@ function value(o::QuasiStaticObjectiveCache, U, p)
 end
 
 # integrator hooks
-# function initialize!(o::QuasiStaticObjectiveCache, sim)
-#     # p = o.parameters
-#     p = create_parameters(
-#         mesh,
-#         assembler, sim.physics, sim.properties; 
-#         dirichlet_bcs=sim.dirichlet_bcs,
-#         neumann_bcs=sim.neumann_bcs,
-#         times=sim.times
-#     )
-#     fill!(p.times.time_current, zero(eltype(p.times.time_current)))
-#     return nothing
-# end
 function initialize!(o::QuasiStaticObjectiveCache, U, p)
     fill!(p.times.time_current, zero(eltype(p.times.time_current)))
     return nothing
 end
 
-# function step!(o::QuasiStaticObjectiveCache, solver; verbose=true)
 function step!(solver, o::QuasiStaticObjectiveCache, U, p; verbose = true)
     FiniteElementContainers.update_time!(p)
     FiniteElementContainers.update_bc_values!(p)
     _step_begin_banner(o, p; verbose = verbose)
     solve!(solver, U.data, p)
+    update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
 
     # update values at end of step
     gradient(o, U, p)
     value(o, U, p)
 
     # update old solution
+    update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
     copyto!(o.solution_old, U)
 
     _step_end_banner(o, p; verbose = verbose)
@@ -201,7 +166,6 @@ end
 
 # logging hooks
 function _step_begin_banner(::QuasiStaticObjectiveCache, p; verbose::Bool = true)
-    # p = o.parameters
     if verbose
         time_curr = FiniteElementContainers.current_time(p.times)
         time_start = sum(p.times.time_start)

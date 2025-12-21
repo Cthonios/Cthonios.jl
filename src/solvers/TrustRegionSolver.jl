@@ -426,6 +426,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         cumulative_cg_iters = 0
         print_banner(solver)
 
+        tried_new_precond = false
+
         # begin loop over trust region iterations
         for i in 1:settings.max_trust_iters
             if i > 1 && i % 25 == 0
@@ -443,8 +445,11 @@ function solve!(solver::TrustRegionSolver, Uu, p)
             hess_vec_func = v -> hvp(solver.objective_cache, Uu, v, p)
 
             # TODO need to fix below
-            # mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, p, v)
+            # mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, v, p)
             mult_by_approx_hessian = v -> v
+            # mult_by_approx_hessian = v -> P.preconditioner.L * (P.preconditioner.L' * v)
+            # mult_by_approx_hessian = v -> P.preconditioner \ v
+            # mult_by_approx_hessian = v -> hessian(solver.objective_cache, Uu, p) * v
 
             # calculate cauchy point
             cp_norm_sq = calculate!(
@@ -456,13 +461,13 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
             # minimize model problem
             if cp_norm_sq >= tr_size * tr_size
-                @warn "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt.(cauchyPointNormSquared))"
+                @warn "unpreconditioned gradient cauchy point outside trust region at dist = $(sqrt.(cp_norm_sq))"
                 # cauchyPoint *= (tr_size / sqrt(cp_norm_sq))
                 copyto!(solver.cauchy_point.cauchy_point, (tr_size / sqrt(cp_norm_sq)) * solver.cauchy_point.cauchy_point)
                 cp_norm_sq = tr_size * tr_size
                 q_newton_point = solver.cauchy_point.cauchy_point
-                stepType = boundaryString
-                cgIters = 1
+                step_type = boundaryString
+                cg_iters = 1
             else
                 # @assert false "Implement model problem"
                 q_newton_point, _, step_type, cg_iters = 
@@ -498,7 +503,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
                 rho = real_improve / model_improve
 
-                if model_objective > 0
+                if model_objective > 0 && model_objective > eps(typeof(model_objective))
                     @warn "Found a positive model objective increase.  Debug if you see this."
                     @warn "modelObjective = $model_objective"
                     @warn "realObjective = $real_objective"
@@ -516,7 +521,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                 real_res_norm = norm(gy)
 
                 will_accept = rho >= settings.η_1 || 
-                     (rho >= -0 && realResNorm <= g_norm)
+                     (rho >= -0 && real_res_norm <= g_norm)
                 print_min_banner(
                     solver,
                     real_objective, model_objective,
@@ -559,8 +564,9 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         
                     if !tried_new_precond
                         @info "The trust region is too small, updating precond and trying again."
-                        update_preconditioner!(solver.preconditioner, solver.objective, Uu, p)
-                        P = solver.preconditioner.preconditioner
+                        update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
+                        # P = solver.preconditioner.preconditioner
+                        P = solver.preconditioner
                         cumulative_cg_iters = 0
                         tried_new_precond = true
                         happy_about_tr_size = true

@@ -13,7 +13,10 @@ function SolidMechanics(formulation, model)
 end
 
 function FiniteElementContainers.create_properties(physics::SolidMechanics, inputs)
-    return ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
+    density = inputs["density"]
+    mat_model_props = ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
+    mat_model_props = Array(mat_model_props)
+    return pushfirst!(mat_model_props, density)
 end
 
 function FiniteElementContainers.create_initial_state(physics::SolidMechanics)
@@ -35,10 +38,12 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
+    mat_props = @views props_el[2:end]
+
     # constitutive
     θ = 0.0 # TODO
     ψ_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
     return JxW * ψ_q
 end
@@ -55,10 +60,12 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
+    mat_props = @views props_el[2:end]
+
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
     return ψ_q
 end
@@ -74,10 +81,12 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
+    mat_props = @views props_el[2:end]
+
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
     )  
     return JxW * ψ_q
 end
@@ -92,10 +101,12 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
+    mat_props = @views props_el[2:end]
+
     # constitutive
     θ = 0.0 # TODO
     P_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
     )    
     # turn into voigt notation
     P_q = extract_stress(physics.formulation, P_q)
@@ -114,10 +125,12 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
+    mat_props = @views props_el[2:end]
+
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
     )
     # turn into voigt notation
     K_q = extract_stiffness(physics.formulation, A_q)
@@ -134,7 +147,7 @@ end
     v_q = interpolate_field_values(physics, interps, v_el)
 
     # TODO
-    rho = 1.
+    rho = props_el[1]
     return 0.5 * JxW * rho * dot(v_q, v_q)
 end
 
@@ -148,6 +161,6 @@ function mass(
     physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
 )
     return ForwardDiff.hessian(z -> _kinetic_energy(
-        physics, interps, x_el, t, dt, z, u_el_old, state_old_q, state_new_q, props_el
+        physics, interps, x_el, t, dt, z, v_el_old, state_old_q, state_new_q, props_el
     ), v_el)
 end

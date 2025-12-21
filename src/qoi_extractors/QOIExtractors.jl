@@ -1,6 +1,8 @@
 abstract type AbstractQOIExtractor end
 
 struct QOIExtractor{
+    FieldQOI, 
+    MatQOI,
     A          <: FiniteElementContainers.AbstractAssembler,
     EvalFunc   <: Function,
     Reduction1 <: Function,
@@ -21,8 +23,12 @@ function QOIExtractor(
     cache_arrtype,
     cache_eltype;
     component_extractor = nothing,
+    is_field_qoi = false,
+    is_material_qoi = false,
     reduction_2 = identity
 )
+    @assert is_field_qoi || is_material_qoi
+
     if cache_arrtype isa Type{<:H1Field}
         @info "Requesting QOI output on reduction of H1Field"
         @assert cache_eltype isa Type{<:Number}
@@ -51,55 +57,140 @@ function QOIExtractor(
     end
 
     # TODO it won't always be a mat func
-    if component_extractor !== nothing
-        function mat_func(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
-            val = general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
-            return val[component_extractor...]
+    new_func = nothing
+
+    if is_field_qoi
+        if component_extractor !== nothing
+            @assert false "Finish me"
+        else
+            # field_func = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+            new_func = func
         end
-    else
-        mat_func = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) -> 
-            general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
     end
 
-    return QOIExtractor(
+    if is_material_qoi
+        if component_extractor !== nothing
+            function mat_func(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+                val = general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+                return val[component_extractor...]
+            end
+        else
+            mat_func = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) -> 
+                general_integrated_material_qoi(func, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+        end
+
+        new_func = mat_func
+    end
+    
+    return QOIExtractor{
+        is_field_qoi, is_material_qoi,
+        typeof(objective_cache.assembler),
+        typeof(new_func), typeof(reduction_1), typeof(reduction_2),
+        typeof(storage)
+    }(
         objective_cache.assembler, 
-        mat_func, reduction_1, reduction_2,
+        new_func, reduction_1, reduction_2,
         storage
     )
 end
 
-# TODO will need to specialize for GPU
-function _value!(
-    f, storage, asm, func, U, p, reduction_1, reduction_2
-)
-    # TODO
-    # ideally below line is not necessary
-    # but we need to handle the differences between
-    # condensed or not in update_for_assembly!
-    # FiniteElementContainers.update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
-    FiniteElementContainers.assemble_quadrature_quantity!(
-        storage, asm.dof, func, U, p
-    )
-    f_temp = mapreduce(x -> reduce(reduction_1, x), reduction_2, values(storage))
+# TODO need to add component extractors for _perform_reductions! methods
+function _perform_reductions!(
+    f, 
+    qoi::QOIExtractor{false, true, A, F, R1, R2, S},
+    storage
+) where {A, F, R1, R2, S}
+    f_temp = mapreduce(x -> reduce(qoi.reduction_1, x), qoi.reduction_2, values(storage))
     fill!(f, f_temp)
     return nothing
 end
 
-function _value!(
-    f, qoi::QOIExtractor, U, p
+function _perform_reductions!(
+    f, 
+    qoi::QOIExtractor{true, false, A, F, R1, R2, S},
+    storage
+) where {A, F, R1, R2, S}
+    # f_temp = mapreduce(x -> reduce(qoi.reduction_1, x), qoi.reduction_2, values(qoi.storage))
+    # fill!(f, f_temp)
+    # TODO do something useful here
+    # currently not actually do any reductions
+    copyto!(f.data, storage.data)
+    return nothing
+end
+
+function _update_storage!(
+    asm_method,
+    storage, dof, func, U, p
 )
-    FiniteElementContainers.assemble_quadrature_quantity!(
+    asm_method(storage, dof, func, U, p)
+    return nothing
+end
+
+# deprecate
+function _update_storage!(
+    qoi::QOIExtractor{false, true, A, F, R1, R2, S}, 
+    U, p
+) where {A, F, R1, R2, S}
+    _update_storage!(
+        FiniteElementContainers.assemble_quadrature_quantity!,
         qoi.storage, qoi.assembler.dof, qoi.func, U, p
     )
-    f_temp = mapreduce(x -> reduce(qoi.reduction_1, x), qoi.reduction_2, values(qoi.storage))
-    fill!(f, f_temp)
     return nothing
 end
 
+# deprecate
+function _update_storage!(
+    qoi::QOIExtractor{true, false, A, F, R1, R2, S}, 
+    U, p
+) where {A, F, R1, R2, S}
+    _update_storage!(
+        FiniteElementContainers.assemble_vector!,
+        qoi.storage, qoi.assembler.dof, qoi.func, U, p
+    )
+    return nothing
+end
+
+function _update_storage!(
+    storage,
+    qoi::QOIExtractor{false, true, A, F, R1, R2, S}, 
+    U, p
+) where {A, F, R1, R2, S}
+    _update_storage!(
+        FiniteElementContainers.assemble_quadrature_quantity!,
+        storage, qoi.assembler.dof, qoi.func, U, p
+    )
+    return nothing
+end
+
+function _update_storage!(
+    storage,
+    qoi::QOIExtractor{true, false, A, F, R1, R2, S}, 
+    U, p
+) where {A, F, R1, R2, S}
+    _update_storage!(
+        FiniteElementContainers.assemble_vector!,
+        storage, qoi.assembler.dof, qoi.func, U, p
+    )
+    return nothing
+end
+
+function value!(f, qoi::QOIExtractor, U, p)
+    _update_storage!(qoi, U, p)
+    _perform_reductions!(f, qoi, qoi.storage)
+    return nothing
+end
+
+# for use in design objective
+function value!(f, storage, qoi::QOIExtractor, U, p)
+    _update_storage!(storage, qoi, U, p)
+    _perform_reductions!(f, qoi, storage)
+    return nothing
+end
+
+# TODO this out of place method will currently only
+# work for scalar reductions
 function value(qoi::QOIExtractor, U, p)
     f = zeros(1)
-    # asm = assembler(qoi.objective_cache)
-    # _value!(f, qoi.storage, qoi.assembler, qoi.func, U, p, qoi.reduction_1, qoi.reduction_2)
-    _value!(f, qoi, U, p)
+    value!(f, qoi, U, p)
     return f[1]
 end
