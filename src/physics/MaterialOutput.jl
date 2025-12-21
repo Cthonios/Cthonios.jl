@@ -6,6 +6,7 @@ struct StandardMaterialOutput{
     algorithmic_energy::RT
     cauchy_stress::SymmetricTensor{2, 3, RT, 6}
     displacement_gradient::Tensor{2, 3, RT, 9}
+    # state_variables::Svector{NS, RT}
 end
 
 @inline function standard_material_output(
@@ -36,9 +37,10 @@ function update_material_output!(
     objective_cache, U, p
 )
     FiniteElementContainers.assemble_quadrature_quantity!(
-        mat_output, assembler(objective_cache).dof,
+        mat_output, nothing, assembler(objective_cache).dof,
         standard_material_output,
-        U, p
+        U, p, 
+        FiniteElementContainers.AssembledStruct{StandardMaterialOutput}()
     )
     return nothing
 end

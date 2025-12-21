@@ -28,6 +28,7 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 
 # Re-exports
 export DirichletBC
+export InitialCondition
 export PlaneStrain
 export ThreeDimensional
 export TimerOutput

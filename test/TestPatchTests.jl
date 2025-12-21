@@ -8,6 +8,7 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     )
     props = (;
         var"" = Dict{String, Any}(
+            "density"       => 1.0,
             "bulk modulus"  => 1.0,
             "shear modulus" => 0.25
         )
@@ -20,14 +21,14 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     func_2(x, t) = 0.5 * t
 
     dirichlet_bcs = [
-        DirichletBC("displ_x", "sset_1", func_1)
-        DirichletBC("displ_x", "sset_2", func_1)
-        DirichletBC("displ_x", "sset_3", func_1)
-        DirichletBC("displ_x", "sset_4", func_1)
-        DirichletBC("displ_y", "sset_1", func_1)
-        DirichletBC("displ_y", "sset_2", func_1)
-        DirichletBC("displ_y", "sset_3", func_1)
-        DirichletBC("displ_y", "sset_4", func_1)
+        DirichletBC("displ_x", func_1; sideset_name = "sset_1")
+        DirichletBC("displ_x", func_1; sideset_name = "sset_2")
+        DirichletBC("displ_x", func_1; sideset_name = "sset_3")
+        DirichletBC("displ_x", func_1; sideset_name = "sset_4")
+        DirichletBC("displ_y", func_1; sideset_name = "sset_1")
+        DirichletBC("displ_y", func_1; sideset_name = "sset_2")
+        DirichletBC("displ_y", func_1; sideset_name = "sset_3")
+        DirichletBC("displ_y", func_1; sideset_name = "sset_4")
     ]
 
     sim = SingleDomainSimulation(

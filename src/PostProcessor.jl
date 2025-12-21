@@ -11,7 +11,8 @@ end
 function PostProcessor(objective_cache, U, p, sim)
     mesh = UnstructuredMesh(sim.mesh_file)
     V_q = FunctionSpace(mesh, L2QuadratureField, Lagrange)
-    disp_var = objective_cache.assembler.dof.var
+    # disp_var = objective_cache.assembler.dof.var
+    disp_var = assembler(objective_cache).dof.var
 
     mat_outputs, mat_vars = create_material_output(objective_cache, V_q, StandardMaterialOutput{Float64})
     update_material_output!(mat_outputs, objective_cache, U, p)

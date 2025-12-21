@@ -17,7 +17,10 @@ abstract type AbstractSimulation end
 # abstract type AbstractSimulationCache end
 
 # function run!(sim, objective_type, solver_type)
-function run!(solver, objective_cache, U, p, sim)
+function run!(
+    solver, objective_cache, U, p, sim;
+    output_exodus_every = 1
+)
     pp = PostProcessor(objective_cache, U, p, sim)
     post_process(pp, objective_cache, U, p, 1)
 
@@ -29,7 +32,10 @@ function run!(solver, objective_cache, U, p, sim)
     try
         while FiniteElementContainers.current_time(p.times) < time_end - 1e3 * eps(time_end)
             step!(solver, objective_cache, U, p; verbose=solver.settings.verbose)
-            post_process(pp, objective_cache, U, p, n)
+
+            if n % output_exodus_every == 0
+                post_process(pp, objective_cache, U, p, n)
+            end
             n = n + 1
         end
     finally
@@ -63,6 +69,7 @@ function _setup_assembler_and_parameters(
         mesh,
         assembler, sim.physics, sim.properties; 
         dirichlet_bcs=sim.dirichlet_bcs,
+        ics=sim.solution_ics,
         neumann_bcs=sim.neumann_bcs,
         times=sim.times
     )
@@ -70,19 +77,13 @@ function _setup_assembler_and_parameters(
     return assembler, parameters
 end
 
-# function setup_parameters(
-#     mesh
-# )
-
-# end
-
-function setup_caches(obj, sim; kwargs...)
+function setup_caches(obj, sim, args...; kwargs...)
     asm, p = _setup_assembler_and_parameters(
         sim; 
         use_condensed = true,
         kwargs...
     )
-    objective_cache = setup_cache(asm, obj)
+    objective_cache = setup_cache(asm, obj, args...)
     U = create_field(asm)
     return objective_cache, U, p
 end

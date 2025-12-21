@@ -148,6 +148,147 @@ function test_neareast_neighbor_search_two_block_tri3_mesh(mn)
     end
 end
 
+function test_integral_in_overlap()
+    penalty_length = 0.1
+    edge_smoothing = 0.2
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    δ = 0.5
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(-0.1, 0.1), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.1, -0.1), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(-0.1, -0.1), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(-0.1, -0.2), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(-0.1, -0.1 + 1e-12), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(-0.2, 0.6), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.7, -0.3), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.7, 0.0), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.0, 0.7), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.2, 0.0), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.0, 0.3), δ) ≈ Inf
+    @test Cthonios.integrate_gap(ξ, SVector{2, Float64}(0.0, 0.0), δ) ≈ Inf
+end
+
+# function _integrate_gap_numeric(xi, g, delta)
+#     N = 10_000
+#     xig = range(0.5/N, stop = 1.0 - 0.5/N, length = N)
+
+#     dxi = xi[2] - xi[1]
+#     w = dxi / N
+
+#     gap(x) = g[1] + x * (g[2] - g[1])
+
+#     p(x) = begin
+#         v = gap(x)
+#         v < delta ? (v / delta + delta / v - 2) : 0.0
+#     end
+
+#     # return sum(p, xig) * w
+#     return sum(map(p, xig)) * w
+# end
+
+function _integrate_gap_numeric(xi, g, delta)
+    N = 10_000
+
+    ξ0, ξ1 = xi
+    g0, g1 = g
+
+    # enforce positive orientation (important!)
+    if ξ1 < ξ0
+        ξ0, ξ1 = ξ1, ξ0
+        g0, g1 = g1, g0
+    end
+
+    dξ = ξ1 - ξ0
+    w  = dξ / N
+
+    # midpoint rule on [0,1]
+    xg = range(0.5/N, stop = 1.0 - 0.5/N, length = N)
+
+    function gap_at_x(x)
+        ξ = ξ0 + x * dξ
+        return g0 + (ξ - ξ0) / dξ * (g1 - g0)
+    end
+
+    function p(x)
+        v = gap_at_x(x)
+        if v <= 0
+            return Inf
+        elseif v < delta
+            return v / delta + delta / v - 2
+        else
+            return 0.0
+        end
+    end
+
+    return sum(p(x) for x in xg) * w
+end
+
+function test_integral_both_in_contact()
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    g1 = SVector{2, Float64}(0.1, 0.3)
+    g2 = SVector{2, Float64}(0.3, 0.1)
+    δ = 0.5
+    integral_1 = Cthonios.integrate_gap(ξ, g1, δ)
+    integral_2 = Cthonios.integrate_gap(ξ, g2, δ)
+    @test integral_1 ≈ integral_2
+
+    integral_3 = _integrate_gap_numeric(ξ, g1, δ)
+    integral_4 = _integrate_gap_numeric(ξ, g2, δ)
+
+    @test isapprox(integral_1, integral_3, rtol = 1e-7)
+    @test isapprox(integral_2, integral_4, rtol = 1e-7)
+end
+
+function test_integral_both_equal_in_contact()
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    g = SVector{2, Float64}(0.3, 0.3)
+    δ = 0.5
+    integral_1 = _integrate_gap_numeric(ξ, g, δ)
+    integral_2 = Cthonios.integrate_gap(ξ, g, δ)
+    @test integral_1 ≈ integral_2
+    # g[2] = g[2] + 1e-8
+    g = SVector{2, Float64}(0.3, 0.3 + 1e-8)
+    integral_3 = Cthonios.integrate_gap(ξ, g, δ)
+    @test isapprox(integral_2, integral_3, atol=1e-7)
+end
+
+function test_integral_both_out_of_contact()
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    g1 = SVector{2, Float64}(0.6, 0.8)
+    g2 = SVector{2, Float64}(0.8, 0.6)
+    δ = 0.5
+    integral_1 = Cthonios.integrate_gap(ξ, g1, δ)
+    integral_2 = Cthonios.integrate_gap(ξ, g2, δ)
+    @test integral_1 ≈ 0.0
+    @test integral_2 ≈ 0.0
+    integral_3 = _integrate_gap_numeric(ξ, g1, δ)
+    @test isapprox(integral_1, integral_3, atol=1e-7)
+end
+
+function test_integral_both_equal_out_of_contact()
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    g1 = SVector{2, Float64}(0.8, 0.8)
+    g2 = SVector{2, Float64}(0.8, 0.8)
+    δ = 0.5
+    integral_1 = Cthonios.integrate_gap(ξ, g1, δ)
+    integral_2 = Cthonios.integrate_gap(ξ, g2, δ)
+    @test integral_1 ≈ 0.0
+    @test integral_2 ≈ 0.0
+    integral_3 = _integrate_gap_numeric(ξ, g1, δ)
+    @test isapprox(integral_1, integral_3, atol = 1e-7)
+end
+
+function test_integral_in_out_of_contact()
+    ξ = SVector{2, Float64}(0.2, 0.9)
+    g1 = SVector{2, Float64}(0.1, 0.7)
+    g2 = SVector{2, Float64}(0.7, 0.1)
+    δ = 0.5
+    integral_1 = Cthonios.integrate_gap(ξ, g1, δ)
+    integral_2 = Cthonios.integrate_gap(ξ, g2, δ)
+    @test integral_1 ≈ integral_2
+    integral_3 = Cthonios.integrate_gap(ξ, g1, δ)
+    @test isapprox(integral_1, integral_3, atol = 1e-7)
+end
+
 @testset "ContactPair" begin
     test_contact_pair_constructor()
 end
@@ -162,4 +303,13 @@ end
     for mn in [1, 2, 3, 4, 5]
         test_neareast_neighbor_search_two_block_tri3_mesh(mn)
     end
+end
+
+@testset "Integral penalty contact tests" begin
+    test_integral_in_overlap()
+    test_integral_both_in_contact()
+    test_integral_both_equal_in_contact()
+    test_integral_both_out_of_contact()
+    test_integral_both_equal_out_of_contact()
+    test_integral_in_out_of_contact()
 end
