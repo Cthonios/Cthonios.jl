@@ -1,6 +1,5 @@
 struct SingleDomainSimulation{
     RT <: Number, 
-    RV <: AbstractArray{RT, 1},
     P1 <: NamedTuple, 
     P2 <: NamedTuple, 
     I1, 
@@ -12,7 +11,7 @@ struct SingleDomainSimulation{
 } <: AbstractSimulation
     mesh_file::String
     output_file::String
-    times::TimeStepper{RV}
+    times::TimeStepper{RT}
     physics::P1
     properties::P2
     solution_ics::I1

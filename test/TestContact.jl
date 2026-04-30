@@ -21,7 +21,7 @@ function single_quad_mesh_helper(mn)
 
     disp = zeros(2, 4)
 
-    ref_fe = ReferenceFE(Edge2{Lagrange, 1}())
+    ref_fe = ReferenceFE(Edge{Lagrange, 1}(), GaussLobattoLegendre(1))
 
     side_a = Cthonios.ContactSurface(ref_fe, edges_a, ones(Int, 2))
     side_b = Cthonios.ContactSurface(ref_fe, edges_b, ones(Int, 2))

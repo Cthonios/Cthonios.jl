@@ -85,8 +85,7 @@ function gradient(o::QuasiStaticObjectiveCache, U, p)
 
     if FiniteElementContainers._is_condensed(assembler(o).dof)
         FiniteElementContainers._adjust_vector_entries_for_constraints!(
-          o.gradient, assembler(o).constraint_storage,
-          KA.get_backend(assembler(o))
+          o.gradient, assembler(o).constraint_storage
         )
         return o.gradient.data
       else
@@ -129,7 +128,8 @@ end
 
 function value(o::QuasiStaticObjectiveCache, U, p)
     assemble_scalar!(assembler(o), o.objective.value, U, p)
-    val = mapreduce(sum, +, values(assembler(o).scalar_quadrature_storage))
+    # val = mapreduce(sum, +, values(assembler(o).scalar_quadrature_storage))
+    val = reduce(+, assembler(o).scalar_quadrature_storage)
     fill!(o.internal_energy, val)
     # assemble_scalar!(assembler(o), #neumann energy, U, p)
 
@@ -140,14 +140,15 @@ function value(o::QuasiStaticObjectiveCache, U, p)
 end
 
 # integrator hooks
-function initialize!(o::QuasiStaticObjectiveCache, U, p)
-    fill!(p.times.time_current, zero(eltype(p.times.time_current)))
+function initialize!(::QuasiStaticObjectiveCache, U, p)
+    # fill!(p.times.time_current, zero(eltype(p.times.time_current)))
+    p.times.time_current = zero(typeof(p.times.time_current))
     return nothing
 end
 
 function step!(solver, o::QuasiStaticObjectiveCache, U, p; verbose = true)
     FiniteElementContainers.update_time!(p)
-    FiniteElementContainers.update_bc_values!(p)
+    FiniteElementContainers.update_bc_values!(p, solver.objective_cache.assembler)
     _step_begin_banner(o, p; verbose = verbose)
     solve!(solver, U.data, p)
     update_field_dirichlet_bcs!(U, p.dirichlet_bcs)

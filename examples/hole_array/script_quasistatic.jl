@@ -6,7 +6,7 @@ Enzyme.Compiler.VERBOSE_ERRORS[] = true
 
 # function sim_test()
 # file management
-mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
+mesh_file = Base.source_dir() * "/mesh/hole_array_tri6.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
@@ -65,20 +65,20 @@ sim = SingleDomainSimulation(
 objective = QuasiStaticObjective()
 objective_cache, U, p = setup_caches(objective, sim)
 
-qoi1 = QOIExtractor(
-    objective_cache, helmholtz_free_energy, +,
-    FiniteElementContainers.L2QuadratureField, Float64;
-    is_material_qoi = true,
-    reduction_2 = +
-)
-qoi2 = QOIExtractor(
-    objective_cache, residual, identity,
-    H1Field, Float64;
-    is_field_qoi = true,
-    reduction_2 = identity
-)
+# qoi1 = QOIExtractor(
+#     objective_cache, helmholtz_free_energy, +,
+#     FiniteElementContainers.L2QuadratureField, Float64;
+#     is_material_qoi = true,
+#     reduction_2 = +
+# )
+# qoi2 = QOIExtractor(
+#     objective_cache, residual, identity,
+#     H1Field, Float64;
+#     is_field_qoi = true,
+#     reduction_2 = identity
+# )
 
-solver = TrustRegionSolver(objective_cache, p; use_warm_start=true)
+solver = TrustRegionSolver(objective_cache, p; use_warm_start = true)
 
 # solver = Cthonios.NewtonSolver(objective_cache)
 

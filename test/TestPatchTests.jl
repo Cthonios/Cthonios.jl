@@ -43,20 +43,26 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
         0.1 -0.2;
         0.4 -0.1
     ]
-    coords = p.h1_coords
+    coords = p.coords
     U = H1Field(target_disp_grad * coords)
     
     # now need to update bcs to reflect what's in U
     # this is hacky but will work for now
-    for bc in p.dirichlet_bcs.bc_caches
-        copyto!(bc.vals, U.data[bc.dofs])
-    end
+    # for bc in p.dirichlet_bcs.bc_cache
+    #     copyto!(bc.vals, U.data[bc.dofs])
+    # end
+    copyto!(p.dirichlet_bcs.bc_cache.vals, U.data[p.dirichlet_bcs.bc_cache.dofs])
 
     fspace = Cthonios.assembler(objective_cache).dof.var.fspace
-    conns = values(fspace.elem_conns)[1]
-    ref_fe = values(fspace.ref_fes)[1]
+    # conns = values(fspace.elem_conns)[1]
+    conns = connectivity(fspace, 1)
+    # ref_fe = values(fspace.ref_fes)[1]
+    ref_fe = FiniteElementContainers.block_reference_element(fspace, 1)
 
     solver = Cthonios.NewtonSolver(objective_cache)
+
+    @show size(conns)
+    @show typeof(ref_fe)
 
     Cthonios.solve!(solver, U.data, p)
 
@@ -64,7 +70,7 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     @test isapprox(norm(grad), zero(eltype(grad)), atol=1e-12)
 
     for e in axes(conns, 2)
-        for q in 1:ReferenceFiniteElements.num_quadrature_points(ref_fe)
+        for q in 1:ReferenceFiniteElements.num_cell_quadrature_points(ref_fe)
             u_el = FiniteElementContainers._element_level_fields_flat(U, ref_fe, conns, e)
             x_el = FiniteElementContainers._element_level_fields_flat(coords, ref_fe, conns, e)
             interps = FiniteElementContainers._cell_interpolants(ref_fe, q)

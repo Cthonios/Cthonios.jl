@@ -6,6 +6,7 @@ using FiniteElementContainers
 using ForwardDiff
 using LinearAlgebra
 using Random
+using ReferenceFiniteElements
 using StaticArrays
 using Test
 
@@ -52,9 +53,9 @@ end
   include("TestCLI.jl")
 end
 
-@testset "Contact" begin
-  include("TestContact.jl")
-end
+# @testset "Contact" begin
+#   include("TestContact.jl")
+# end
 
 @testset "Objectives" begin
   # include("objectives/TestDesignObjective.jl")

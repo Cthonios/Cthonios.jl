@@ -51,7 +51,7 @@ function _setup_assembler_and_parameters(
 )
 
     mesh = UnstructuredMesh(sim.mesh_file)
-    fspace = FunctionSpace(mesh, H1Field, Lagrange; q_degree=q_degree)
+    fspace = FunctionSpace(mesh, H1Field, Lagrange)
     # fspace_q = FunctionSpace(mesh, L2QuadratureField, Lagrange)
 
     # check consistent field names across physics

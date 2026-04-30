@@ -29,15 +29,15 @@ function test_parse_dirichlet_bcs()
 
     @test length(bcs) == 4
 
-    @test bcs[1].sset_name == Symbol("yminus_sideset")
-    @test bcs[2].sset_name == Symbol("yplus_sideset")
-    @test bcs[3].sset_name == Symbol("yminus_sideset")
-    @test bcs[4].sset_name == Symbol("yplus_sideset")
+    @test bcs[1].sset_name == "yminus_sideset"
+    @test bcs[2].sset_name == "yplus_sideset"
+    @test bcs[3].sset_name == "yminus_sideset"
+    @test bcs[4].sset_name == "yplus_sideset"
 
-    @test bcs[1].var_name == Symbol("displ_x")
-    @test bcs[2].var_name == Symbol("displ_x")
-    @test bcs[3].var_name == Symbol("displ_y")
-    @test bcs[4].var_name == Symbol("displ_y")
+    @test bcs[1].var_name == "displ_x"
+    @test bcs[2].var_name == "displ_x"
+    @test bcs[3].var_name == "displ_y"
+    @test bcs[4].var_name == "displ_y"
 
     X = SVector{2, Float64}(0., 0.)
     for bc in bcs

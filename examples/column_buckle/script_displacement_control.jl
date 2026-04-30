@@ -3,14 +3,14 @@ using ConstitutiveModels
 using Cthonios
 # using Meshes
 # import Meshes: SimpleMesh, viz
-using PythonCall
+# using PythonCall
 
 #md # # File management
 mesh_file = Base.source_dir() * "/mesh.g"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 #md # # Times
-times = TimeStepper(0., 1., 40)
+times = TimeStepper(0., 1., 80)
 
 #md # # Physics
 physics = (;
@@ -20,6 +20,7 @@ physics = (;
 )
 props = (;
     block_1 = Dict{String, Any}(
+      "density"       => 1.,
       "bulk modulus"  => 10.0,
       "shear modulus" => 1.0
     )
@@ -32,12 +33,12 @@ func_3(x, t) = @SVector [0., -0.025 * t, 0.]
 
 #md # # Boundary conditions
 dirichlet_bcs = [
-  DirichletBC("displ_x", "sset_y_negative", func_1)
-  DirichletBC("displ_y", "sset_y_negative", func_1)
-  DirichletBC("displ_z", "sset_y_negative", func_1)
-  DirichletBC("displ_x", "sset_y_positive", func_1)
-  DirichletBC("displ_z", "sset_y_positive", func_1)
-  DirichletBC("displ_y", "sset_y_positive", func_2)
+  DirichletBC("displ_x", func_1; sideset_name = "sset_y_negative")
+  DirichletBC("displ_y", func_1; sideset_name = "sset_y_negative")
+  DirichletBC("displ_z", func_1; sideset_name = "sset_y_negative")
+  DirichletBC("displ_x", func_1; sideset_name = "sset_y_positive")
+  DirichletBC("displ_z", func_1; sideset_name = "sset_y_positive")
+  DirichletBC("displ_y", func_2; sideset_name = "sset_y_positive")
 ]
 # traction_bcs = [
 #   NeumannBC("sset_y_positive", func_3)
@@ -52,12 +53,13 @@ sim = SingleDomainSimulation(
 
 #md # # objective setup
 objective = Cthonios.QuasiStaticObjective()
-objective_cache = Cthonios.setup_cache(objective, sim)
+objective_cache, U, p = Cthonios.setup_caches(objective, sim)
 
 #md # # solver setup
-solver = Cthonios.TrustRegionSolverGPU(objective_cache; use_warm_start=true)
+solver = Cthonios.TrustRegionSolver(objective_cache, p; use_warm_start = true)
+# solver = Cthonios.NewtonSolver(objective_cache)
 
-Cthonios.run!(objective_cache, solver, sim)
+Cthonios.run!(solver, objective_cache, U, p, sim)
 
 #md # # Interactive plotting
 # exo = ExodusDatabase("output.e", "r")
