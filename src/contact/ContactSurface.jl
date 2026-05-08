@@ -37,7 +37,7 @@ end
 @inline function facet_coordinates(surf::ContactSurface, X, U, id::Int)
     RT = eltype(X)
     ND = size(X, 1)
-    NNPF = 2 # hardcoded for now
+    NNPF = 2 # hardcoded for now TODO
 
     coords = SMatrix{ND, NNPF, RT, ND * NNPF}(
         @views X[:, surf.side_nodes[:, id]]
@@ -52,7 +52,7 @@ end
 @inline function facet_coordinates(surf::ContactSurface, X, U, node::Int, facet::Int)
     RT = eltype(X)
     ND = size(X, 1)
-    NNPF = 2 # hardcoded for now
+    NNPF = 2 # hardcoded for now TODO
 
     coords = SVector{ND, RT}(
         @views X[:, surf.side_nodes[node, facet]]

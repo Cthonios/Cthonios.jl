@@ -10,8 +10,9 @@ end
 
 function PostProcessor(objective_cache, U, p, sim)
     mesh = UnstructuredMesh(sim.mesh_file)
-    V_q = FunctionSpace(mesh, L2QuadratureField, Lagrange)
-    disp_var = objective_cache.assembler.dof.var
+    V_q = FunctionSpace(mesh, L2Field, Lagrange)
+    # disp_var = objective_cache.assembler.dof.var
+    disp_var = assembler(objective_cache).dof.var
 
     mat_outputs, mat_vars = create_material_output(objective_cache, V_q, StandardMaterialOutput{Float64})
     update_material_output!(mat_outputs, objective_cache, U, p)
@@ -50,9 +51,9 @@ function _post_process_common!(pp, objective_cache, U, p, n)
     write_field(pp.exodus_pp, n, U_names, U)
     # write_field(pp, n, )
 
-    for (block, val) in pairs(mat_outputs)
-        write_field(pp.exodus_pp, n, String(block), "algorithmic_energy", val.algorithmic_energy)
-        write_field(pp.exodus_pp, n, String(block), "cauchy_stress", val.cauchy_stress)
-        write_field(pp.exodus_pp, n, String(block), "displacement_gradient", val.displacement_gradient)
-    end
+    # for (block, val) in pairs(mat_outputs)
+    #     write_field(pp.exodus_pp, n, String(block), "algorithmic_energy", val.algorithmic_energy)
+    #     write_field(pp.exodus_pp, n, String(block), "cauchy_stress", val.cauchy_stress)
+    #     write_field(pp.exodus_pp, n, String(block), "displacement_gradient", val.displacement_gradient)
+    # end
 end

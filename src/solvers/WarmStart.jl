@@ -50,22 +50,27 @@ function solve!(
     # set bcs
     @timeit warm_start.timer "warm start - bc updates" begin
       # need to set time step
-      fill!(dp.times.time_current, sum(p.times.time_current))
-      fill!(dp.times.Δt, sum(p.times.Δt))
+      # fill!(dp.times.time_current, sum(p.times.time_current))
+      # fill!(dp.times.Δt, sum(p.times.Δt))
+      dp.times.time_current = p.times.time_current
+      dp.times.Δt = p.times.Δt
       FiniteElementContainers.update_time!(dp)
 
       # update values
       FiniteElementContainers.update_bc_values!(
-        dp.dirichlet_bcs, p.h1_coords, sum(dp.times.time_current)
+        # dp.dirichlet_bcs, p.h1_coords, sum(dp.times.time_current)
+        dp.dirichlet_bcs, p.coords, dp.times.time_current
       )
       FiniteElementContainers.update_bc_values!(
-        dp.neumann_bcs, p.h1_coords, sum(dp.times.time_current)
+        # dp.neumann_bcs, p.h1_coords, sum(dp.times.time_current)
+        dp.neumann_bcs, asm, p.coords, dp.times.time_current
       )
 
       # TODO needs to be updated for GPUs
-      for (bc, dbc) in zip(values(p.dirichlet_bcs.bc_caches), values(dp.dirichlet_bcs.bc_caches))
-        dbc.vals .= bc.vals .- dbc.vals
-      end
+      # for (bc, dbc) in zip(values(p.dirichlet_bcs.bc_caches), values(dp.dirichlet_bcs.bc_caches))
+      #   dbc.vals .= bc.vals .- dbc.vals
+      # end
+      dp.dirichlet_bcs.bc_cache.vals .= p.dirichlet_bcs.bc_cache.vals .- dp.dirichlet_bcs.bc_cache.vals
 
       for (bc, dbc) in zip(values(p.neumann_bcs.bc_caches), values(dp.neumann_bcs.bc_caches))
         dbc.vals .= bc.vals .- dbc.vals
@@ -81,10 +86,12 @@ function solve!(
       #   Duplicated(p, dp),
       #   Const(residual)
       # )
+      enzyme_safe = true
       autodiff(
         Forward, 
-        assemble_vector!,
+        FiniteElementContainers.assemble_vector_enzyme_safe!,
         Duplicated(R, dR),
+        Const(asm.vector_pattern),
         Const(asm.dof),
         Const(residual),
         Duplicated(Uu, dUu),

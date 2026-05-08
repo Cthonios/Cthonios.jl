@@ -46,3 +46,31 @@ function _cpp_distance(edge, p)
 
     return d
 end
+
+function _compute_closest_distance_to_each_side(
+    contact_caches, X, U
+)
+    # loop over contact pairs
+    cpps = Float64[]
+    for cpair in values(contact_caches)
+        # loop over interactions in current contact pair
+        for n in axes(cpair.interactions, 2)
+            side = cpair.side_b.sides[n]
+            X_I = facet_coordinates(cpair.side_b, X, U, n)
+            # loop over quadrature points
+            cpp = 1e64 # some really big number
+            for q in 1:num_quadrature_points(cpair.side_b.ref_fe)
+                X_Q = facet_quadrature_point_coordinates(cpair.side_b, X_I, q, side)
+                # loop over neighbors in interaction list
+                for m in axes(cpair.interactions, 1)
+                    X_M = facet_coordinates(cpair.side_a, X, U, cpair.interactions[m, n])
+                    cpp = min(cpp, _cpp_distance(X_M, X_Q))
+                end
+                # display(X_Q)
+            end
+            # @show cpp
+            push!(cpps, cpp)
+        end
+    end
+    cpps
+end

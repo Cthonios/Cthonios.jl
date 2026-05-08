@@ -20,7 +20,7 @@ function _parse_dirichclet_bcs(settings)
         func = @RuntimeGeneratedFunction(Meta.parse(bc[:function]))
         for field in bc[:fields]
             for sset in bc[:sidesets]
-                push!(bcs, DirichletBC(field, sset, func))
+                push!(bcs, DirichletBC(field, func; sideset_name = sset))
             end
         end
     end

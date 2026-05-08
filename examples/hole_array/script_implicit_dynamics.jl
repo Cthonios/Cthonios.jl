@@ -3,22 +3,22 @@ using Cthonios
 using FiniteElementContainers
 
 # Mesh
-mesh_file = Base.source_dir() * "/clamped.g"
+mesh_file = Base.source_dir() * "/hole_array.exo"
 
 # Times
-times = TimeStepper(0., 1.e-5, 11)
+times = TimeStepper(0., 1., 100)
 
 # Physics
 physics = (;
-    clamped = SolidMechanics(
+    Block1 = SolidMechanics(
         PlaneStrain(), NeoHookean()
         # PlaneStrain(), LinearElastic()
     )
 )
 props = (;
-    clamped = Dict{String, Any}(
+    Block1 = Dict{String, Any}(
         "Young's modulus" => 1.,
-        "Poisson's ratio" => 0.0
+        "Poisson's ratio" => 0.3
     )
 )
 props = Cthonios.create_properties(physics, props)
@@ -26,12 +26,13 @@ props = Cthonios.create_properties(physics, props)
 # Boundary Conditions
 func_1(x, t) = -1. * t#(0., -5. * t)
 func_2(x, t) = 0.0
+func_3(x, t) = @SVector [0., -0.025 * t]
 
 dirichlet_bcs = DirichletBC[
     DirichletBC("displ_x", "yminus_sideset", func_2),
     DirichletBC("displ_y", "yminus_sideset", func_2),
     DirichletBC("displ_x", "yplus_sideset", func_2),
-    DirichletBC("displ_y", "yplus_sideset", func_2)
+    DirichletBC("displ_y", "yplus_sideset", func_1)
 ]
 
 # Simulation setup
@@ -40,7 +41,7 @@ sim = SingleDomainSimulation(
     mesh_file, times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective_cache  = Cthonios.ImplicitDynamicsObjectiveCacheNew(sim)
+objective_cache  = Cthonios.ImplicitDynamicsObjectiveCache(sim)
 solver = Cthonios.NewtonSolver(objective_cache)
 
 # fill!(objective_cache.solution_rate, 10.)

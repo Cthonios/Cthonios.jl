@@ -28,6 +28,7 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 
 # Re-exports
 export DirichletBC
+export InitialCondition
 export PlaneStrain
 export ThreeDimensional
 export TimerOutput
@@ -54,7 +55,8 @@ export setup_caches
 include("objectives/Objectives.jl")
 
 # physics
-include("physics/Physics.jl")
+# include("physics/Physics.jl")
+include("Physics.jl")
 
 # contact
 include("contact/Contact.jl")

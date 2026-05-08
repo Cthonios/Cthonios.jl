@@ -1,7 +1,7 @@
 Base.@kwdef struct NewtonSolverSettings
     max_iters::Int = 50
-    rel_tol::Float64 = 1e-5
-    abs_tol::Float64 = 1e-6
+    rel_tol::Float64 = 1e-10
+    abs_tol::Float64 = 1e-10
     verbose::Bool = true
 end
 
@@ -16,13 +16,7 @@ end
 
 function solve!(solver::NewtonSolver, Uu, p)
     objective_cache = solver.objective_cache
-    # R = gradient(objective_cache, Uu, p)
-    # res_norm0 = norm(R)
-
-    # if res_norm0 == 0.0
-    #     res_norm0 = 1.
-    # end
-    res_norm0 = Inf
+    res_norm0 = one(eltype(Uu))
     n = 1
 
     if solver.settings.verbose
@@ -35,7 +29,10 @@ function solve!(solver::NewtonSolver, Uu, p)
         R = gradient(objective_cache, Uu, p)
 
         if n == 1
-            res_norm0 = norm(R)
+            norm_R = norm(R)
+            if norm_R != 0.
+                res_norm0 = norm(R)
+            end
         end
 
         K = hessian(objective_cache, Uu, p)

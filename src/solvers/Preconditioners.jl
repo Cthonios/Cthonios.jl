@@ -56,9 +56,9 @@ function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
     # TODO need stuff here
     # inefficiency here by creating these copies
     Uu = create_unknowns(asm)
-    # H = hessian(obj, Uu, p)
+    H = hessian(obj, Uu, p)
     # P = cholesky(H)
-    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
+    # assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
 
     # NOTE:
     # note assembling since the stiffness is assembled
@@ -99,8 +99,9 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
     # H = hessian!(P.assembler, obj, Uu, p)
     # H = hessian(obj, Uu, p)
     asm = assembler(obj)
-    assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
-    H = stiffness(asm)
+    # assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
+    # H = stiffness(asm)
+    H = hessian(obj, Uu, p; symmetric = false)
     attempt = 1
     while attempt < 10
       if verbose

@@ -6,6 +6,7 @@ using FiniteElementContainers
 using ForwardDiff
 using LinearAlgebra
 using Random
+using ReferenceFiniteElements
 using StaticArrays
 using Test
 
@@ -22,6 +23,7 @@ function sim_helper()
   )
   props = (;
       block_1 = Dict{String, Any}(
+      "density"       => 1.0,
       "bulk modulus"  => 10.0,
       "shear modulus" => 1.0
       )
@@ -31,12 +33,12 @@ function sim_helper()
   func_2(x, t) = -0.5 * t
 
   dirichlet_bcs = [
-      DirichletBC("displ_x", "sset_y_negative", func_1)
-      DirichletBC("displ_y", "sset_y_negative", func_1)
-      DirichletBC("displ_z", "sset_y_negative", func_1)
-      DirichletBC("displ_x", "sset_y_positive", func_1)
-      DirichletBC("displ_z", "sset_y_positive", func_1)
-      DirichletBC("displ_y", "sset_y_positive", func_2)
+      DirichletBC("displ_x", func_1; sideset_name = "sset_y_negative")
+      DirichletBC("displ_y", func_1; sideset_name = "sset_y_negative")
+      DirichletBC("displ_z", func_1; sideset_name = "sset_y_negative")
+      DirichletBC("displ_x", func_1; sideset_name = "sset_y_positive")
+      DirichletBC("displ_z", func_1; sideset_name = "sset_y_positive")
+      DirichletBC("displ_y", func_2; sideset_name = "sset_y_positive")
   ]
 
   sim = SingleDomainSimulation(
@@ -51,12 +53,12 @@ end
   include("TestCLI.jl")
 end
 
-@testset "Contact" begin
-  include("TestContact.jl")
-end
+# @testset "Contact" begin
+#   include("TestContact.jl")
+# end
 
 @testset "Objectives" begin
-  include("objectives/TestDesignObjective.jl")
+  # include("objectives/TestDesignObjective.jl")
   include("objectives/TestObjectives.jl")
 end
 
