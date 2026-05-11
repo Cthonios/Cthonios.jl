@@ -80,11 +80,12 @@ end
 function setup_caches(obj, sim, args...; kwargs...)
     asm, p = _setup_assembler_and_parameters(
         sim; 
-        use_condensed = true,
+        use_condensed = false,
         kwargs...
     )
     objective_cache = setup_cache(asm, obj, args...)
-    U = create_field(asm)
+    # U = create_field(asm)
+    U = create_unknowns(asm)
     return objective_cache, U, p
 end
 

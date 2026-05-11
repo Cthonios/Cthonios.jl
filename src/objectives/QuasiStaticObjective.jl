@@ -12,7 +12,7 @@ function QuasiStaticObjective()
     return QuasiStaticObjective(energy, residual, stiffness)
 end
 
-struct QuasiStaticObjectiveCache{
+mutable struct QuasiStaticObjectiveCache{
     A, O,
     RT, RV <: AbstractArray{RT, 1},
     NF
@@ -20,13 +20,13 @@ struct QuasiStaticObjectiveCache{
     assembler::A
     objective::O
     #
-    external_energy::RV
-    internal_energy::RV
+    external_energy::RT
+    internal_energy::RT
     external_force::H1Field{RT, RV, NF}
     internal_force::H1Field{RT, RV, NF}
     solution_old::H1Field{RT, RV, NF}
     # solver helpers
-    value::RV
+    value::RT
     gradient::H1Field{RT, RV, NF}
     #
     timer::TimerOutput
@@ -37,15 +37,13 @@ function QuasiStaticObjectiveCache(
     objective::QuasiStaticObjective
 )
     RT = eltype(assembler.constraint_storage)
-
-    backend = KA.get_backend(assembler)
-    external_energy = KA.zeros(backend, RT, 1)
-    internal_energy = KA.zeros(backend, RT, 1)
+    external_energy = zero(RT)
+    internal_energy = zero(RT)
     external_force = create_field(assembler)
     internal_force = create_field(assembler)
     solution_old = create_field(assembler)
 
-    value = KA.zeros(backend, RT, 1)
+    value = zero(RT)
     gradient = create_field(assembler)
 
     timer = TimerOutput()
@@ -67,36 +65,12 @@ end
 
 # objective hooks
 function gradient(o::QuasiStaticObjectiveCache, U, p)
-    RT = eltype(U)
     assemble_vector!(assembler(o), o.objective.gradient_u, U, p)
-    # copyto!(o.internal_force, residual(assembler(o)))
-    copyto!(o.internal_force, assembler(o).residual_storage)
-    fill!(o.external_force, zero(RT))
-    fill!(assembler(o).residual_storage, zero(RT))
-    fill!(assembler(o).residual_unknowns, zero(RT))
+    o.internal_force .= assembler(o).residual_storage
     assemble_vector_neumann_bc!(assembler(o), U, p)
-    # copyto!(o.external_force, residual(assembler(o)))
-    copyto!(o.external_force, assembler(o).residual_storage)
-    o.gradient .= o.internal_force .- o.external_force
-
-    # return FiniteElementContainers.residual(assembler(o))
-
-    # return o.gradient.data
-
-    if FiniteElementContainers._is_condensed(assembler(o).dof)
-        FiniteElementContainers._adjust_vector_entries_for_constraints!(
-          o.gradient, assembler(o).constraint_storage
-        )
-        return o.gradient.data
-      else
-        # extract_field_unknowns!(
-        #   asm.residual_unknowns, 
-        #   asm.dof, 
-        #   asm.residual_storage
-        # )
-        # return asm.residual_unknowns
-        @assert false "Finish or remove me."
-    end
+    o.external_force .= assembler(o).residual_storage .- o.internal_force
+    o.gradient .= assembler(o).residual_storage
+    return residual(assembler(o))
 end
 
 function hessian(o::QuasiStaticObjectiveCache, U, p; symmetric = true)
@@ -114,6 +88,7 @@ function hvp(o::QuasiStaticObjectiveCache, U, V, p)
     return FiniteElementContainers.hvp(assembler(o), V)
 end
 
+# TODO review this
 function mass_matrix(o::QuasiStaticObjectiveCache, U, p)
     assemble_mass!(assembler(o), o.objective.hessian_u, U, p)
     # M = FiniteElementContainers.mass(assembler(o)) |> Symmetric
@@ -126,22 +101,19 @@ function mass_matrix(o::QuasiStaticObjectiveCache, U, p)
     return M |> Symmetric
 end
 
+# NOTE I think this assumes o.external_force is already populated
 function value(o::QuasiStaticObjectiveCache, U, p)
     assemble_scalar!(assembler(o), o.objective.value, U, p)
-    # val = mapreduce(sum, +, values(assembler(o).scalar_quadrature_storage))
-    val = reduce(+, assembler(o).scalar_quadrature_storage)
-    fill!(o.internal_energy, val)
-    # assemble_scalar!(assembler(o), #neumann energy, U, p)
-
+    o.internal_energy = reduce(+, assembler(o).scalar_quadrature_storage)
     # TODO need an actual neumann energy method in FEContainers
-    fill!(o.external_energy, dot(o.external_force, U))
-    o.value .= o.external_energy .+ o.internal_energy
-    return sum(o.value)
+    # fill!(o.external_energy, dot(o.external_force, U))
+    o.external_energy = dot(o.external_force, p.field)
+    o.value = o.external_energy + o.internal_energy
+    return o.value
 end
 
 # integrator hooks
 function initialize!(::QuasiStaticObjectiveCache, U, p)
-    # fill!(p.times.time_current, zero(eltype(p.times.time_current)))
     p.times.time_current = zero(typeof(p.times.time_current))
     return nothing
 end
@@ -150,16 +122,17 @@ function step!(solver, o::QuasiStaticObjectiveCache, U, p; verbose = true)
     FiniteElementContainers.update_time!(p)
     FiniteElementContainers.update_bc_values!(p, solver.objective_cache.assembler)
     _step_begin_banner(o, p; verbose = verbose)
-    solve!(solver, U.data, p)
-    update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
+    solve!(solver, U, p)
+    # update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
 
     # update values at end of step
     gradient(o, U, p)
     value(o, U, p)
 
     # update old solution
-    update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
-    copyto!(o.solution_old, U)
+    # update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
+    # copyto!(o.solution_old, U)
+    copyto!(o.solution_old, p.field)
 
     _step_end_banner(o, p; verbose = verbose)
     return nothing

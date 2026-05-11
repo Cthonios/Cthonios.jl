@@ -1,12 +1,10 @@
 using ConstitutiveModels
 using Cthonios
-using Enzyme
 using FiniteElementContainers
-Enzyme.Compiler.VERBOSE_ERRORS[] = true
 
 # function sim_test()
 # file management
-mesh_file = Base.source_dir() * "/mesh/hole_array_tri6.exo"
+mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
@@ -78,7 +76,7 @@ objective_cache, U, p = setup_caches(objective, sim)
 #     reduction_2 = identity
 # )
 
-solver = TrustRegionSolver(objective_cache, p; use_warm_start = true)
+solver = TrustRegionSolver(objective_cache, p; use_predictor = true)
 
 # solver = Cthonios.NewtonSolver(objective_cache)
 

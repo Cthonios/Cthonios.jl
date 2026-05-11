@@ -48,7 +48,7 @@ function _post_process_common!(pp, objective_cache, U, p, n)
     update_material_output!(mat_outputs, objective_cache, U, p)
 
     write_times(pp.exodus_pp, n, sum(p.times.time_current))
-    write_field(pp.exodus_pp, n, U_names, U)
+    write_field(pp.exodus_pp, n, U_names, p.field)
     # write_field(pp, n, )
 
     # for (block, val) in pairs(mat_outputs)

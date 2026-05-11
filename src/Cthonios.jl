@@ -3,12 +3,11 @@ module Cthonios
 import FiniteElementContainers: AbstractField, BCBookKeeping
 import KernelAbstractions as KA
 import KernelAbstractions: CPU
-using ArgParse
+# using ArgParse
 using Arpack
 using ConstitutiveModels
 using DocStringExtensions
-using Enzyme
-using Exodus
+# using Exodus
 using FiniteElementContainers
 using ForwardDiff
 using Krylov
@@ -16,15 +15,15 @@ using LinearAlgebra
 using NLopt
 using Printf
 using ReferenceFiniteElements
-using RuntimeGeneratedFunctions
+# using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
 using StructArrays
 using Tensors
 using TimerOutputs
-using YAML
+# using YAML
 
-RuntimeGeneratedFunctions.init(@__MODULE__)
+# RuntimeGeneratedFunctions.init(@__MODULE__)
 
 # Re-exports
 export DirichletBC
@@ -75,9 +74,14 @@ include("qoi_extractors/QOIExtractors.jl")
 # optimizations
 include("optimizations/Optimizations.jl")
 
-include("cli/CLI.jl")
+# include("cli/CLI.jl")
 
 # methods defined in extensions
-function cthonios_main end
+# function cthonios_main end
+
+# function @main(ARGS::Vector{String})
+#     cthonios_main(ARGS)
+#     return 0
+# end
 
 end # module

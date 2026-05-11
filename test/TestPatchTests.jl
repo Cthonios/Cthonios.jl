@@ -48,25 +48,21 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     
     # now need to update bcs to reflect what's in U
     # this is hacky but will work for now
-    # for bc in p.dirichlet_bcs.bc_cache
-    #     copyto!(bc.vals, U.data[bc.dofs])
-    # end
     copyto!(p.dirichlet_bcs.bc_cache.vals, U.data[p.dirichlet_bcs.bc_cache.dofs])
 
     fspace = Cthonios.assembler(objective_cache).dof.var.fspace
-    # conns = values(fspace.elem_conns)[1]
     conns = connectivity(fspace, 1)
-    # ref_fe = values(fspace.ref_fes)[1]
     ref_fe = FiniteElementContainers.block_reference_element(fspace, 1)
 
     solver = Cthonios.NewtonSolver(objective_cache)
 
     @show size(conns)
     @show typeof(ref_fe)
+    Uu = create_unknowns(objective_cache)
+    FiniteElementContainers.extract_field_unknowns!(Uu, objective_cache.assembler.dof, U)
+    Cthonios.solve!(solver, Uu, p)
 
-    Cthonios.solve!(solver, U.data, p)
-
-    grad = Cthonios.gradient(objective_cache, U.data, p)
+    grad = Cthonios.gradient(objective_cache, Uu, p)
     @test isapprox(norm(grad), zero(eltype(grad)), atol=1e-12)
 
     for e in axes(conns, 2)

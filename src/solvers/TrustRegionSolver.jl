@@ -22,7 +22,6 @@ function calculate!(
 )
     @timeit cauchy_point.timer "Cauchy Point" begin
         cp = cauchy_point.cauchy_point
-        # Kg = hvp(objective_cache, Uu, p, g)
         Kg = hvp(objective_cache, Uu, g, p)
         # Kg = hess_vec_func(g)
         gKg = dot(g, Kg)
@@ -237,7 +236,7 @@ Base.@kwdef mutable struct TrustRegionSolverSettings #<: NonlinearSolverSettings
     cg_tol::Float64                               = 0.2e-9
     cg_inexact_solve_ratio::Float64               = 1e-5
     tr_size::Float64                              = 2.0
-    min_tr_size::Float64                           = 1e-8
+    min_tr_size::Float64                          = 1e-8
     check_stability::Bool                         = false
     use_preconditioned_inner_product_for_cg::Bool = true
     use_incremental_objective::Bool               = false
@@ -262,23 +261,23 @@ struct TrustRegionSolver{
     RV <: AbstractArray{<:Number, 1},
     ObjectiveCache,
     Precond,
-    WS <: Union{Nothing, WarmStart}
+    Predictor
 }
     cauchy_point::CauchyPoint{RV}
     dogleg_step::DogLegStep{RV}
     model_problem::TrustRegionModelProblem{RV}
     objective_cache::ObjectiveCache
     preconditioner::Precond
+    predictor::Predictor
     settings::TrustRegionSolverSettings
     timer::TimerOutput
-    warm_start::WS
 end
 
 function TrustRegionSolver(
     objective_cache, parameters;
     preconditioner = CholeskyPreconditioner,
     timer = TimerOutput(),
-    use_warm_start = false,
+    use_predictor = false,
     kwargs...
 )
     @timeit timer "TrustRegionSolver - setup" begin
@@ -305,21 +304,17 @@ function TrustRegionSolver(
             objective_cache, parameters, timer
         )
 
-        if use_warm_start
-            warm_start = WarmStart(
-                objective_cache,
-                parameters,
-                timer
-            )
+        if use_predictor
+            predictor = TangentPredictor(objective_cache, parameters, timer)
         else
-            warm_start = nothing
+            predictor = nothing
         end
     end
 
     return TrustRegionSolver(
         cauchy_point, dogleg_step, model_problem,
-        objective_cache, precond, 
-        settings, timer, warm_start
+        objective_cache, precond, predictor,
+        settings, timer
     )
 end
 
@@ -391,18 +386,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         tr_size = settings.tr_size
 
 
-        if solver.warm_start !== nothing
-            # preconditioner
-            # update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
-            # P = solver.preconditioner#.preconditioner
-        
-            # TODO implemt GPU compatable warm start
-            solve!(
-                solver.warm_start, solver.objective_cache, 
-                Uu, p; 
-                # P=P,
-                verbose=solver.settings.verbose
-            )
+        if solver.predictor !== nothing
+            solve!(solver.predictor, solver.objective_cache, Uu, p)
         end
 
         # calculate initial objective and gradient
