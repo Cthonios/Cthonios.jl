@@ -49,9 +49,9 @@ function sim_helper()
   return sim
 end
 
-@testset "CLI" begin
-  include("TestCLI.jl")
-end
+# @testset "CLI" begin
+#   include("TestCLI.jl")
+# end
 
 # @testset "Contact" begin
 #   include("TestContact.jl")

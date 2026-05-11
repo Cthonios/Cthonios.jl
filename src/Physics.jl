@@ -39,6 +39,7 @@ function update_material_output!(
     mat_output::L2Field,
     objective_cache, U, p
 )
+    update_field_unknowns!(p.field, assembler(objective_cache).dof, U)
     FiniteElementContainers.assemble_quadrature_quantity!(
         mat_output, nothing, assembler(objective_cache).dof,
         standard_material_output,

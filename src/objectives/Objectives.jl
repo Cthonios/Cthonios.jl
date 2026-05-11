@@ -27,9 +27,9 @@ end
 # function parameters(o::AbstractObjectiveCache)
 #     return o.parameters
 # end
-include("ContactObjective.jl")
-include("ConstrainedObjective.jl")
-include("DesignObjective.jl")
-include("ExplicitDynamicsObjective.jl")
+# include("ContactObjective.jl")
+# include("ConstrainedObjective.jl")
+# include("DesignObjective.jl")
+# include("ExplicitDynamicsObjective.jl")
 # include("ImplicitDynamicsObjective.jl")
 include("QuasiStaticObjective.jl")
