@@ -1,15 +1,21 @@
 struct QuasiStaticObjective{
     F1 <: Function,
     F2 <: Function,
-    F3 <: Function
+    F3 <: Function,
+    F4 <: Function
 } <: AbstractObjective{F1}
     value::F1
     gradient_u::F2
     hessian_u::F3
+    hvp_u::F4
 end
 
-function QuasiStaticObjective()
-    return QuasiStaticObjective(energy, residual, stiffness)
+function QuasiStaticObjective(; use_inplace_methods::Bool = false)
+    if use_inplace_methods
+        return QuasiStaticObjective(energy, residual!, stiffness!, stiffness_action!)
+    else
+        return QuasiStaticObjective(energy, residual, stiffness, stiffness_action)
+    end
 end
 
 mutable struct QuasiStaticObjectiveCache{
@@ -84,8 +90,14 @@ function hessian(o::QuasiStaticObjectiveCache, U, p; symmetric = true)
 end
 
 function hvp(o::QuasiStaticObjectiveCache, U, V, p)
-    assemble_matrix_action!(assembler(o), o.objective.hessian_u, U, V, p)
-    return FiniteElementContainers.hvp(assembler(o), V)
+    # assemble_matrix_action!(assembler(o), o.objective.hessian_u, U, V, p)
+    asm = assembler(o)
+    if FiniteElementContainers._use_inplace_methods(asm)
+        assemble_matrix_action!(asm, o.objective.hvp_u, U, V, p)
+    else
+        assemble_matrix_free_action!(asm, o.objective.hvp_u, U, V, p)
+    end
+    return FiniteElementContainers.hvp(asm, V)
 end
 
 # TODO review this

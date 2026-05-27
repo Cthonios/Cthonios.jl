@@ -3,11 +3,9 @@ module Cthonios
 import FiniteElementContainers: AbstractField, BCBookKeeping
 import KernelAbstractions as KA
 import KernelAbstractions: CPU
-# using ArgParse
 using Arpack
 using ConstitutiveModels
 using DocStringExtensions
-# using Exodus
 using FiniteElementContainers
 using ForwardDiff
 using Krylov
@@ -15,7 +13,6 @@ using LinearAlgebra
 using NLopt
 using Printf
 using ReferenceFiniteElements
-# using RuntimeGeneratedFunctions
 using SparseArrays
 using StaticArrays
 using StructArrays

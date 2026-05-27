@@ -1,3 +1,8 @@
+import FiniteElementContainers as FEC
+import FiniteElementContainers.AppTools as AT
+using Exodus
+using FiniteElementContainers
+
 const N = 3
 
 function _cthonios_main(args::Vector{String})
@@ -26,7 +31,7 @@ function _cthonios_main(args::Vector{String})
 
 end
 
-function cthonios_main()::Cint
+function @main(ARGS::Vector{String})
     _cthonios_main(ARGS)
     return 0
 end
