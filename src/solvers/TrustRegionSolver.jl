@@ -387,7 +387,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
 
 
         if solver.predictor !== nothing
-            solve!(solver.predictor, solver.objective_cache, Uu, p)
+            # update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
+            solve!(solver.predictor, solver.objective_cache, Uu, p, solver.preconditioner)
         end
 
         # calculate initial objective and gradient

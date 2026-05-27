@@ -60,8 +60,8 @@ sim = SingleDomainSimulation(
     times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective = QuasiStaticObjective()
-objective_cache, U, p = setup_caches(objective, sim)
+objective = QuasiStaticObjective(; use_inplace_methods = true)
+objective_cache, U, p = setup_caches(objective, sim; use_inplace_methods = true)
 
 # qoi1 = QOIExtractor(
 #     objective_cache, helmholtz_free_energy, +,

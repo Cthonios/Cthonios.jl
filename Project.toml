@@ -1,12 +1,13 @@
 name = "Cthonios"
 uuid = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
-version = "0.3.3"
+version = "0.3.2"
 authors = ["Craig M. Hamel <cmhamel32@gmail.com> and contributors"]
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
 FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
@@ -29,6 +30,7 @@ Arpack = "0.5"
 ConstitutiveModels = "0.3"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
+Exodus = "0.14"
 FiniteElementContainers = "0.13"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"

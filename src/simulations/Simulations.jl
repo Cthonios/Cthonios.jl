@@ -47,7 +47,8 @@ end
 function _setup_assembler_and_parameters(
     sim::AbstractSimulation;
     q_degree = 2,
-    use_condensed = false
+    use_condensed = false,
+    use_inplace_methods = false
 )
 
     mesh = UnstructuredMesh(sim.mesh_file)
@@ -62,7 +63,7 @@ function _setup_assembler_and_parameters(
 
     # setup dof manager and assembler
     dof = DofManager(func; use_condensed=use_condensed)
-    assembler = SparseMatrixAssembler(dof)
+    assembler = SparseMatrixAssembler(dof; use_inplace_methods = use_inplace_methods)
     
     # finally setup parameters
     parameters = create_parameters(
