@@ -82,6 +82,10 @@ end
   include("TestSolvers.jl")
 end
 
+@testset "Regression Tests" begin
+  include("TestExplicitDynamics.jl")
+end
+
 @testset "Aqua.jl" begin
   Aqua.test_all(Cthonios; ambiguities=false, persistent_tasks=false)
 end

@@ -56,8 +56,6 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
 
     solver = Cthonios.NewtonSolver(objective_cache)
 
-    @show size(conns)
-    @show typeof(ref_fe)
     Uu = create_unknowns(objective_cache)
     FiniteElementContainers.extract_field_unknowns!(Uu, objective_cache.assembler.dof, U)
     Cthonios.solve!(solver, Uu, p)

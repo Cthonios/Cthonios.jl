@@ -2,6 +2,7 @@
 User facing
 """
 abstract type AbstractObjective{F1} end
+abstract type AbstractSolutionObjective{F1} <: AbstractObjective{F1} end
 
 # new cache implementation
 abstract type AbstractObjectiveCache{
@@ -24,12 +25,14 @@ function assembler(o::AbstractObjectiveCache)
     return o.assembler
 end
 
+abstract type AbstractSolutionObjectiveCache{A, O, RT, RV} <: AbstractObjectiveCache{A, O, RT, RV} end
+
 # function parameters(o::AbstractObjectiveCache)
 #     return o.parameters
 # end
 # include("ContactObjective.jl")
 # include("ConstrainedObjective.jl")
 # include("DesignObjective.jl")
-# include("ExplicitDynamicsObjective.jl")
+include("ExplicitDynamicsObjective.jl")
 # include("ImplicitDynamicsObjective.jl")
 include("QuasiStaticObjective.jl")

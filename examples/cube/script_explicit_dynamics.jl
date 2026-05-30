@@ -17,6 +17,7 @@ physics = (;
 )
 props = (;
     cube = Dict{String, Any}(
+        "density"         => 1.,
         "Young's modulus" => 1.,
         "Poisson's ratio" => 0.45
     )
@@ -26,7 +27,7 @@ props = (;
 func(_) = 1.0
 
 vel_ics = InitialCondition[
-    InitialCondition("displ_z", "cube", func)
+    InitialCondition("displ_z", func, "cube")
 ]
 
 # Simulation
@@ -35,8 +36,8 @@ sim = SingleDomainSimulation(
     times, physics, props
 )
 
-objective = Cthonios.ExplicitDynamicsObjective()
-objective_cache, U, p = Cthonios.setup_caches(objective, sim, 0.1)
+objective = Cthonios.ExplicitDynamicsObjective(; use_inplace_methods = true)
+objective_cache, U, p = Cthonios.setup_caches(objective, sim, 0.1; use_inplace_methods = true)
 
 # small hack we should remove
 mesh = UnstructuredMesh(mesh_file)
