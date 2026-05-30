@@ -1,43 +1,44 @@
+# currently uses central difference method
+
 struct ExplicitDynamicsObjective{
     F1 <: Function,
     F2 <: Function,
-    F3 <: Function
-} <: AbstractObjective{F1}
+    F3 <: Function,
+    F4 <: Function
+} <: AbstractSolutionObjective{F1}
     value::F1
     gradient_u::F2
     hessian_u::F3
+    hvp_u::F4
 end
 
-function ExplicitDynamicsObjective()
-    return ExplicitDynamicsObjective(energy, residual, stiffness)
+function ExplicitDynamicsObjective(; use_inplace_methods = true)
+    if use_inplace_methods
+        return ExplicitDynamicsObjective(energy, residual!, stiffness!, stiffness_action!)
+    else
+        return ExplicitDynamicsObjective(energy, residual, stiffness, stiffness_action)
+    end
 end
 
 mutable struct ExplicitDynamicsObjectiveCache{
     A, O,
-    RT, RV <: AbstractArray{RT, 1}, NF
-} <: AbstractObjectiveCache{A, O, RT, RV}
+    RT, RV <: AbstractArray{RT, 1}
+} <: AbstractSolutionObjectiveCache{A, O, RT, RV}
     assembler::A
     objective::O
     #
-    β::RT
     γ::RT
     CFL::RT
     #
-    external_energy::RV
-    internal_energy::RV
-    kinetic_energy::RV
-    external_force::H1Field{RT, RV, NF}
-    inertial_force::H1Field{RT, RV, NF}
-    internal_force::H1Field{RT, RV, NF}
-    solution_rate::H1Field{RT, RV, NF}
-    solution_rate_rate::H1Field{RT, RV, NF}
-    solution_old::H1Field{RT, RV, NF}
-    solution_rate_old::H1Field{RT, RV, NF}
-    #
-    value::RV
-    gradient::H1Field{RT, RV, NF}
-    lumped_hessian::RV
+    external_energy::RT
+    internal_energy::RT
+    kinetic_energy::RT
+    v::RV
+    a::RV
+    R_eff::RV
     lumped_mass::RV
+    #
+    value_scratch::RV
     #
     step_number::Int
     #
@@ -47,50 +48,28 @@ end
 function ExplicitDynamicsObjectiveCache(
     assembler, 
     objective::ExplicitDynamicsObjective,
-    CFL, β=0.25, γ=0.5
+    CFL, γ=0.5
 )
-    # objective = ImplicitDynamicsObjectiveNew()
-    # assembler, parameters = _setup_simulation_common(
-    #     sim, nothing; 
-    #     return_post_processor=false,
-    #     use_condensed=true
-    # )
-
-    # RT = eltype(parameters.h1_coords)
-    # backend = KA.get_backend(parameters.h1_coords)
     RT = eltype(assembler.constraint_storage)
-    backend = KA.get_backend(assembler)
 
-    external_energy = KA.zeros(backend, RT, 1)
-    internal_energy = KA.zeros(backend, RT, 1)
-    kinetic_energy = KA.zeros(backend, RT, 1)
+    external_energy = zero(RT)
+    internal_energy = zero(RT)
+    kinetic_energy = zero(RT)
 
-    external_force = create_field(assembler)
-    inertial_force = create_field(assembler)
-    internal_force = create_field(assembler)
-
-    solution_rate = create_field(assembler)
-    solution_rate_rate = create_field(assembler)
-    
-    solution_old = create_field(assembler)
-    solution_rate_old = create_field(assembler)
-
-    value = KA.zeros(backend, RT, 1)
-    gradient = create_field(assembler)
-    lumped_hessian = KA.zeros(backend, RT, length(gradient))
-    lumped_mass = KA.zeros(backend, RT, length(gradient))
-
+    v = create_unknowns(assembler)
+    a = create_unknowns(assembler)
+    R_eff = create_unknowns(assembler)
+    lumped_mass = create_unknowns(assembler)
+    value_scratch = create_unknowns(assembler)
     timer = TimerOutput()
 
     return ExplicitDynamicsObjectiveCache(
         assembler, objective,
-        β, γ, CFL,
+        γ, CFL,
         external_energy, internal_energy, kinetic_energy,
-        external_force, inertial_force, internal_force,
-        solution_rate, solution_rate_rate,
-        solution_old, solution_rate_old,
-        value, gradient, 
-        lumped_hessian, lumped_mass,
+        v, a,
+        R_eff, lumped_mass,
+        value_scratch,
         0, timer
     )
 end
@@ -100,133 +79,162 @@ function setup_cache(assembler, objective::ExplicitDynamicsObjective, args...)
 end
 
 function initialize!(
-    o::ExplicitDynamicsObjectiveCache, U, p;
-    lumped_mass_style = :row_sum,
+    o::ExplicitDynamicsObjectiveCache, u, p;
     displ_ics = nothing,
-    vel_ics = nothing,
-    acc_ics = nothing
+    vel_ics = nothing
 )
-    fill!(p.times.time_current, zero(eltype(p.times.time_current)))
+    # fill!(p.times.time_current, zero(eltype(p.times.time_current)))
+    p.times.time_current = zero(p.times.time_current)
+    Δt = _compute_stable_dt(assembler(o), p, o.CFL)
+    p.times.Δt = Δt
 
-    M = mass_matrix(o, U, p)
-
-    # need to lump the mass
-    if lumped_mass_style == :row_sum
-        n = size(M, 1)
-        d = vec(sum(M, dims=2))
-        o.lumped_mass .= d
-    elseif lumped_mass_style == :diagonal_extraction
-        # return spdiagm(0 => diag(M))
-        o.lumped_mass .= diag(M)
-    elseif lumped_mass_style == :scaled_diagonal
-        d = diag(M)
-        total_mass = sum(M)
-        scale = total_mass / sum(d)
-        # o.lumped_mass.= spdiagm(0 => scale .* d)
-        o.lumped_mass .= scale .* d
-    elseif lumped_mass_style == :block_lumping
-        @assert ndim == 2 || ndim == 3
-        ndofs = size(M, 1)
-        @assert ndofs % ndim == 0
-    
-        nnodes = div(ndofs, ndim)
-        Ml = zeros(Float64, ndofs)
-    
-        # Row-sum per dof
-        rowsums = vec(sum(M, dims=2))
-    
-        # Accumulate nodal mass
-        for a in 1:nnodes
-            idx = (a-1)*ndim + 1 : a*ndim
-            m_node = sum(rowsums[idx])
-            Ml[idx] .= m_node / ndim
-        end
-    
-        o.lumped_mass .= spdiagm(0 => Ml)
-    else
-        @assert false
-    end
+    # setup lumped mass once
+    FiniteElementContainers.assemble_diagonal!(assembler(o), mass, u, p)
+    o.lumped_mass .= FiniteElementContainers.diagonal(assembler(o))
 
     # apply initial conditions 
     # TODO make this better in FEC
     if displ_ics !== nothing
-        FiniteElementContainers.update_ic_values!(displ_ics, p.h1_coords)
-        FiniteElementContainers.update_field_ics!(U, displ_ics)
-        FiniteElementContainers.update_field_ics!(o.solution_old, displ_ics)
+        u_all = create_field(o)
+        FiniteElementContainers.update_ic_values!(displ_ics, p.coords)
+        FiniteElementContainers.update_field_ics!(u_all, displ_ics)
+        FiniteElementContainers.extract_field_unknowns!(u, assembler(o).dof, u_all)
     end
 
     if vel_ics !== nothing
-        FiniteElementContainers.update_ic_values!(vel_ics, p.h1_coords)
-        FiniteElementContainers.update_field_ics!(o.solution_rate, vel_ics)
-        FiniteElementContainers.update_field_ics!(o.solution_rate_old, vel_ics)
-    end
-
-    if acc_ics !== nothing
-        FiniteElementContainers.update_ic_values!(acc_ics, p.h1_coords)
-        FiniteElementContainers.update_field_ics!(o.solution_rate_rate, acc_ics)
+        v_all = create_field(o)
+        FiniteElementContainers.update_ic_values!(vel_ics, p.coords)
+        FiniteElementContainers.update_field_ics!(v_all, vel_ics)
+        FiniteElementContainers.extract_field_unknowns!(o.v, assembler(o).dof, v_all)
     end
 
     # calculate mechanics stuff at beginning
-    internal_energy = _internal_energy(o, U, p)
-    kinetic_energy = 0.5 * dot(o.lumped_mass, o.solution_rate.data .* o.solution_rate.data)
-    fill!(o.internal_energy, internal_energy)
-    fill!(o.kinetic_energy, kinetic_energy)
+    # TODO internal energy
+    # o.internal_energy = _internal_energy(o, u, p)
+    assemble_scalar!(assembler(o), o.objective.value, u, p)
+    o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
+    o.kinetic_energy = 0.5 * dot(o.lumped_mass, o.v .* o.v)
 
-    internal_force = _internal_force(o, U, p)
-    o.internal_force .= internal_force
-
+    # calculate rhs
+    assemble_vector!(assembler(o), o.objective.gradient_u, u, p)
+    assemble_vector_neumann_bc!(assembler(o), u, p)
+    assemble_vector_source!(assembler(o), u, p)
+    rhs = -residual(assembler(o))
     # TODO external force
-    external_force = create_field(o.assembler)
-    o.external_force .= external_force
-    o.inertial_force .= internal_force .- external_force
-    o.solution_rate_rate.data .= o.inertial_force.data ./ o.lumped_mass
+    # external_force = create_field(o.assembler)
+    # o.external_force .= external_force
+    # o.inertial_force .= internal_force .- external_force
+    # o.solution_rate_rate.data .= o.inertial_force.data ./ o.lumped_mass
+    m = lumped_mass(o, u, p)
+    o.a .= rhs ./ m
+    return nothing
 end
 
-function _internal_energy(o::ExplicitDynamicsObjectiveCache, U, p)
-    assemble_scalar!(assembler(o), o.objective.value, U, p)
-    val = mapreduce(sum, +, values(assembler(o).scalar_quadrature_storage))
-    fill!(o.internal_energy, val)
-    # assemble_scalar!(assembler(o), #neumann energy, U, p)
-
-    # TODO need an actual neumann energy method in FEContainers
-    fill!(o.external_energy, dot(o.external_force, U))
-    o.value .= o.external_energy .+ o.internal_energy
-    return sum(o.value)
+function gradient(o::ExplicitDynamicsObjectiveCache, u, p)
+    # o.inertial_force .= lumped_mass .* o.a
+    assemble_vector!(assembler(o), o.objective.gradient_u, u, p)
+    # o.internal_force .= assembler(o).residual_storage
+    assemble_vector_neumann_bc!(assembler(o), u, p)
+    assemble_vector_source!(assembler(o), u, p)
+    # o.external_force .= assembler(o).residual_storage .- o.internal_force
+    return residual(assembler(o))
 end
 
-function _internal_force(o::ExplicitDynamicsObjectiveCache, U, p)
-    assemble_vector!(assembler(o), o.objective.gradient_u, U, p)
-    # return assembler(o).residual_storage
-    o.internal_force .= assembler(o).residual_storage
+function lumped_mass(o::ExplicitDynamicsObjectiveCache, u, p)
+    return o.lumped_mass
 end
 
-function mass_matrix(o::ExplicitDynamicsObjectiveCache, U, p)
-    # assemble_mass!(assembler(o), o.objective.hessian_u, U, p)
-    # M = FiniteElementContainers.mass(assembler(o)) |> Symmetric
-    # really passing displacement below instead of velocity to save
-    # on having to store the solution_rate for quasi-statics
-    # this method is mainly so you can construct a mass matrix
-    # if you want one. Should add abstract types in the future
-    assemble_mass!(assembler(o), mass, U, p)
-    M = FiniteElementContainers.mass(assembler(o))
-    return M #|> Symmetric
+function value(o::ExplicitDynamicsObjectiveCache, u, p)
+    # TODO external energy
+    o.external_energy = zero(o.external_energy)
+    assemble_scalar!(assembler(o), o.objective.value, u, p)
+    o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
+    # @time o.kinetic_energy = 0.5 * dot(o.lumped_mass, o.v .* o.v)
+    # @time o.kinetic_energy = 0.5 * mapreduce!(
+    #     (m,v) -> m*v*v,
+    #     +,
+    #     o.lumped_mass,
+    #     o.v
+    # )
+    map!((m, v) -> m * v * v, o.value_scratch, o.lumped_mass, o.v)
+    o.kinetic_energy = reduce(+, o.value_scratch)
+    return o.external_energy + o.internal_energy + o.kinetic_energy
 end
 
-function step!(solver, o::ExplicitDynamicsObjectiveCache, U, p; verbose = true)
-    FiniteElementContainers.update_time!(p)
-    FiniteElementContainers.update_bc_values!(p)
-    solve!(solver, U, p)
+function step!(solver, o::ExplicitDynamicsObjectiveCache, u, p; verbose = true)
+    @timeit o.timer "ExplicitDynamicsObjectiveCache - step!" begin
+        FiniteElementContainers.update_time!(p)
+        FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
+        # solve!(solver, U, p)
+
+        # unpack some stuff for convenience
+        Δt = FiniteElementContainers.time_step(p)
+
+        # predict
+        @timeit o.timer "predict" begin
+            @. u   += Δt * o.v + 0.5 * Δt^2 * o.a
+            @. o.v += (one(o.γ) - o.γ) * Δt * o.a
+        end
+
+        # "solve"
+        @timeit o.timer "solve" begin
+            solve!(solver, u, p)
+        end
+
+        # correct
+        @timeit o.timer "correct" begin
+            @. o.v += o.γ * Δt * o.a
+        end
+
+        # evaluate stuff at end of step
+        value(o, u, p)
+    end
     _step_log(o, p)
+end
+
+function _compute_stable_dt(asm, p, CFL)
+    fspace = FiniteElementContainers.function_space(asm.dof)
+
+    # Pre-allocate per-block storage for element char lengths (nq × nelem)
+    char_len_storage = []
+    for (b, ref_fe) in enumerate(fspace.ref_fes)
+        nquad = num_cell_quadrature_points(ref_fe)
+        nelem = num_elements(fspace, b)
+        push!(char_len_storage, zeros(Float64, nquad, nelem))
+    end
+    char_len_storage = NamedTuple{keys(fspace.ref_fes)}(char_len_storage)
+
+    # Assemble per-element char lengths on device
+    U_zeros = zeros(Float64, length(asm.dof.unknown_dofs))
+    FiniteElementContainers.assemble_quadrature_quantity!(
+        char_len_storage, nothing, asm.dof,
+        characteristic_element_length,
+        U_zeros, p
+    )
+
+    # Min-reduction over all blocks
+    stable_dt = Inf
+    for (b, (block_physics, block_storage, props)) in enumerate(zip(
+        values(p.physics), values(char_len_storage), values(p.properties),
+    ))
+        ρ   = props[1]
+        M   = p_wave_modulus(block_physics.constitutive_model, props)
+        c_p = sqrt(M / ρ)
+        h_min = minimum(block_storage)   # GPU-native reduction if on device
+        block_dt = CFL * h_min / c_p
+        stable_dt = min(stable_dt, block_dt)
+    end
+    return stable_dt
 end
 
 function _step_log(o::ExplicitDynamicsObjectiveCache, p)
     if o.step_number % 1000 == 0
-        @info "Step      Time        Internal    External    Kinetic"
-        @info "Number    Increment   Energy      Energy      Energy"
+        @info "Step      Current      Time        Internal    External    Kinetic"
+        @info "Number    Time         Increment   Energy      Energy      Energy"
     end
 
-    if o.step_number % 100 == 0
-        str = @sprintf "%8d  %.4e  %.4e  %.4e  %.4e" o.step_number p.times.Δt[1] o.internal_energy[1] o.external_energy[1] o.kinetic_energy[1]
+    if o.step_number % 10 == 0
+        str = @sprintf "%8d  %.4e   %.4e  %.4e  %.4e  %.4e" o.step_number p.times.time_current p.times.Δt[1] o.internal_energy[1] o.external_energy[1] o.kinetic_energy[1]
         @info str
     end
 

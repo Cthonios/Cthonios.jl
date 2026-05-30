@@ -337,7 +337,7 @@ end
     state_old_q, state_new_q,
     props_el,
 )
-    cell = FEC.map_interpolants(interps, x_el)
+    cell = map_interpolants(interps, x_el)
     (; N, JxW) = cell
 
     # Build element mass matrix in interleaved DOF ordering:
@@ -359,8 +359,9 @@ end
             end
         end
     end
+    ρ = props_el[1]
     M_el = SMatrix{NDOF, NDOF, eltype(N), NDOF * NDOF}(tup.data)
-    return JxW * physics.density * M_el
+    return JxW * ρ * M_el
 end
 
 @inline function FiniteElementContainers.mass_action(

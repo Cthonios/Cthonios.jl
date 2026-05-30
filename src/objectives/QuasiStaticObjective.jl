@@ -3,7 +3,7 @@ struct QuasiStaticObjective{
     F2 <: Function,
     F3 <: Function,
     F4 <: Function
-} <: AbstractObjective{F1}
+} <: AbstractSolutionObjective{F1}
     value::F1
     gradient_u::F2
     hessian_u::F3
@@ -22,7 +22,7 @@ mutable struct QuasiStaticObjectiveCache{
     A, O,
     RT, RV <: AbstractArray{RT, 1},
     NF
-} <: AbstractObjectiveCache{A, O, RT, RV}
+} <: AbstractSolutionObjectiveCache{A, O, RT, RV}
     assembler::A
     objective::O
     #
@@ -31,9 +31,6 @@ mutable struct QuasiStaticObjectiveCache{
     external_force::H1Field{RT, RV, NF}
     internal_force::H1Field{RT, RV, NF}
     solution_old::H1Field{RT, RV, NF}
-    # solver helpers
-    value::RT
-    gradient::H1Field{RT, RV, NF}
     #
     timer::TimerOutput
 end
@@ -49,9 +46,6 @@ function QuasiStaticObjectiveCache(
     internal_force = create_field(assembler)
     solution_old = create_field(assembler)
 
-    value = zero(RT)
-    gradient = create_field(assembler)
-
     timer = TimerOutput()
 
     return QuasiStaticObjectiveCache(
@@ -59,7 +53,6 @@ function QuasiStaticObjectiveCache(
         external_energy, internal_energy,
         external_force, internal_force,
         solution_old,
-        value, gradient,
         timer
     )
 end
@@ -75,7 +68,6 @@ function gradient(o::QuasiStaticObjectiveCache, U, p)
     o.internal_force .= assembler(o).residual_storage
     assemble_vector_neumann_bc!(assembler(o), U, p)
     o.external_force .= assembler(o).residual_storage .- o.internal_force
-    o.gradient .= assembler(o).residual_storage
     return residual(assembler(o))
 end
 
@@ -120,8 +112,7 @@ function value(o::QuasiStaticObjectiveCache, U, p)
     # TODO need an actual neumann energy method in FEContainers
     # fill!(o.external_energy, dot(o.external_force, U))
     o.external_energy = dot(o.external_force, p.field)
-    o.value = o.external_energy + o.internal_energy
-    return o.value
+    return o.external_energy + o.internal_energy
 end
 
 # integrator hooks
@@ -169,8 +160,8 @@ end
 
 function _step_end_banner(o::QuasiStaticObjectiveCache, p; verbose::Bool = true)
     if verbose
-        @info "External energy        = $(sum(o.external_energy))"
-        @info "Internal energy        = $(sum(o.internal_energy))"
-        @info "Total energy           = $(sum(o.value))"
+        @info "External energy        = $(o.external_energy)"
+        @info "Internal energy        = $(o.internal_energy)"
+        @info "Total energy           = $(o.external_energy + o.internal_energy)"
     end
 end
