@@ -8,7 +8,6 @@ abstract type AbstractSolutionObjective{F1} <: AbstractObjective{F1} end
 abstract type AbstractObjectiveCache{
     A, # Assembler type
     O  <: AbstractObjective,
-    # P  <: FiniteElementContainers.Parameters,
     RT <: Number,
     RV <: AbstractArray{RT, 1}
 } end
@@ -34,5 +33,5 @@ abstract type AbstractSolutionObjectiveCache{A, O, RT, RV} <: AbstractObjectiveC
 # include("ConstrainedObjective.jl")
 # include("DesignObjective.jl")
 include("ExplicitDynamicsObjective.jl")
-# include("ImplicitDynamicsObjective.jl")
+include("ImplicitDynamicsObjective.jl")
 include("QuasiStaticObjective.jl")

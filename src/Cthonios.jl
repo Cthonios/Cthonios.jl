@@ -47,6 +47,22 @@ export create_unknowns
 export evolve!
 export setup_caches
 
+mutable struct DeveloperOptions
+    use_condensed::Bool
+    use_inplace_methods::Bool
+
+    function DeveloperOptions()
+        new(false, true)
+    end
+end
+
+const DEV_OPTIONS = DeveloperOptions()
+
+function set_developer_option!(key::Symbol, val)
+    setfield!(DEV_OPTIONS, key, val)
+    return nothing
+end
+
 # objectives
 include("objectives/Objectives.jl")
 
