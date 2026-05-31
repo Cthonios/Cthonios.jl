@@ -84,6 +84,7 @@ end
 
 @testset "Regression Tests" begin
   include("TestExplicitDynamics.jl")
+  include("TestImplicitDynamics.jl")
 end
 
 @testset "Aqua.jl" begin

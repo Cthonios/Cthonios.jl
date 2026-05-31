@@ -11,18 +11,18 @@ end
 
 function test_newton_solver_func_1(verbose)
     objective_cache = MyDummyObjectiveCache1()
-    solver = Cthonios.NewtonSolver(objective_cache; verbose=verbose)
     x = ones(1)
     p = nothing
+    solver = Cthonios.NewtonSolver(objective_cache, p; verbose = verbose)
     Cthonios.solve!(solver, x, p)
     @test x[1] ≈ 2.094551481
 end
 
 function test_newton_solver_func_1_bad_guess()
     objective_cache = MyDummyObjectiveCache1()
-    solver = Cthonios.NewtonSolver(objective_cache; verbose=false)
     x = zeros(1)
     p = nothing
+    solver = Cthonios.NewtonSolver(objective_cache, p; verbose = false)
     @test_throws ErrorException Cthonios.solve!(solver, x, p)
     # @test x[1] ≈ 2.094551481
 end
@@ -43,9 +43,9 @@ end
 
 function test_newton_solver_func_2()
     objective_cache = MyDummyObjectiveCache2()
-    solver = Cthonios.NewtonSolver(objective_cache)
     x = ones(2)
     p = nothing
+    solver = Cthonios.NewtonSolver(objective_cache, p)
     Cthonios.solve!(solver, x, p)
     @test x[1] ≈ sqrt(2)
     @test x[2] ≈ sqrt(2)

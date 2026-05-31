@@ -48,7 +48,7 @@ end
 function ExplicitDynamicsObjectiveCache(
     assembler, 
     objective::ExplicitDynamicsObjective,
-    CFL, γ=0.5
+    CFL, γ = 0.5
 )
     RT = eltype(assembler.constraint_storage)
 
@@ -109,17 +109,10 @@ function initialize!(
     end
 
     # calculate mechanics stuff at beginning
-    # TODO internal energy
-    # o.internal_energy = _internal_energy(o, u, p)
-    assemble_scalar!(assembler(o), o.objective.value, u, p)
-    o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
-    o.kinetic_energy = 0.5 * dot(o.lumped_mass, o.v .* o.v)
+    value(o, u, p)
 
     # calculate rhs
-    assemble_vector!(assembler(o), o.objective.gradient_u, u, p)
-    assemble_vector_neumann_bc!(assembler(o), u, p)
-    assemble_vector_source!(assembler(o), u, p)
-    rhs = -residual(assembler(o))
+    rhs = -gradient(o, u, p)
     # TODO external force
     # external_force = create_field(o.assembler)
     # o.external_force .= external_force
@@ -128,6 +121,42 @@ function initialize!(
     m = lumped_mass(o, u, p)
     o.a .= rhs ./ m
     return nothing
+end
+
+function step!(solver, o::ExplicitDynamicsObjectiveCache, u, p; verbose = true)
+    @timeit o.timer "ExplicitDynamicsObjectiveCache - step!" begin
+        FiniteElementContainers.update_time!(p)
+        FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
+
+        # unpack some stuff for convenience
+        Δt = FiniteElementContainers.time_step(p)
+
+        # predict
+        @timeit o.timer "predict" begin
+            @. u   += Δt * o.v + 0.5 * Δt^2 * o.a
+            @. o.v += (one(o.γ) - o.γ) * Δt * o.a
+        end
+
+        # "solve"
+        @timeit o.timer "solve" begin
+            @timeit o.timer "gradient" begin
+                R_eff = gradient(o, u, p)
+            end
+            m = lumped_mass(o, u, p)
+            @timeit o.timer "solve" begin
+                @. o.a = -(R_eff / m)
+            end
+        end
+
+        # correct
+        @timeit o.timer "correct" begin
+            @. o.v += o.γ * Δt * o.a
+        end
+
+        # evaluate stuff at end of step
+        value(o, u, p)
+    end
+    _step_log(o, p)
 end
 
 function gradient(o::ExplicitDynamicsObjectiveCache, u, p)
@@ -149,49 +178,12 @@ function value(o::ExplicitDynamicsObjectiveCache, u, p)
     o.external_energy = zero(o.external_energy)
     assemble_scalar!(assembler(o), o.objective.value, u, p)
     o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
-    # @time o.kinetic_energy = 0.5 * dot(o.lumped_mass, o.v .* o.v)
-    # @time o.kinetic_energy = 0.5 * mapreduce!(
-    #     (m,v) -> m*v*v,
-    #     +,
-    #     o.lumped_mass,
-    #     o.v
-    # )
     map!((m, v) -> m * v * v, o.value_scratch, o.lumped_mass, o.v)
     o.kinetic_energy = reduce(+, o.value_scratch)
     return o.external_energy + o.internal_energy + o.kinetic_energy
 end
 
-function step!(solver, o::ExplicitDynamicsObjectiveCache, u, p; verbose = true)
-    @timeit o.timer "ExplicitDynamicsObjectiveCache - step!" begin
-        FiniteElementContainers.update_time!(p)
-        FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
-        # solve!(solver, U, p)
-
-        # unpack some stuff for convenience
-        Δt = FiniteElementContainers.time_step(p)
-
-        # predict
-        @timeit o.timer "predict" begin
-            @. u   += Δt * o.v + 0.5 * Δt^2 * o.a
-            @. o.v += (one(o.γ) - o.γ) * Δt * o.a
-        end
-
-        # "solve"
-        @timeit o.timer "solve" begin
-            solve!(solver, u, p)
-        end
-
-        # correct
-        @timeit o.timer "correct" begin
-            @. o.v += o.γ * Δt * o.a
-        end
-
-        # evaluate stuff at end of step
-        value(o, u, p)
-    end
-    _step_log(o, p)
-end
-
+# copied from Carina.jl
 function _compute_stable_dt(asm, p, CFL)
     fspace = FiniteElementContainers.function_space(asm.dof)
 
@@ -233,7 +225,7 @@ function _step_log(o::ExplicitDynamicsObjectiveCache, p)
         @info "Number    Time         Increment   Energy      Energy      Energy"
     end
 
-    if o.step_number % 10 == 0
+    if o.step_number % 100 == 0
         str = @sprintf "%8d  %.4e   %.4e  %.4e  %.4e  %.4e" o.step_number p.times.time_current p.times.Δt[1] o.internal_energy[1] o.external_energy[1] o.kinetic_energy[1]
         @info str
     end

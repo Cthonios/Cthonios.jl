@@ -51,19 +51,8 @@ $(TYPEDSIGNATURES)
 function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = assembler(obj)
-    # p = parameters(obj)
-    # update_unknown_dofs!(obj.domain, asm)
-    # TODO need stuff here
-    # inefficiency here by creating these copies
     Uu = create_unknowns(asm)
-    H = hessian(obj, Uu, p)
-    # P = cholesky(H)
-    # assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
-
-    # NOTE:
-    # note assembling since the stiffness is assembled
-    # once already in the Parameters init method
-    H = stiffness(asm)
+    H = hessian(obj, Uu, p; symmetric = false)
     P = _cholesky(H)
   end
   return CholeskyPreconditioner{

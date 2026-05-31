@@ -1,7 +1,7 @@
 Base.@kwdef struct NewtonSolverSettings
     max_iters::Int = 50
-    rel_tol::Float64 = 1e-10
-    abs_tol::Float64 = 1e-10
+    rel_tol::Float64 = 1e-8
+    abs_tol::Float64 = 1e-8
     verbose::Bool = true
 end
 
@@ -10,7 +10,7 @@ struct NewtonSolver{O}
     settings::NewtonSolverSettings
 end
 
-function NewtonSolver(objective_cache; kwargs...)
+function NewtonSolver(objective_cache, p; kwargs...)
     return NewtonSolver(objective_cache, NewtonSolverSettings(; kwargs...))
 end 
 
