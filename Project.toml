@@ -1,6 +1,6 @@
 name = "Cthonios"
 uuid = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["Craig M. Hamel <cmhamel32@gmail.com> and contributors"]
 
 [deps]

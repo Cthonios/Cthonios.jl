@@ -1,30 +1,5 @@
-struct QuasiStaticObjective{
-    F1 <: Function,
-    F2 <: Function,
-    F3 <: Function,
-    F4 <: Function
-} <: AbstractSolutionObjective{F1}
-    value::F1
-    gradient_u::F2
-    hessian_u::F3
-    hvp_u::F4
-end
-
-function QuasiStaticObjective(; use_inplace_methods::Bool = false)
-    if use_inplace_methods
-        return QuasiStaticObjective(energy, residual!, stiffness!, stiffness_action!)
-    else
-        return QuasiStaticObjective(energy, residual, stiffness, stiffness_action)
-    end
-end
-
-mutable struct QuasiStaticObjectiveCache{
-    A, O,
-    RT, RV <: AbstractArray{RT, 1},
-    NF
-} <: AbstractSolutionObjectiveCache{A, O, RT, RV}
+mutable struct QuasiStaticObjective{RT, RV, A, NF} <: AbstractSolidMechanicsObjective{RT, RV, A}
     assembler::A
-    objective::O
     #
     external_energy::RT
     internal_energy::RT
@@ -35,10 +10,7 @@ mutable struct QuasiStaticObjectiveCache{
     timer::TimerOutput
 end
 
-function QuasiStaticObjectiveCache(
-    assembler,
-    objective::QuasiStaticObjective
-)
+function QuasiStaticObjective(assembler)
     RT = eltype(assembler.constraint_storage)
     external_energy = zero(RT)
     internal_energy = zero(RT)
@@ -48,8 +20,8 @@ function QuasiStaticObjectiveCache(
 
     timer = TimerOutput()
 
-    return QuasiStaticObjectiveCache(
-        assembler, objective,
+    return QuasiStaticObjective(
+        assembler,
         external_energy, internal_energy,
         external_force, internal_force,
         solution_old,
@@ -57,22 +29,17 @@ function QuasiStaticObjectiveCache(
     )
 end
 
-# cache hook
-function setup_cache(assembler, objective::QuasiStaticObjective)
-    return QuasiStaticObjectiveCache(assembler, objective)
-end
-
 # objective hooks
-function gradient(o::QuasiStaticObjectiveCache, U, p)
-    assemble_vector!(assembler(o), o.objective.gradient_u, U, p)
+function gradient(o::QuasiStaticObjective, u, p)
+    assemble_vector!(assembler(o), residual!, u, p)
     o.internal_force .= assembler(o).residual_storage
-    assemble_vector_neumann_bc!(assembler(o), U, p)
+    assemble_vector_neumann_bc!(assembler(o), u, p)
     o.external_force .= assembler(o).residual_storage .- o.internal_force
     return residual(assembler(o))
 end
 
-function hessian(o::QuasiStaticObjectiveCache, U, p; symmetric = true)
-    assemble_stiffness!(assembler(o), o.objective.hessian_u, U, p)
+function hessian(o::QuasiStaticObjective, u, p; symmetric = true)
+    assemble_stiffness!(assembler(o), stiffness!, u, p)
     if symmetric
         H = stiffness(assembler(o)) |> Symmetric
     else
@@ -81,33 +48,21 @@ function hessian(o::QuasiStaticObjectiveCache, U, p; symmetric = true)
     return H
 end
 
-function hvp(o::QuasiStaticObjectiveCache, U, V, p)
-    # assemble_matrix_action!(assembler(o), o.objective.hessian_u, U, V, p)
+function hvp(o::QuasiStaticObjective, u, v, p)
     asm = assembler(o)
-    if FiniteElementContainers._use_inplace_methods(asm)
-        assemble_matrix_action!(asm, o.objective.hvp_u, U, V, p)
-    else
-        assemble_matrix_free_action!(asm, o.objective.hvp_u, U, V, p)
-    end
-    return FiniteElementContainers.hvp(asm, V)
+    assemble_matrix_action!(asm, stiffness_action!, u, v, p)
+    return FiniteElementContainers.hvp(asm, v)
 end
 
-# TODO review this
-function mass_matrix(o::QuasiStaticObjectiveCache, U, p)
-    assemble_mass!(assembler(o), o.objective.hessian_u, U, p)
-    # M = FiniteElementContainers.mass(assembler(o)) |> Symmetric
-    # really passing displacement below instead of velocity to save
-    # on having to store the solution_rate for quasi-statics
-    # this method is mainly so you can construct a mass matrix
-    # if you want one. Should add abstract types in the future
-    assemble_mass!(assembler(o), mass, o.solution, o.parameters)
+function mass_matrix(o::QuasiStaticObjective, u, p)
+    assemble_mass!(assembler(o), mass!, u, p)
     M = FiniteElementContainers.mass(assembler(o))
     return M |> Symmetric
 end
 
 # NOTE I think this assumes o.external_force is already populated
-function value(o::QuasiStaticObjectiveCache, U, p)
-    assemble_scalar!(assembler(o), o.objective.value, U, p)
+function value(o::QuasiStaticObjective, U, p)
+    assemble_scalar!(assembler(o), energy, U, p)
     o.internal_energy = reduce(+, assembler(o).scalar_quadrature_storage)
     # TODO need an actual neumann energy method in FEContainers
     # fill!(o.external_energy, dot(o.external_force, U))
@@ -116,33 +71,31 @@ function value(o::QuasiStaticObjectiveCache, U, p)
 end
 
 # integrator hooks
-function initialize!(::QuasiStaticObjectiveCache, U, p)
+function initialize!(::QuasiStaticObjective, u, p)
     p.times.time_current = zero(typeof(p.times.time_current))
     return nothing
 end
 
-function step!(solver, o::QuasiStaticObjectiveCache, U, p; verbose = true)
+function step!(solver, o::QuasiStaticObjective, u, p; verbose = true)
     FiniteElementContainers.update_time!(p)
     FiniteElementContainers.update_bc_values!(p, solver.objective_cache.assembler)
     _step_begin_banner(o, p; verbose = verbose)
-    solve!(solver, U, p)
-    # update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
+    solve!(solver, u, p)
 
     # update values at end of step
-    gradient(o, U, p)
-    value(o, U, p)
+    gradient(o, u, p)
+    value(o, u, p)
 
     # update old solution
-    # update_field_dirichlet_bcs!(U, p.dirichlet_bcs)
-    # copyto!(o.solution_old, U)
     copyto!(o.solution_old, p.field)
+    copyto!(p.state_old, p.state_new)
 
     _step_end_banner(o, p; verbose = verbose)
     return nothing
 end
 
 # logging hooks
-function _step_begin_banner(::QuasiStaticObjectiveCache, p; verbose::Bool = true)
+function _step_begin_banner(::QuasiStaticObjective, p; verbose::Bool = true)
     if verbose
         time_curr = FiniteElementContainers.current_time(p.times)
         time_start = sum(p.times.time_start)
@@ -158,7 +111,7 @@ function _step_begin_banner(::QuasiStaticObjectiveCache, p; verbose::Bool = true
     return nothing
 end
 
-function _step_end_banner(o::QuasiStaticObjectiveCache, p; verbose::Bool = true)
+function _step_end_banner(o::QuasiStaticObjective, p; verbose::Bool = true)
     if verbose
         @info "External energy        = $(o.external_energy)"
         @info "Internal energy        = $(o.internal_energy)"

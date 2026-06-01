@@ -98,6 +98,32 @@ function setup_function(fspace::FunctionSpace, ::SolidMechanics)
     return VectorFunction(fspace, "displ")
 end
 
+function characteristic_element_length(
+    physics::SolidMechanics, interps, x_el,
+    t, dt, u_el, u_el_old,
+    state_old_q, state_new_q, props_el,
+)
+    x_cur = x_el + u_el
+    ndim = 3
+    nnpe = length(x_cur) ÷ ndim
+    T = eltype(x_cur)
+    cx = cy = cz = zero(T)
+    for i in 1:nnpe
+        cx += x_cur[(i-1)*ndim + 1]
+        cy += x_cur[(i-1)*ndim + 2]
+        cz += x_cur[(i-1)*ndim + 3]
+    end
+    cx /= nnpe; cy /= nnpe; cz /= nnpe
+    total = zero(T)
+    for i in 1:nnpe
+        dx = x_cur[(i-1)*ndim + 1] - cx
+        dy = x_cur[(i-1)*ndim + 2] - cy
+        dz = x_cur[(i-1)*ndim + 3] - cz
+        total += sqrt(dx*dx + dy*dy + dz*dz)
+    end
+    return 2 * total / nnpe
+end
+
 @inline function FiniteElementContainers.energy(
     physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
 )
@@ -185,7 +211,6 @@ end
     f_q = G_q * P_q
     return JxW * f_q[:]
 end
-
 
 @inline function FiniteElementContainers.mass(
     physics::SolidMechanics,
@@ -391,57 +416,4 @@ end
     )
     scatter_with_gradients_and_gradients!(storage, physics.formulation, e, conn, ∇N_X, JxW * A_q, v_el)
     return nothing
-end
-
-@inline function _kinetic_energy(
-    physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
-
-)
-    interps = map_interpolants(interps, x_el)
-    (; X_q, N, ∇N_X, JxW) = interps
-    v_q = interpolate_field_values(physics, interps, v_el)
-
-    # TODO
-    rho = props_el[1]
-    return 0.5 * JxW * rho * dot(v_q, v_q)
-end
-
-@inline function kinetic_energy(
-    physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
-)
-    return _kinetic_energy(physics, interps, v_el, x_el, state_old_q, props_el, t, dt)
-end
-
-# function mass(
-#     physics::SolidMechanics, interps, x_el, t, dt, v_el, v_el_old, state_old_q, state_new_q, props_el
-# )
-#     return ForwardDiff.hessian(z -> _kinetic_energy(
-#         physics, interps, x_el, t, dt, z, v_el_old, state_old_q, state_new_q, props_el
-#     ), v_el)
-# end
-
-function characteristic_element_length(
-    physics::SolidMechanics, interps, x_el,
-    t, dt, u_el, u_el_old,
-    state_old_q, state_new_q, props_el,
-)
-    x_cur = x_el + u_el
-    ndim = 3
-    nnpe = length(x_cur) ÷ ndim
-    T = eltype(x_cur)
-    cx = cy = cz = zero(T)
-    for i in 1:nnpe
-        cx += x_cur[(i-1)*ndim + 1]
-        cy += x_cur[(i-1)*ndim + 2]
-        cz += x_cur[(i-1)*ndim + 3]
-    end
-    cx /= nnpe; cy /= nnpe; cz /= nnpe
-    total = zero(T)
-    for i in 1:nnpe
-        dx = x_cur[(i-1)*ndim + 1] - cx
-        dy = x_cur[(i-1)*ndim + 2] - cy
-        dz = x_cur[(i-1)*ndim + 3] - cz
-        total += sqrt(dx*dx + dy*dy + dz*dz)
-    end
-    return 2 * total / nnpe
 end

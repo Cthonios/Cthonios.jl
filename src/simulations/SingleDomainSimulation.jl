@@ -1,28 +1,13 @@
-struct SingleDomainSimulation{
-    RT <: Number, 
-    P1 <: NamedTuple, 
-    P2 <: NamedTuple, 
-    I1, 
-    I2,
-    I3,
-    D, 
-    N, 
-    C
-} <: AbstractSimulation
+struct SingleDomainSimulation{O, U, P} <: AbstractSimulation
+    objective::O
+    u::U
+    p::P
     mesh_file::String
     output_file::String
-    times::TimeStepper{RT}
-    physics::P1
-    properties::P2
-    solution_ics::I1
-    solution_rate_ics::I2
-    solution_rate_rate_ics::I3
-    dirichlet_bcs::D
-    neumann_bcs::N
-    contact_pairs::C
 end
 
 function SingleDomainSimulation(
+    objective_type,
     mesh_file::String,
     output_file::String,
     times::TimeStepper,
@@ -35,12 +20,20 @@ function SingleDomainSimulation(
     neumann_bcs::Vector{<:NeumannBC} = NeumannBC[],
     contact_pairs::Vector{<:ContactPair} = ContactPair[]
 )
-    properties = _create_properties(physics, properties)
+    mesh = UnstructuredMesh(mesh_file)
+    assembler = _setup_solid_mechanics_assembler(mesh)
+    objective = objective_type(assembler)
+    properties = _create_properties(physics, properties)    
 
-    return SingleDomainSimulation(
-        mesh_file, output_file,
-        times, physics, properties,
-        solution_ics, solution_rate_ics, solution_rate_rate_ics,
-        dirichlet_bcs, neumann_bcs, contact_pairs
+    # u = create_unknowns(assembler)
+    p = create_parameters(
+        mesh,
+        assembler, physics, properties; 
+        dirichlet_bcs = dirichlet_bcs,
+        ics = solution_ics,
+        neumann_bcs = neumann_bcs,
+        times = times
     )
+    u = create_unknowns(assembler) # need to create after assembler is reset
+    return SingleDomainSimulation(objective, u, p, mesh_file, output_file)
 end

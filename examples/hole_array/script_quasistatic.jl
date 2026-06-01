@@ -56,12 +56,13 @@ dirichlet_bcs = [
 
 # Simulation
 sim = SingleDomainSimulation(
+    QuasiStaticObjective,
     mesh_file, output_file, 
     times, physics, props;
     dirichlet_bcs=dirichlet_bcs
 )
-objective = QuasiStaticObjective(; use_inplace_methods = true)
-objective_cache, U, p = setup_caches(objective, sim; use_inplace_methods = true)
+# objective = QuasiStaticObjective(; use_inplace_methods = true)
+# objective_cache, U, p = setup_caches(objective, sim; use_inplace_methods = true)
 
 # qoi1 = QOIExtractor(
 #     objective_cache, helmholtz_free_energy, +,
@@ -76,11 +77,11 @@ objective_cache, U, p = setup_caches(objective, sim; use_inplace_methods = true)
 #     reduction_2 = identity
 # )
 
-solver = TrustRegionSolver(objective_cache, p; use_predictor = true)
+solver = TrustRegionSolver(sim.objective, sim.p; use_predictor = true)
 
 # solver = Cthonios.NewtonSolver(objective_cache)
 
-Cthonios.run!(solver, objective_cache, U, p, sim)
+Cthonios.run!(sim, solver)
 
 # function design_objective!(f, qoi_storages, qois, Us, ps, params)
 #     U, p = Us[end], ps[end]

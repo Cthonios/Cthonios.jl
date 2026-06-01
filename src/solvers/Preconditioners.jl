@@ -48,7 +48,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj::AbstractObjectiveCache, p, timer)
+function CholeskyPreconditioner(obj::AbstractObjective, p, timer)
   @timeit timer "CholeskyPreconditioner - setup" begin
     asm = assembler(obj)
     Uu = create_unknowns(asm)

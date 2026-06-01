@@ -35,22 +35,20 @@ function test_implicit_dynamics()
 
     # Simulation
     sim = SingleDomainSimulation(
+        ImplicitDynamicsObjective,
         mesh_file, output_file, 
         times, physics, props
     )
 
-    objective = Cthonios.ImplicitDynamicsObjective(; use_inplace_methods = false)
-    objective_cache, U, p = Cthonios.setup_caches(objective, sim; use_inplace_methods = false)
-
     # small hack we should remove
     mesh = UnstructuredMesh(mesh_file)
-    vel_ics = InitialConditions(mesh, objective_cache.assembler.dof, vel_ics)
+    vel_ics = InitialConditions(mesh, sim.objective.assembler.dof, vel_ics)
     # small hack above we should removes
 
-    Cthonios.initialize!(objective_cache, U, p; vel_ics = vel_ics)
-    solver = Cthonios.NewtonSolver(objective_cache, p)
+    Cthonios.initialize!(sim; vel_ics = vel_ics)
+    solver = Cthonios.NewtonSolver(sim.objective, sim.p)
     # solver = Cthonios.TrustRegionSolver(objective_cache, p; use_predictor = true)
-    Cthonios.run!(solver, objective_cache, U, p, sim; output_exodus_every = 10)
+    Cthonios.run!(sim, solver; output_exodus_every = 10)
 end
 
 test_implicit_dynamics()

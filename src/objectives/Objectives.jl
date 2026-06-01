@@ -1,34 +1,38 @@
 """
-User facing
 """
-abstract type AbstractObjective{F1} end
-abstract type AbstractSolutionObjective{F1} <: AbstractObjective{F1} end
-
-# new cache implementation
-abstract type AbstractObjectiveCache{
-    A, # Assembler type
-    O  <: AbstractObjective,
+abstract type AbstractObjective{
     RT <: Number,
-    RV <: AbstractArray{RT, 1}
+    RV <: AbstractArray{RT, 1},
+    A # Assembler type
 } end
 
-function FiniteElementContainers.create_field(o::AbstractObjectiveCache)
+function FiniteElementContainers.create_field(o::AbstractObjective)
     return FiniteElementContainers.create_field(o.assembler)
 end
 
-function FiniteElementContainers.create_unknowns(o::AbstractObjectiveCache)
+function FiniteElementContainers.create_unknowns(o::AbstractObjective)
     return FiniteElementContainers.create_unknowns(o.assembler)
 end
 
-function assembler(o::AbstractObjectiveCache)
+function assembler(o::AbstractObjective)
     return o.assembler
 end
 
-abstract type AbstractSolutionObjectiveCache{A, O, RT, RV} <: AbstractObjectiveCache{A, O, RT, RV} end
+abstract type AbstractSolidMechanicsObjective{RT, RV, A} <: AbstractObjective{RT, RV, A} end
 
-# function parameters(o::AbstractObjectiveCache)
-#     return o.parameters
-# end
+function _setup_solid_mechanics_assembler(
+    mesh,
+    q_degree = 2,
+    use_condensed = false,
+    use_inplace_methods = true
+)
+    fspace = FunctionSpace(mesh, H1Field, Lagrange)
+    u = VectorFunction(fspace, "displ")
+    dof = DofManager(u; use_condensed = use_condensed)
+    assembler = SparseMatrixAssembler(dof; use_inplace_methods = use_inplace_methods)
+    return assembler
+end
+
 # include("ContactObjective.jl")
 # include("ConstrainedObjective.jl")
 # include("DesignObjective.jl")
