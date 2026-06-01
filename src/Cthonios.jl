@@ -38,6 +38,8 @@ export @SVector
 # Cthonios exports
 export ContactPair
 # export NewtonSolver # name conflict with FiniteElementContainers
+export ExplicitDynamicsObjective
+export ImplicitDynamicsObjective
 export QOIExtractor
 export QuasiStaticObjective
 export SingleDomainSimulation
@@ -45,7 +47,6 @@ export SolidMechanics
 export TrustRegionSolver
 export create_unknowns
 export evolve!
-export setup_caches
 
 mutable struct DeveloperOptions
     use_condensed::Bool

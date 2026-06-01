@@ -65,18 +65,12 @@ function solve!(predictor::TangentPredictor, objective, Uf, p, P = I)
 
         # form right hand side for predictor solve
         update_field_dirichlet_bcs!(predictor.ΔU, predictor.dp.dirichlet_bcs)
-        if FiniteElementContainers._use_inplace_methods(predictor.assembler)
-            assemble_matrix_action!(
-                predictor.R, predictor.assembler.vector_pattern, predictor.assembler.dof, 
-                objective.objective.hvp_u, predictor.U, predictor.ΔU, predictor.dp;
-                use_inplace_methods = FiniteElementContainers._use_inplace_methods(predictor.assembler)
-            )
-        else
-            assemble_matrix_free_action!(
-                predictor.R, predictor.assembler.vector_pattern, predictor.assembler.dof, 
-                objective.objective.hvp_u, predictor.U, predictor.ΔU, predictor.dp
-            )
-        end
+        assemble_matrix_action!(
+            predictor.R, predictor.assembler.vector_pattern, predictor.assembler.dof, 
+            stiffness_action!, predictor.U, predictor.ΔU, predictor.dp;
+            use_inplace_methods = FiniteElementContainers._use_inplace_methods(predictor.assembler)
+        )
+
         # tack on Neumann bc increment
         FiniteElementContainers.assemble_vector_weakly_enforced_bc!(
             predictor.R, predictor.assembler.dof, predictor.ΔU,
@@ -86,7 +80,7 @@ function solve!(predictor::TangentPredictor, objective, Uf, p, P = I)
         FiniteElementContainers.extract_field_unknowns!(predictor.Rf, asm.dof, predictor.R)
 
         # get stiffness Kff from previous converged step
-        assemble_stiffness!(asm, objective.objective.hessian_u, Uf, p)
+        assemble_stiffness!(asm, stiffness!, Uf, p)
         Kff = stiffness(asm)
 
         # solve and update current solution

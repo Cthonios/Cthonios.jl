@@ -1,31 +1,7 @@
 # currently uses central difference method
 
-struct ExplicitDynamicsObjective{
-    F1 <: Function,
-    F2 <: Function,
-    F3 <: Function,
-    F4 <: Function
-} <: AbstractSolutionObjective{F1}
-    value::F1
-    gradient_u::F2
-    hessian_u::F3
-    hvp_u::F4
-end
-
-function ExplicitDynamicsObjective(; use_inplace_methods = true)
-    if use_inplace_methods
-        return ExplicitDynamicsObjective(energy, residual!, stiffness!, stiffness_action!)
-    else
-        return ExplicitDynamicsObjective(energy, residual, stiffness, stiffness_action)
-    end
-end
-
-mutable struct ExplicitDynamicsObjectiveCache{
-    A, O,
-    RT, RV <: AbstractArray{RT, 1}
-} <: AbstractSolutionObjectiveCache{A, O, RT, RV}
+mutable struct ExplicitDynamicsObjective{RT, RV, A} <: AbstractSolidMechanicsObjective{RT, RV, A}
     assembler::A
-    objective::O
     #
     γ::RT
     CFL::RT
@@ -45,9 +21,8 @@ mutable struct ExplicitDynamicsObjectiveCache{
     timer::TimerOutput
 end
 
-function ExplicitDynamicsObjectiveCache(
+function ExplicitDynamicsObjective(
     assembler, 
-    objective::ExplicitDynamicsObjective,
     CFL, γ = 0.5
 )
     RT = eltype(assembler.constraint_storage)
@@ -63,8 +38,8 @@ function ExplicitDynamicsObjectiveCache(
     value_scratch = create_unknowns(assembler)
     timer = TimerOutput()
 
-    return ExplicitDynamicsObjectiveCache(
-        assembler, objective,
+    return ExplicitDynamicsObjective(
+        assembler,
         γ, CFL,
         external_energy, internal_energy, kinetic_energy,
         v, a,
@@ -74,12 +49,8 @@ function ExplicitDynamicsObjectiveCache(
     )
 end
 
-function setup_cache(assembler, objective::ExplicitDynamicsObjective, args...)
-    return ExplicitDynamicsObjectiveCache(assembler, objective, args...)
-end
-
 function initialize!(
-    o::ExplicitDynamicsObjectiveCache, u, p;
+    o::ExplicitDynamicsObjective, u, p;
     displ_ics = nothing,
     vel_ics = nothing
 )
@@ -123,8 +94,8 @@ function initialize!(
     return nothing
 end
 
-function step!(solver, o::ExplicitDynamicsObjectiveCache, u, p; verbose = true)
-    @timeit o.timer "ExplicitDynamicsObjectiveCache - step!" begin
+function step!(solver, o::ExplicitDynamicsObjective, u, p; verbose = true)
+    @timeit o.timer "ExplicitDynamicsObjective - step!" begin
         FiniteElementContainers.update_time!(p)
         FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
 
@@ -159,9 +130,9 @@ function step!(solver, o::ExplicitDynamicsObjectiveCache, u, p; verbose = true)
     _step_log(o, p)
 end
 
-function gradient(o::ExplicitDynamicsObjectiveCache, u, p)
+function gradient(o::ExplicitDynamicsObjective, u, p)
     # o.inertial_force .= lumped_mass .* o.a
-    assemble_vector!(assembler(o), o.objective.gradient_u, u, p)
+    assemble_vector!(assembler(o), residual!, u, p)
     # o.internal_force .= assembler(o).residual_storage
     assemble_vector_neumann_bc!(assembler(o), u, p)
     assemble_vector_source!(assembler(o), u, p)
@@ -169,14 +140,14 @@ function gradient(o::ExplicitDynamicsObjectiveCache, u, p)
     return residual(assembler(o))
 end
 
-function lumped_mass(o::ExplicitDynamicsObjectiveCache, u, p)
+function lumped_mass(o::ExplicitDynamicsObjective, u, p)
     return o.lumped_mass
 end
 
-function value(o::ExplicitDynamicsObjectiveCache, u, p)
+function value(o::ExplicitDynamicsObjective, u, p)
     # TODO external energy
     o.external_energy = zero(o.external_energy)
-    assemble_scalar!(assembler(o), o.objective.value, u, p)
+    assemble_scalar!(assembler(o), energy, u, p)
     o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
     map!((m, v) -> m * v * v, o.value_scratch, o.lumped_mass, o.v)
     o.kinetic_energy = reduce(+, o.value_scratch)
@@ -219,7 +190,7 @@ function _compute_stable_dt(asm, p, CFL)
     return stable_dt
 end
 
-function _step_log(o::ExplicitDynamicsObjectiveCache, p)
+function _step_log(o::ExplicitDynamicsObjective, p)
     if o.step_number % 1000 == 0
         @info "Step      Current      Time        Internal    External    Kinetic"
         @info "Number    Time         Increment   Energy      Energy      Energy"

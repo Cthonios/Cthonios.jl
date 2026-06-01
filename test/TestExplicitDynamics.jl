@@ -34,21 +34,19 @@ function test_explicit_dynamics()
 
     # Simulation
     sim = SingleDomainSimulation(
+        x -> ExplicitDynamicsObjective(x, 0.1),
         mesh_file, output_file, 
         times, physics, props
     )
 
-    objective = Cthonios.ExplicitDynamicsObjective(; use_inplace_methods = true)
-    objective_cache, U, p = Cthonios.setup_caches(objective, sim, 0.1; use_inplace_methods = true)
-
     # small hack we should remove
     mesh = UnstructuredMesh(mesh_file)
-    vel_ics = InitialConditions(mesh, objective_cache.assembler.dof, vel_ics)
+    vel_ics = InitialConditions(mesh, sim.objective.assembler.dof, vel_ics)
     # small hack above we should removes
 
-    Cthonios.initialize!(objective_cache, U, p; vel_ics = vel_ics)
-    solver = Cthonios.ExplicitSolver(objective_cache, p)
-    Cthonios.run!(solver, objective_cache, U, p, sim; output_exodus_every = 10)
+    Cthonios.initialize!(sim; vel_ics = vel_ics)
+    solver = Cthonios.ExplicitSolver(sim.objective, sim.p)
+    Cthonios.run!(sim, solver; output_exodus_every = 10)
 end
 
 test_explicit_dynamics()

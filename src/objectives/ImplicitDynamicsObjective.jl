@@ -1,29 +1,5 @@
-struct ImplicitDynamicsObjective{
-    F1 <: Function,
-    F2 <: Function,
-    F3 <: Function,
-    F4 <: Function
-} <: AbstractObjective{F1}
-    value::F1
-    gradient_u::F2
-    hessian_u::F3
-    hvp_u::F4
-end
-
-function ImplicitDynamicsObjective(; use_inplace_methods = true)
-    if use_inplace_methods
-        return ImplicitDynamicsObjective(energy, residual!, stiffness!, stiffness_action!)
-    else
-        return ImplicitDynamicsObjective(energy, residual, stiffness, stiffness_action)
-    end
-end
-
-mutable struct ImplicitDynamicsObjectiveCache{
-    A, O,
-    RT, RV <: AbstractArray{RT, 1}
-} <: AbstractObjectiveCache{A, O, RT, RV}
+mutable struct ImplicitDynamicsObjective{RT, RV, A} <: AbstractObjective{RT, RV, A}
     assembler::A
-    objective::O
     #
     β::RT
     γ::RT
@@ -48,8 +24,8 @@ mutable struct ImplicitDynamicsObjectiveCache{
     timer::TimerOutput
 end
 
-function ImplicitDynamicsObjectiveCache(
-    assembler, objective::ImplicitDynamicsObjective,
+function ImplicitDynamicsObjective(
+    assembler,
     β = 0.25, γ = 0.5, α_hht = 0.0
 )
     RT = eltype(assembler.constraint_storage)
@@ -72,8 +48,8 @@ function ImplicitDynamicsObjectiveCache(
 
     timer = TimerOutput()
 
-    return ImplicitDynamicsObjectiveCache(
-        assembler, objective,
+    return ImplicitDynamicsObjective(
+        assembler,
         β, γ, α_hht,
         external_energy, internal_energy, kinetic_energy,
         v, a,
@@ -84,18 +60,12 @@ function ImplicitDynamicsObjectiveCache(
     )
 end
 
-function setup_cache(assembler, objective::ImplicitDynamicsObjective, args...)
-    return ImplicitDynamicsObjectiveCache(assembler, objective, args...)
-end
-
 function initialize!(
-    o::ImplicitDynamicsObjectiveCache, u, p;
+    o::ImplicitDynamicsObjective, u, p;
     displ_ics = nothing,
     vel_ics = nothing
 )
     p.times.time_current = zero(p.times.time_current)
-    # Δt = _compute_stable_dt(assembler(o), p, o.CFL)
-    # p.times.Δt = Δt
 
     # apply initial conditions 
     # TODO make this better in FEC
@@ -114,7 +84,7 @@ function initialize!(
     end
 
     # setup mass matrix once
-    assemble_mass!(assembler(o), mass, u, p)
+    assemble_mass!(assembler(o), mass!, u, p)
     M = mass(assembler(o))
 
     # rhs = -gradient(o, u, p)
@@ -124,7 +94,7 @@ function initialize!(
     return nothing
 end
 
-function step!(solver, o::ImplicitDynamicsObjectiveCache, u, p; verbose = true)
+function step!(solver, o::ImplicitDynamicsObjective, u, p; verbose = true)
     FiniteElementContainers.update_time!(p)
     FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
     Δt = FiniteElementContainers.time_step(p)
@@ -140,18 +110,6 @@ function step!(solver, o::ImplicitDynamicsObjectiveCache, u, p; verbose = true)
     o.u_pred .= u
     fill!(o.du, zero(eltype(o.du)))
 
-    # # calculate du
-    # @. o.du = u - o.u_pred
-
-    # # get gradient
-    # R_int = _internal_force(o, u, p)
-
-    # # need mass action
-    # assemble_matrix_free_action!(assembler(o), mass_action, u, o.du, p)
-    # M_du = FiniteElementContainers.hvp(assembler(o), o.du)
-    # @. o.R_eff = -((1 + o.α_hht) * R_int + c_M * M_du - o.α_hht * o.F_int_n)
-    # assemble_matrix_action!(assembler(o), mass_action!, u, o.du, p)
-
     # solve
     solve!(solver, u, p)
 
@@ -166,7 +124,7 @@ function step!(solver, o::ImplicitDynamicsObjectiveCache, u, p; verbose = true)
     return nothing
 end
 
-function gradient(o::ImplicitDynamicsObjectiveCache, u, p)
+function gradient(o::ImplicitDynamicsObjective, u, p)
     Δt = FiniteElementContainers.time_step(p)
     c_M = one(Δt) / (o.β * Δt * Δt)
 
@@ -183,12 +141,12 @@ function gradient(o::ImplicitDynamicsObjectiveCache, u, p)
     return o.R_eff
 end
 
-function hessian(o::ImplicitDynamicsObjectiveCache, u, p; symmetric = false)
+function hessian(o::ImplicitDynamicsObjective, u, p; symmetric = false)
     # assumes assemble_mass! has already been called
     Δt = FiniteElementContainers.time_step(p)
     c_M = one(Δt) / (o.β * Δt * Δt)
     asm = assembler(o)
-    assemble_stiffness!(asm, o.objective.hessian_u, u, p)
+    assemble_stiffness!(asm, stiffness!, u, p)
     @. asm.stiffness_storage += c_M * asm.mass_storage
 
     if symmetric
@@ -199,11 +157,11 @@ function hessian(o::ImplicitDynamicsObjectiveCache, u, p; symmetric = false)
     return H
 end
 
-function hvp(o::ImplicitDynamicsObjectiveCache, u, v, p)
+function hvp(o::ImplicitDynamicsObjective, u, v, p)
     Δt = FiniteElementContainers.time_step(p)
     c_M = one(Δt) / (o.β * Δt * Δt)
 
-    assemble_matrix_free_action!(assembler(o), o.objective.hvp_u, u, v, p)
+    assemble_matrix_free_action!(assembler(o), stiffness_action, u, v, p)
     Kv = FiniteElementContainers.hvp(assembler(o), v)
 
     o.hvp_scratch .= Kv
@@ -218,21 +176,10 @@ function hvp(o::ImplicitDynamicsObjectiveCache, u, v, p)
     return o.hvp_scratch
 end
 
-# function value(o::ImplicitDynamicsObjectiveCache, u, p)
-#     # TODO external energy
-#     o.external_energy = zero(o.external_energy)
-#     assemble_scalar!(assembler(o), o.objective.value, u, p)
-#     o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
-#     # map!((m, v) -> m * v * v, o.value_scratch, o.lumped_mass, o.v)
-#     # o.kinetic_energy = reduce(+, o.value_scratch)
-#     assemble_matrix_free_action!(assembler(o), mass_action, u, o.v, p)
-
-# end
-
-function value(o::ImplicitDynamicsObjectiveCache, u, p)
+function value(o::ImplicitDynamicsObjective, u, p)
     # TODO external energy
     o.external_energy = zero(o.external_energy)
-    assemble_scalar!(assembler(o), o.objective.value, u, p)
+    assemble_scalar!(assembler(o), energy, u, p)
     o.internal_energy = sum(assembler(o).scalar_quadrature_storage)
     @. o.du = u - o.u_pred
     assemble_matrix_free_action!(assembler(o), mass_action, u, o.du, p)
@@ -246,9 +193,11 @@ function value(o::ImplicitDynamicsObjectiveCache, u, p)
     return o.external_energy + o.internal_energy + o.kinetic_energy
 end
 
-function _internal_force(o::ImplicitDynamicsObjectiveCache, u, p)
+# TODO change name to _external_and_internal_force
+# because that's what it really is
+function _internal_force(o::ImplicitDynamicsObjective, u, p)
     # o.inertial_force .= lumped_mass .* o.a
-    assemble_vector!(assembler(o), o.objective.gradient_u, u, p)
+    assemble_vector!(assembler(o), residual!, u, p)
     # o.internal_force .= assembler(o).residual_storage
     assemble_vector_neumann_bc!(assembler(o), u, p)
     assemble_vector_source!(assembler(o), u, p)
@@ -256,7 +205,7 @@ function _internal_force(o::ImplicitDynamicsObjectiveCache, u, p)
     return residual(assembler(o))
 end
 
-function _step_begin_banner(o::ImplicitDynamicsObjectiveCache, p; verbose = true)
+function _step_begin_banner(o::ImplicitDynamicsObjective, p; verbose = true)
     if verbose
         time_curr = FiniteElementContainers.current_time(p.times)
         time_start = sum(p.times.time_start)
@@ -272,7 +221,7 @@ function _step_begin_banner(o::ImplicitDynamicsObjectiveCache, p; verbose = true
     return nothing
 end
 
-function _step_end_banner(o::ImplicitDynamicsObjectiveCache, p; verbose::Bool = true)
+function _step_end_banner(o::ImplicitDynamicsObjective, p; verbose::Bool = true)
     if verbose
         @info "External energy        = $(o.external_energy)"
         @info "Internal energy        = $(o.internal_energy)"

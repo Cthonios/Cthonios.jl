@@ -32,35 +32,36 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     ]
 
     sim = SingleDomainSimulation(
+        QuasiStaticObjective,
         mesh_file, output_file, 
         times, physics, props;
         dirichlet_bcs=dirichlet_bcs
     )
-    objective = Cthonios.QuasiStaticObjective()
-    objective_cache, U, p = setup_caches(objective, sim; q_degree=q_degree)
+    # objective = Cthonios.QuasiStaticObjective()
+    # objective_cache, U, p = setup_caches(objective, sim; q_degree=q_degree)
 
     target_disp_grad = @SMatrix [
         0.1 -0.2;
         0.4 -0.1
     ]
-    coords = p.coords
+    coords = sim.p.coords
     U = H1Field(target_disp_grad * coords)
     
     # now need to update bcs to reflect what's in U
     # this is hacky but will work for now
-    copyto!(p.dirichlet_bcs.bc_cache.vals, U.data[p.dirichlet_bcs.bc_cache.dofs])
+    copyto!(sim.p.dirichlet_bcs.bc_cache.vals, U.data[sim.p.dirichlet_bcs.bc_cache.dofs])
 
-    fspace = Cthonios.assembler(objective_cache).dof.var.fspace
+    fspace = Cthonios.assembler(sim.objective).dof.var.fspace
     conns = connectivity(fspace, 1)
     ref_fe = FiniteElementContainers.block_reference_element(fspace, 1)
 
-    solver = Cthonios.NewtonSolver(objective_cache, p)
+    solver = Cthonios.NewtonSolver(sim.objective, sim.p)
 
-    Uu = create_unknowns(objective_cache)
-    FiniteElementContainers.extract_field_unknowns!(Uu, objective_cache.assembler.dof, U)
-    Cthonios.solve!(solver, Uu, p)
+    Uu = create_unknowns(sim.objective)
+    FiniteElementContainers.extract_field_unknowns!(Uu, sim.objective.assembler.dof, U)
+    Cthonios.solve!(solver, Uu, sim.p)
 
-    grad = Cthonios.gradient(objective_cache, Uu, p)
+    grad = Cthonios.gradient(sim.objective, Uu, sim.p)
     @test isapprox(norm(grad), zero(eltype(grad)), atol=1e-12)
 
     for e in axes(conns, 2)
