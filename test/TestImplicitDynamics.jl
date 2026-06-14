@@ -46,7 +46,10 @@ function test_implicit_dynamics()
     # small hack above we should removes
 
     Cthonios.initialize!(sim; vel_ics = vel_ics)
-    solver = Cthonios.NewtonSolver(sim.objective, sim.p)
+    preconditioner = CholeskyPreconditioner(sim.objective, sim.u, sim.p)
+    predictor = NoPredictor(sim.objective, sim.u, sim.p)
+    nonlinear_solver = Cthonios.NewtonSolver(sim.objective, sim.u, sim.p)
+    solver = ImplicitSolver(nonlinear_solver, preconditioner, predictor)
     # solver = Cthonios.TrustRegionSolver(objective_cache, p; use_predictor = true)
     Cthonios.run!(sim, solver; output_exodus_every = 10)
 end

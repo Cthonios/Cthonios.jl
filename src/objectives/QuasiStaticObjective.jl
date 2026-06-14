@@ -33,19 +33,20 @@ end
 function gradient(o::QuasiStaticObjective, u, p)
     assemble_vector!(assembler(o), residual!, u, p)
     o.internal_force .= assembler(o).residual_storage
-    assemble_vector_neumann_bc!(assembler(o), u, p)
+    assemble_vector_neumann_bc!(assembler(o), u, p) # for tractions
+    assemble_vector_source!(assembler(o), u, p)     # for body forces
     o.external_force .= assembler(o).residual_storage .- o.internal_force
     return residual(assembler(o))
 end
 
-function hessian(o::QuasiStaticObjective, u, p; symmetric = true)
+function hessian(o::QuasiStaticObjective, u, p)
     assemble_stiffness!(assembler(o), stiffness!, u, p)
-    if symmetric
-        H = stiffness(assembler(o)) |> Symmetric
-    else
-        H = stiffness(assembler(o))
-    end
-    return H
+    return stiffness(assembler(o))
+end
+
+function hessian_symmetric(o::QuasiStaticObjective, u, p)
+    H = hessian(o, u, p)
+    return H |> Symmetric
 end
 
 function hvp(o::QuasiStaticObjective, u, v, p)
@@ -76,11 +77,22 @@ function initialize!(::QuasiStaticObjective, u, p)
     return nothing
 end
 
+function postprocess!(pp::PostProcessor, output_settings, n, objective::QuasiStaticObjective, u, p)
+    write_times(pp, n, FEC.current_time(p.times))
+    if output_settings.displacement
+        if size(p.field, 1) == 2
+            write_field(pp, n, ("displ_x", "displ_y"), p.field)
+        elseif size(p.field, 1) == 3
+            write_field(pp, n, ("displ_x", "displ_y", "displ_z"), p.field)
+        end
+    end
+end
+
 function step!(solver, o::QuasiStaticObjective, u, p; verbose = true)
-    FiniteElementContainers.update_time!(p)
-    FiniteElementContainers.update_bc_values!(p, solver.objective_cache.assembler)
+    FEC.update_time!(p)
+    FEC.update_bc_values!(p, o.assembler)
     _step_begin_banner(o, p; verbose = verbose)
-    solve!(solver, u, p)
+    solve!(solver, o, u, p)
 
     # update values at end of step
     gradient(o, u, p)

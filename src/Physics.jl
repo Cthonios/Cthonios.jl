@@ -68,7 +68,8 @@ end
 
 #############################################################################
 # Solid mechanics methods
-#############################################################################
+############################################################################
+
 struct SolidMechanics{NF, NP, NS, Form, Model} <: AbstractPhysics{NF, NP, NS}
     formulation::Form
     constitutive_model::Model
@@ -84,7 +85,7 @@ function SolidMechanics(formulation, model)
 end
 
 function FiniteElementContainers.create_properties(physics::SolidMechanics, inputs)
-    density = inputs["density"]
+    density = inputs["density"]::Float64
     mat_model_props = ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
     mat_model_props = Array(mat_model_props)
     return pushfirst!(mat_model_props, density)
@@ -187,31 +188,6 @@ end
     return JxW * ψ_q
 end
 
-@inline function FiniteElementContainers.residual(
-    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
-)
-    interps = map_interpolants(interps, x_el)
-    (; X_q, N, ∇N_X, JxW) = interps
-    ∇u_q = interpolate_field_gradients(physics, interps, u_el)
-  
-    # kinematics
-    ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-
-    mat_props = @views props_el[2:end]
-
-    # constitutive
-    θ = 0.0 # TODO
-    P_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
-    )    
-    # turn into voigt notation
-    P_q = extract_stress(physics.formulation, P_q)
-    # P_q = tovoigt(SVector, P_q)
-    G_q = discrete_gradient(physics.formulation, ∇N_X)
-    f_q = G_q * P_q
-    return JxW * f_q[:]
-end
-
 @inline function FiniteElementContainers.mass(
     physics::SolidMechanics,
     interps, x_el,
@@ -300,6 +276,31 @@ end
         tup = setindex(tup, N[n] * s3, k + 3)
     end
     return JxW * ρ * tup
+end
+
+@inline function FiniteElementContainers.residual(
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
+)
+    interps = map_interpolants(interps, x_el)
+    (; X_q, N, ∇N_X, JxW) = interps
+    ∇u_q = interpolate_field_gradients(physics, interps, u_el)
+  
+    # kinematics
+    ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
+
+    mat_props = @views props_el[2:end]
+
+    # constitutive
+    θ = 0.0 # TODO
+    P_q = ConstitutiveModels.pk1_stress(
+        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+    )    
+    # turn into voigt notation
+    P_q = extract_stress(physics.formulation, P_q)
+    # P_q = tovoigt(SVector, P_q)
+    G_q = discrete_gradient(physics.formulation, ∇N_X)
+    f_q = G_q * P_q
+    return JxW * f_q[:]
 end
 
 @inline function FiniteElementContainers.residual!(

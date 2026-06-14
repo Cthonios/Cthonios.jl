@@ -49,6 +49,10 @@ function ExplicitDynamicsObjective(
     )
 end
 
+function default_output_settings(::ExplicitDynamicsObjective)
+    return OutputSettings(; acceleration = true, velocity = true)
+end
+
 function initialize!(
     o::ExplicitDynamicsObjective, u, p;
     displ_ics = nothing,
@@ -60,23 +64,26 @@ function initialize!(
     p.times.Δt = Δt
 
     # setup lumped mass once
-    FiniteElementContainers.assemble_diagonal!(assembler(o), mass, u, p)
-    o.lumped_mass .= FiniteElementContainers.diagonal(assembler(o))
+    # FEC.assemble_diagonal!(assembler(o), mass, u, p)
+    # o.lumped_mass .= FEC.diagonal(assembler(o))
+    FEC.assemble_mass!(assembler(o), mass!, u, p)
+    M = FEC.mass(assembler(o))
+    o.lumped_mass .= map(i -> M[i, i], axes(M, 1))
 
     # apply initial conditions 
     # TODO make this better in FEC
     if displ_ics !== nothing
         u_all = create_field(o)
-        FiniteElementContainers.update_ic_values!(displ_ics, p.coords)
-        FiniteElementContainers.update_field_ics!(u_all, displ_ics)
-        FiniteElementContainers.extract_field_unknowns!(u, assembler(o).dof, u_all)
+        FEC.update_ic_values!(displ_ics, p.coords)
+        FEC.update_field_ics!(u_all, displ_ics)
+        FEC.extract_field_unknowns!(u, assembler(o).dof, u_all)
     end
 
     if vel_ics !== nothing
         v_all = create_field(o)
-        FiniteElementContainers.update_ic_values!(vel_ics, p.coords)
-        FiniteElementContainers.update_field_ics!(v_all, vel_ics)
-        FiniteElementContainers.extract_field_unknowns!(o.v, assembler(o).dof, v_all)
+        FEC.update_ic_values!(vel_ics, p.coords)
+        FEC.update_field_ics!(v_all, vel_ics)
+        FEC.extract_field_unknowns!(o.v, assembler(o).dof, v_all)
     end
 
     # calculate mechanics stuff at beginning
@@ -96,11 +103,11 @@ end
 
 function step!(solver, o::ExplicitDynamicsObjective, u, p; verbose = true)
     @timeit o.timer "ExplicitDynamicsObjective - step!" begin
-        FiniteElementContainers.update_time!(p)
-        FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
+        FEC.update_time!(p)
+        FEC.update_bc_values!(p, assembler(o))
 
         # unpack some stuff for convenience
-        Δt = FiniteElementContainers.time_step(p)
+        Δt = FEC.time_step(p)
 
         # predict
         @timeit o.timer "predict" begin
@@ -156,20 +163,24 @@ end
 
 # copied from Carina.jl
 function _compute_stable_dt(asm, p, CFL)
-    fspace = FiniteElementContainers.function_space(asm.dof)
+    fspace = FEC.function_space(asm.dof)
 
     # Pre-allocate per-block storage for element char lengths (nq × nelem)
-    char_len_storage = []
-    for (b, ref_fe) in enumerate(fspace.ref_fes)
-        nquad = num_cell_quadrature_points(ref_fe)
-        nelem = num_elements(fspace, b)
-        push!(char_len_storage, zeros(Float64, nquad, nelem))
-    end
-    char_len_storage = NamedTuple{keys(fspace.ref_fes)}(char_len_storage)
+    # char_len_storage = Array{Float64, 3}[]
+    # for (b, ref_fe) in enumerate(fspace.ref_fes)
+    # for b in 1:FEC.num_blocks(fspace)
+    #     ref_fe = FEC.block_reference_element(fspace, b)
+    #     nquad = num_cell_quadrature_points(ref_fe)
+    #     nelem = num_elements(fspace, b)
+    #     push!(char_len_storage, zeros(Float64, 1, nquad, nelem))
+    # end
+    # char_len_storage = NamedTuple{keys(fspace.ref_fes)}(char_len_storage)
+    char_len_storage = L2Field(undef, Float64, 1, FEC.block_quadrature_sizes(fspace))
+    fill!(char_len_storage, 0.0)
 
     # Assemble per-element char lengths on device
     U_zeros = zeros(Float64, length(asm.dof.unknown_dofs))
-    FiniteElementContainers.assemble_quadrature_quantity!(
+    FEC.assemble_quadrature_quantity!(
         char_len_storage, nothing, asm.dof,
         characteristic_element_length,
         U_zeros, p
@@ -177,9 +188,10 @@ function _compute_stable_dt(asm, p, CFL)
 
     # Min-reduction over all blocks
     stable_dt = Inf
-    for (b, (block_physics, block_storage, props)) in enumerate(zip(
-        values(p.physics), values(char_len_storage), values(p.properties),
+    for (b, (block_physics, props)) in enumerate(zip(
+        values(p.physics), values(p.properties),
     ))
+        block_storage = FEC.block_view(char_len_storage, b)
         ρ   = props[1]
         M   = p_wave_modulus(block_physics.constitutive_model, props)
         c_p = sqrt(M / ρ)

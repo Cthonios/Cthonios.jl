@@ -1,0 +1,65 @@
+device:
+  backend: cpu
+
+functions:
+  zero:
+    type: scalar expression
+    expression: "0.0"
+    variables: [x, y, t]
+  load:
+    type: scalar expression
+    expression: "-7.5 * t"
+    variables: [x, y, t]
+  
+materials:
+  rubber:
+    Gent:
+      density: 1.0
+      Young's modulus: 1.
+      Poisson's ratio: 0.495
+      Jm: 3.
+    NeoHookean:
+      density: 1.0
+      Young's modulus: 1.
+      Poisson's ratio: 0.495
+
+mesh:
+  dimension: 2
+  file path: mesh/hole_array.exo
+  file type: exodus
+
+boundary conditions:
+  dirichlet:
+    - function: zero
+      side sets: [yminus_sideset]
+      variables: [displ_x, displ_y]
+    - function: zero
+      side sets: [yplus_sideset]
+      variables: [displ_x]
+    - function: load
+      side sets: [yplus_sideset]
+      variables: [displ_y]
+
+physics:
+  kinematics: PlaneStrain
+  material assignment:
+    rubber:
+      blocks: [Block1]
+      model: NeoHookean
+
+time:
+  start time: 0.0
+  end time: 1.0
+  number of time steps: 80
+
+linear solvers:
+  krylov:
+    type: KrylovSolver
+    solution method: cg
+
+solver:
+  predictor:
+    type: tangent
+
+  nonlinear solver:
+    type: TrustRegionSolver

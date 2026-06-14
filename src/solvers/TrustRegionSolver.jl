@@ -12,7 +12,7 @@ end
 
 function calculate!(
     cauchy_point::CauchyPoint, 
-    objective_cache,
+    objective,
     Uu,
     p,
     g, 
@@ -22,7 +22,7 @@ function calculate!(
 )
     @timeit cauchy_point.timer "Cauchy Point" begin
         cp = cauchy_point.cauchy_point
-        Kg = hvp(objective_cache, Uu, g, p)
+        Kg = hvp(objective, Uu, g, p)
         # Kg = hess_vec_func(g)
         gKg = dot(g, Kg)
         if gKg > 0
@@ -259,61 +259,46 @@ end
 
 struct TrustRegionSolver{
     RV <: AbstractArray{<:Number, 1},
-    ObjectiveCache,
-    Precond,
-    Predictor
+    Objective
 }
     cauchy_point::CauchyPoint{RV}
     dogleg_step::DogLegStep{RV}
     model_problem::TrustRegionModelProblem{RV}
-    objective_cache::ObjectiveCache
-    preconditioner::Precond
-    predictor::Predictor
+    objective::Objective
     settings::TrustRegionSolverSettings
     timer::TimerOutput
 end
 
 function TrustRegionSolver(
-    objective_cache, parameters;
-    preconditioner = CholeskyPreconditioner,
-    timer = TimerOutput(),
-    use_predictor = false,
+    objective, u, p,
+    timer = TimerOutput();
     kwargs...
 )
     @timeit timer "TrustRegionSolver - setup" begin
         settings = TrustRegionSolverSettings(; kwargs...)
         cauchy_point = CauchyPoint(
-            create_unknowns(objective_cache), 
+            create_unknowns(objective), 
             timer
         )
         dogleg_step = DogLegStep(
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
+            create_unknowns(objective),
+            create_unknowns(objective),
             timer
         )
         model_problem = TrustRegionModelProblem(
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
-            create_unknowns(objective_cache),
+            create_unknowns(objective),
+            create_unknowns(objective),
+            create_unknowns(objective),
+            create_unknowns(objective),
+            create_unknowns(objective),
+            create_unknowns(objective),
             timer
         )
-        precond = preconditioner(
-            objective_cache, parameters, timer
-        )
-
-        if use_predictor
-            predictor = TangentPredictor(objective_cache, parameters, timer)
-        else
-            predictor = nothing
-        end
     end
 
     return TrustRegionSolver(
         cauchy_point, dogleg_step, model_problem,
-        objective_cache, precond, predictor,
+        objective,
         settings, timer
     )
 end
@@ -379,21 +364,15 @@ function print_min_banner(
     end
 end
 
-function solve!(solver::TrustRegionSolver, Uu, p)
+function solve!(solver::TrustRegionSolver, objective, Uu, p, P)
     @timeit solver.timer "TrustRegionSolver - solve!" begin
         # unpack solver settings
         settings = solver.settings
         tr_size = settings.tr_size
 
-
-        if solver.predictor !== nothing
-            # update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
-            solve!(solver.predictor, solver.objective_cache, Uu, p, solver.preconditioner)
-        end
-
         # calculate initial objective and gradient
-        o = value(solver.objective_cache, Uu, p)
-        g = gradient(solver.objective_cache, Uu, p)
+        o = value(objective, Uu, p)
+        g = gradient(objective, Uu, p)
         g_norm = norm(g)
 
         if solver.settings.verbose
@@ -402,8 +381,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         end
 
         # preconditioner
-        update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
-        P = solver.preconditioner#.preconditioner
+        update_preconditioner!(P, objective, Uu, p)
 
         if is_converged(solver, value, Uu, 0.0, 0.0, g, g, 0, tr_size)
             return nothing
@@ -424,23 +402,23 @@ function solve!(solver::TrustRegionSolver, Uu, p)
             if settings.use_incremental_objective
                 @assert false "not implemented yet"
             else
-                increment_objective = d -> value(solver.objective_cache, Uu + d, p) - o
+                increment_objective = d -> value(objective, Uu + d, p) - o
             end
 
-            # hess_vec_func = v -> hvp(solver.objective_cache, Uu, p, v)
-            hess_vec_func = v -> hvp(solver.objective_cache, Uu, v, p)
+            # hess_vec_func = v -> hvp(objective, Uu, p, v)
+            hess_vec_func = v -> hvp(objective, Uu, v, p)
 
             # TODO need to fix below
-            # mult_by_approx_hessian = v -> hvp(solver.objective_cache, Uu, v, p)
+            # mult_by_approx_hessian = v -> hvp(objective, Uu, v, p)
             mult_by_approx_hessian = v -> v
             # mult_by_approx_hessian = v -> P.preconditioner.L * (P.preconditioner.L' * v)
             # mult_by_approx_hessian = v -> P.preconditioner \ v
-            # mult_by_approx_hessian = v -> hessian(solver.objective_cache, Uu, p) * v
+            # mult_by_approx_hessian = v -> hessian(objective, Uu, p) * v
 
             # calculate cauchy point
             cp_norm_sq = calculate!(
                 solver.cauchy_point, 
-                solver.objective_cache, Uu, p, g,
+                objective, Uu, p, g,
                 hess_vec_func,
                 mult_by_approx_hessian, tr_size
             )
@@ -472,11 +450,11 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                 model_objective = dot(g, d) + 0.5 * dJd
                 real_objective = increment_objective(d)
                 y = Uu + d
-                gy = gradient(solver.objective_cache, y, p)
+                gy = gradient(objective, y, p)
 
                 if is_converged(
                     solver,
-                    solver.objective_cache, y, real_objective, model_objective,
+                    objective, y, real_objective, model_objective,
                     gy, g + Jd, cg_iters, tr_size_used
                 )
                     # Uu .= y
@@ -522,7 +500,7 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                     # g = gy
                     copyto!(Uu, y)
                     copyto!(g, gy)
-                    o = value(solver.objective_cache, Uu, p)
+                    o = value(objective, Uu, p)
                     g_norm = real_res_norm
                     tried_new_precond = false
                     happy_about_tr_size = true
@@ -539,8 +517,8 @@ function solve!(solver::TrustRegionSolver, Uu, p)
                 if cg_iters >= settings.max_cg_iters || 
                     cumulative_cg_iters >= settings.max_cumulative_cg_iters
                     # objective.update_precond(x)
-                    update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p; verbose=solver.settings.verbose)
-                    P = solver.preconditioner
+                    update_preconditioner!(P, objective, Uu, p; verbose = solver.settings.verbose)
+                    # P = solver.preconditioner
                     cumulative_cg_iters = 0
                 end
 
@@ -550,9 +528,9 @@ function solve!(solver::TrustRegionSolver, Uu, p)
         
                     if !tried_new_precond
                         @info "The trust region is too small, updating precond and trying again."
-                        update_preconditioner!(solver.preconditioner, solver.objective_cache, Uu, p)
+                        update_preconditioner!(P, objective, Uu, p)
                         # P = solver.preconditioner.preconditioner
-                        P = solver.preconditioner
+                        # P = solver.preconditioner
                         cumulative_cg_iters = 0
                         tried_new_precond = true
                         happy_about_tr_size = true
