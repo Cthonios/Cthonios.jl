@@ -45,7 +45,7 @@ function test_explicit_dynamics()
     # small hack above we should removes
 
     Cthonios.initialize!(sim; vel_ics = vel_ics)
-    solver = Cthonios.ExplicitSolver(sim.objective, sim.p)
+    solver = Cthonios.ExplicitSolver(sim.objective, sim.u, sim.p)
     Cthonios.run!(sim, solver; output_exodus_every = 10)
 end
 

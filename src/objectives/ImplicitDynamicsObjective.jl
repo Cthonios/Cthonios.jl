@@ -60,6 +60,10 @@ function ImplicitDynamicsObjective(
     )
 end
 
+function default_output_settings(::ImplicitDynamicsObjective)
+    return OutputSettings(; acceleration = true, velocity = true)
+end
+
 function initialize!(
     o::ImplicitDynamicsObjective, u, p;
     displ_ics = nothing,
@@ -96,7 +100,7 @@ end
 
 function step!(solver, o::ImplicitDynamicsObjective, u, p; verbose = true)
     FiniteElementContainers.update_time!(p)
-    FiniteElementContainers.update_bc_values!(p, assembler(solver.objective_cache))
+    FiniteElementContainers.update_bc_values!(p, assembler(o))
     Δt = FiniteElementContainers.time_step(p)
     _step_begin_banner(o, p; verbose = verbose)
 
@@ -111,7 +115,7 @@ function step!(solver, o::ImplicitDynamicsObjective, u, p; verbose = true)
     fill!(o.du, zero(eltype(o.du)))
 
     # solve
-    solve!(solver, u, p)
+    solve!(solver, o, u, p)
 
     # correct
     @. o.a = c_M * (u - o.u_pred)

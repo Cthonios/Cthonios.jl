@@ -1,7 +1,8 @@
-struct SingleDomainSimulation{O, U, P} <: AbstractSimulation
+struct SingleDomainSimulation{O, U, P, M} <: AbstractSimulation
     objective::O
     u::U
     p::P
+    mesh::M
     mesh_file::String
     output_file::String
 end
@@ -35,5 +36,5 @@ function SingleDomainSimulation(
         times = times
     )
     u = create_unknowns(assembler) # need to create after assembler is reset
-    return SingleDomainSimulation(objective, u, p, mesh_file, output_file)
+    return SingleDomainSimulation(objective, u, p, mesh, mesh_file, output_file)
 end

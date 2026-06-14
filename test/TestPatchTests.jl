@@ -55,11 +55,12 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     conns = connectivity(fspace, 1)
     ref_fe = FiniteElementContainers.block_reference_element(fspace, 1)
 
-    solver = Cthonios.NewtonSolver(sim.objective, sim.p)
+    preconditioner = NoPreconditioner(sim.objective, sim.u, sim.p)
+    solver = Cthonios.NewtonSolver(sim.objective, sim.u, sim.p)
 
     Uu = create_unknowns(sim.objective)
     FiniteElementContainers.extract_field_unknowns!(Uu, sim.objective.assembler.dof, U)
-    Cthonios.solve!(solver, Uu, sim.p)
+    Cthonios.solve!(solver, sim.objective, Uu, sim.p, preconditioner)
 
     grad = Cthonios.gradient(sim.objective, Uu, sim.p)
     @test isapprox(norm(grad), zero(eltype(grad)), atol=1e-12)

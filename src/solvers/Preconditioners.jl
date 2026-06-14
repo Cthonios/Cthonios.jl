@@ -5,76 +5,53 @@ function update_preconditioner! end
 LinearAlgebra.ldiv!(y, P::AbstractPreconditioner, x) = ldiv!(y, P.preconditioner, x)
 timer(P::T) where T <: AbstractPreconditioner = P.timer
 
-struct NoPreconditioner <: AbstractPreconditioner
-  timer::TimerOutput
-end
+# mutable struct AMGPreconditioner{P} <: AbstractPreconditioner
+#   preconditioner::P
+#   timer::TimerOutput
+# end
 
-function NoPreconditioner(obj, p, timer)
-  return NoPreconditioner(timer)
-end
+# function AMGPreconditioner(obj::AbstractObjective, u, p, timer = TimerOutput())
+#   H = hessian(obj, u, p)
+#   ml = ruge_stuben(H)
+#   return AMGPreconditioner(aspreconditioner(ml), timer)
+# end
 
-function LinearAlgebra.ldiv!(y, P::NoPreconditioner, v)
-  @timeit timer(P) "NoPreconditioner - ldiv!" begin
-    ldiv!(y, I, v)
-  end
-  return nothing
-end
+# function LinearAlgebra.ldiv!(y, P::AMGPreconditioner, x)
+#   ldiv!(y, P.preconditioner, x)
+#   return nothing
+# end
 
-function update_preconditioner!(P::NoPreconditioner, obj, Uu, p; verbose=false)
-  return nothing
-end
+# function update_preconditioner!(P::AMGPreconditioner, obj, u, p; verbose = false)
+#   H = hessian(obj, u, p)
+#   ml = ruge_stuben(H)
+#   P.preconditioner = aspreconditioner(ml)
+#   return nothing
+# end
 
 """
 $(TYPEDEF)
 $(TYPEDFIELDS)
 """
-struct CholeskyPreconditioner{
-  A <: FiniteElementContainers.AbstractAssembler, 
-  P
-} <: AbstractPreconditioner
-  assembler::A
+struct CholeskyPreconditioner{P} <: AbstractPreconditioner
   preconditioner::P
   timer::TimerOutput
-end
-
-function _cholesky(A::SparseMatrixCSC; shift=0.0)
-  return cholesky(A |> Symmetric; shift=shift)
-end
-
-function _cholesky!(F, A::SparseMatrixCSC; shift=0.0)
-  cholesky!(F, A |> Symmetric; shift=shift)
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function CholeskyPreconditioner(obj::AbstractObjective, p, timer)
+function CholeskyPreconditioner(obj::AbstractObjective, u, p, timer = TimerOutput())
   @timeit timer "CholeskyPreconditioner - setup" begin
-    asm = assembler(obj)
-    Uu = create_unknowns(asm)
-    H = hessian(obj, Uu, p; symmetric = false)
-    P = _cholesky(H)
+    H = hessian(obj, u, p) |> Symmetric
+    P = cholesky(H)
   end
-  return CholeskyPreconditioner{
-    typeof(asm), typeof(P)
-  }(asm, P, timer)
+  return CholeskyPreconditioner{typeof(P)}(P, timer)
 end
 
 """
 $(TYPEDSIGNATURES)
 """
 function LinearAlgebra.ldiv!(y, P::CholeskyPreconditioner, v)
-  @timeit timer(P) "CholeskyPreconditioner - ldiv!" begin
-    # y .= P.preconditioner \ v
-    _ldiv!(y, P, v, KA.get_backend(y))
-  end
-  return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function _ldiv!(y, P::CholeskyPreconditioner, v, ::CPU)
   y .= P.preconditioner \ v
 
   # below doesn't work. I guess we just have to accept these allocations
@@ -83,14 +60,9 @@ function _ldiv!(y, P::CholeskyPreconditioner, v, ::CPU)
   return nothing
 end
 
-function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=false)
+function update_preconditioner!(P::CholeskyPreconditioner, obj, u, p; verbose = false)
   @timeit timer(P) "CholeskyPreconditioner - update_preconditioner!" begin
-    # H = hessian!(P.assembler, obj, Uu, p)
-    # H = hessian(obj, Uu, p)
-    asm = assembler(obj)
-    # assemble_stiffness!(asm, obj.objective.hessian_u, Uu, p)
-    # H = stiffness(asm)
-    H = hessian(obj, Uu, p; symmetric = false)
+    H = hessian(obj, u, p) |> Symmetric
     attempt = 1
     while attempt < 10
       if verbose
@@ -98,12 +70,11 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
       end
       try
         if attempt == 1
-          # P.preconditioner = _cholesky(H)
-          _cholesky!(P.preconditioner, H)
+          cholesky!(P.preconditioner, H)
         else
           shift = 10.0^(-5 + attempt)
-          # P.preconditioner = _cholesky(H; shift=shift)
-          _cholesky!(P.preconditioner, H; shift=shift)
+          # cholesky!(P.preconditioner, H; shift=shift)
+          cholesky!(P.preconditioner, H + Diagonal(shift .* abs(diag(H))))
         end
         return nothing
       catch e
@@ -113,5 +84,122 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, Uu, p; verbose=f
       end
     end
   end
+  return nothing
+end
+
+struct JacobiPreconditioner{P} <: AbstractPreconditioner
+  inv_diag::P
+  timer::TimerOutput
+end
+
+# need inplace diagonal method
+function JacobiPreconditioner(objective, u, p, timer = TimerOutput())
+  FEC.assemble_diagonal!(assembler(objective), mass!, u, p)
+  d_mass = FEC.diagonal(asm)
+  inv_diag = 1. ./ d_mass
+  return JacobiPreconditioner(inv_diag, timer)
+end
+
+function LinearAlgebra.ldiv!(y, P::JacobiPreconditioner, x)
+  @. y = P.inv_diag * x
+  return nothing
+end
+
+function update_preconditioner!(P::JacobiPreconditioner, objective, u, p; verbose = false)
+  FEC.assemble_diagonal!(assembler(objective), mass, u, p)
+  d = FEC.diagonal(asm)
+  P.inv_diag .= 1. ./ d
+  return nothing
+end
+
+struct LLDLPreconditioner{P} <: AbstractPreconditioner
+  preconditioner::P
+  timer::TimerOutput
+end
+
+function LLDLPreconditioner(objective, u, p, timer = TimerOutput())
+  H = hessian_symmetric(objective, u, p)
+  P = LimitedLDLFactorizations.lldl(H)
+  return LLDLPreconditioner(P, timer)
+end
+
+function update_preconditioner!(P::LLDLPreconditioner, objective, u, p; verbose = false)
+  @timeit timer(P) "LLDLPreconditioner - update_preconditioner!" begin
+    H = hessian_symmetric(objective, u, p)
+    attempt = 1
+    while attempt < 10
+      if verbose
+        @info "Updating preconditioner, attempt = $attempt"
+      end
+      try
+        if attempt == 1
+          lldl_factorize!(P.preconditioner, H)
+        else
+          shift = 10.0^(-5 + attempt)
+          update_shift!(P.preconditioner, shift)
+          lldl_factorize!(P.preconditioner, H)
+        end
+        return nothing
+      catch e
+        @info e
+        @info "Failed to factor preconditioner. Attempting again"
+        attempt += 1 
+      end
+    end
+  end
+  return nothing
+end
+
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
+struct LUPreconditioner{P} <: AbstractPreconditioner
+  preconditioner::P
+  timer::TimerOutput
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function LUPreconditioner(obj::AbstractObjective, u, p, timer = TimerOutput())
+  @timeit timer "LUPreconditioner - setup" begin
+    H = hessian(obj, u, p)
+    P = lu(H)
+  end
+  return LUPreconditioner{typeof(P)}(P, timer)
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function LinearAlgebra.ldiv!(y, P::LUPreconditioner, v)
+  y .= P.preconditioner \ v
+  return nothing
+end
+
+
+function update_preconditioner!(P::LUPreconditioner, objective, u, p; verbose = false)
+  @timeit timer(P) "LUPreconditioner - update_preconditioner!" begin
+    H = hessian(objective, u, p)
+    lu!(P.preconditioner, H)
+  end
+  return nothing
+end
+
+struct NoPreconditioner <: AbstractPreconditioner
+  timer::TimerOutput
+end
+
+function NoPreconditioner(obj, u, p, timer = TimerOutput())
+  return NoPreconditioner(timer)
+end
+
+function LinearAlgebra.ldiv!(y, P::NoPreconditioner, v)
+  ldiv!(y, I, v)
+  return nothing
+end
+
+function update_preconditioner!(P::NoPreconditioner, obj, u, p; verbose=false)
   return nothing
 end

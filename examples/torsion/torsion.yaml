@@ -1,0 +1,63 @@
+device:
+  backend: cpu
+
+functions:
+  func_x:
+    type: scalar expression
+    expression: "-8000.0 * y * z"
+    variables: [x, y, z, t]
+  func_y:
+    type: scalar expression
+    expression: "8000.0 * x * z"
+    variables: [x, y, z, t]
+  func_z:
+    type: scalar expression
+    expression: "0.0"
+    variables: [x, y, z, t]
+
+materials:
+  rubber:
+    NeoHookean:
+      density: 1000.0
+      Young's modulus: 1.0e9
+      Poisson's ratio: 0.25
+
+mesh:
+  dimension: 3
+  file path: torsion.g
+  file type: exodus
+
+initial conditions:
+  - blocks: [torsion]
+    function: func_x
+    variables: [displ_x]
+  - blocks: [torsion]
+    function: func_y
+    variables: [displ_y]
+  - blocks: [torsion]
+    function: func_z
+    variables: [displ_z]
+
+physics:
+  kinematics: ThreeDimensional
+  material assignment:
+    rubber:
+      blocks: [torsion]
+      model: NeoHookean
+
+time:
+  start time: 0.0
+  end time: 4.0
+  number of time steps: 11
+
+# linear solvers:
+#   krylov:
+#     type: KrylovSolver
+#     solution method: cg
+
+# solver:
+#   predictor:
+#     type: tangent
+
+#   nonlinear solver:
+#     type: TrustRegionSolver

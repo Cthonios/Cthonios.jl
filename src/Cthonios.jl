@@ -1,27 +1,5 @@
 module Cthonios
 
-import FiniteElementContainers: AbstractField, BCBookKeeping
-import KernelAbstractions as KA
-import KernelAbstractions: CPU
-using Arpack
-using ConstitutiveModels
-using DocStringExtensions
-using FiniteElementContainers
-using ForwardDiff
-using Krylov
-using LinearAlgebra
-using NLopt
-using Printf
-using ReferenceFiniteElements
-using SparseArrays
-using StaticArrays
-using StructArrays
-using Tensors
-using TimerOutputs
-# using YAML
-
-# RuntimeGeneratedFunctions.init(@__MODULE__)
-
 # Re-exports
 export DirichletBC
 export InitialCondition
@@ -37,16 +15,60 @@ export @SVector
 
 # Cthonios exports
 export ContactPair
-# export NewtonSolver # name conflict with FiniteElementContainers
+
+# objectives
+export EigenObjective
 export ExplicitDynamicsObjective
 export ImplicitDynamicsObjective
-export QOIExtractor
 export QuasiStaticObjective
-export SingleDomainSimulation
+
+# physics
 export SolidMechanics
+
+# qois
+export QOIExtractor
+
+# sims
+export SingleDomainSimulation
+
+# solver stuff
+# export AMGPreconditioner
+export CholeskyPreconditioner
+export EigenSolver
+export ExplicitSolver
+export ImplicitSolver
+export JacobiPreconditioner
+export LLDLPreconditioner
+export LUPreconditioner
+export NoPreconditioner
+export NoPredictor
+export TangentPredictor
 export TrustRegionSolver
 export create_unknowns
 export evolve!
+
+import FiniteElementContainers as FEC
+import FiniteElementContainers: AbstractField, BCBookKeeping
+import KernelAbstractions as KA
+import KernelAbstractions: CPU
+# using AlgebraicMultigrid
+using Arpack
+using ConstitutiveModels
+using DocStringExtensions
+using FiniteElementContainers
+using ForwardDiff
+using Krylov
+using LimitedLDLFactorizations
+using LinearAlgebra
+using NLopt
+using Printf
+using ReferenceFiniteElements
+using SparseArrays
+using StaticArrays
+using StructArrays
+using Tensors
+using TimerOutputs
+
 
 mutable struct DeveloperOptions
     use_condensed::Bool
@@ -75,7 +97,7 @@ include("Physics.jl")
 include("contact/Contact.jl")
 
 # simulations
-include("PostProcessor.jl")
+# include("PostProcessor.jl")
 include("simulations/Simulations.jl")
 
 # solvers
@@ -87,15 +109,5 @@ include("qoi_extractors/QOIExtractors.jl")
 
 # optimizations
 include("optimizations/Optimizations.jl")
-
-# include("cli/CLI.jl")
-
-# methods defined in extensions
-# function cthonios_main end
-
-# function @main(ARGS::Vector{String})
-#     cthonios_main(ARGS)
-#     return 0
-# end
 
 end # module
