@@ -22,11 +22,9 @@ function SingleDomainSimulation(
     contact_pairs::Vector{<:ContactPair} = ContactPair[]
 )
     mesh = UnstructuredMesh(mesh_file)
-    assembler = _setup_solid_mechanics_assembler(mesh)
+    assembler = setup_assembler(objective_type, mesh)
     objective = objective_type(assembler)
-    properties = _create_properties(physics, properties)    
-
-    # u = create_unknowns(assembler)
+    properties = _create_properties(physics, properties)
     p = create_parameters(
         mesh,
         assembler, physics, properties; 

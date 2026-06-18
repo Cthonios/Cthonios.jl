@@ -21,10 +21,7 @@ mutable struct ExplicitDynamicsObjective{RT, RV, A} <: AbstractSolidMechanicsObj
     timer::TimerOutput
 end
 
-function ExplicitDynamicsObjective(
-    assembler, 
-    CFL, γ = 0.5
-)
+function ExplicitDynamicsObjective(assembler)
     RT = eltype(assembler.constraint_storage)
 
     external_energy = zero(RT)
@@ -40,7 +37,7 @@ function ExplicitDynamicsObjective(
 
     return ExplicitDynamicsObjective(
         assembler,
-        γ, CFL,
+        0.5, 0.0,
         external_energy, internal_energy, kinetic_energy,
         v, a,
         R_eff, lumped_mass,
@@ -50,14 +47,24 @@ function ExplicitDynamicsObjective(
 end
 
 function default_output_settings(::ExplicitDynamicsObjective)
-    return OutputSettings(; acceleration = true, velocity = true)
+    return OutputSettings(; 
+        acceleration = true, velocity = true,
+        output_exodus_every = 100
+    )
 end
 
 function initialize!(
     o::ExplicitDynamicsObjective, u, p;
+    CFL = nothing,
     displ_ics = nothing,
     vel_ics = nothing
 )
+    if CFL === nothing
+        println("You need to specify a CFL number")
+        @assert false
+    end
+    o.CFL = CFL
+
     # fill!(p.times.time_current, zero(eltype(p.times.time_current)))
     p.times.time_current = zero(p.times.time_current)
     Δt = _compute_stable_dt(assembler(o), p, o.CFL)

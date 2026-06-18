@@ -1,5 +1,5 @@
 function test_single_domain_simulation()
-    mesh_file = dirname(Base.source_dir()) * "/examples/column_buckle/mesh.g"
+    mesh_file = dirname(Base.source_dir()) * "/examples/mechanics/column_buckle/mesh.g"
     output_file = splitext(mesh_file)[1] * "-output.exo"
 
     times = TimeStepper(0., 1., 40)

@@ -55,6 +55,11 @@ function hvp(o::QuasiStaticObjective, u, v, p)
     return FiniteElementContainers.hvp(asm, v)
 end
 
+function initialize!(::QuasiStaticObjective, u, p)
+    p.times.time_current = zero(typeof(p.times.time_current))
+    return nothing
+end
+
 function mass_matrix(o::QuasiStaticObjective, u, p)
     assemble_mass!(assembler(o), mass!, u, p)
     M = FiniteElementContainers.mass(assembler(o))
@@ -69,23 +74,6 @@ function value(o::QuasiStaticObjective, U, p)
     # fill!(o.external_energy, dot(o.external_force, U))
     o.external_energy = dot(o.external_force, p.field)
     return o.external_energy + o.internal_energy
-end
-
-# integrator hooks
-function initialize!(::QuasiStaticObjective, u, p)
-    p.times.time_current = zero(typeof(p.times.time_current))
-    return nothing
-end
-
-function postprocess!(pp::PostProcessor, output_settings, n, objective::QuasiStaticObjective, u, p)
-    write_times(pp, n, FEC.current_time(p.times))
-    if output_settings.displacement
-        if size(p.field, 1) == 2
-            write_field(pp, n, ("displ_x", "displ_y"), p.field)
-        elseif size(p.field, 1) == 3
-            write_field(pp, n, ("displ_x", "displ_y", "displ_z"), p.field)
-        end
-    end
 end
 
 function step!(solver, o::QuasiStaticObjective, u, p; verbose = true)
@@ -107,22 +95,6 @@ function step!(solver, o::QuasiStaticObjective, u, p; verbose = true)
 end
 
 # logging hooks
-function _step_begin_banner(::QuasiStaticObjective, p; verbose::Bool = true)
-    if verbose
-        time_curr = FiniteElementContainers.current_time(p.times)
-        time_start = sum(p.times.time_start)
-        time_end = sum(p.times.time_end)
-        str = "\n" * repeat('=', 132) * "\n"
-        str = str * "Start time       = $time_start\n"
-        str = str * "Current time     = $time_curr\n"
-        str = str * "End time         = $time_end\n"
-        str = str * "Percent complete = $(time_curr / time_end * 100)%\n"
-        str = str * repeat('=', 132) * "\n"
-        @info str
-    end
-    return nothing
-end
-
 function _step_end_banner(o::QuasiStaticObjective, p; verbose::Bool = true)
     if verbose
         @info "External energy        = $(o.external_energy)"
