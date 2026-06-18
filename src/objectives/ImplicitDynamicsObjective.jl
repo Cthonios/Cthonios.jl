@@ -1,4 +1,4 @@
-mutable struct ImplicitDynamicsObjective{RT, RV, A} <: AbstractObjective{RT, RV, A}
+mutable struct ImplicitDynamicsObjective{RT, RV, A} <: AbstractSolidMechanicsObjective{RT, RV, A}
     assembler::A
     #
     β::RT
@@ -207,22 +207,6 @@ function _internal_force(o::ImplicitDynamicsObjective, u, p)
     assemble_vector_source!(assembler(o), u, p)
     # o.external_force .= assembler(o).residual_storage .- o.internal_force
     return residual(assembler(o))
-end
-
-function _step_begin_banner(o::ImplicitDynamicsObjective, p; verbose = true)
-    if verbose
-        time_curr = FiniteElementContainers.current_time(p.times)
-        time_start = sum(p.times.time_start)
-        time_end = sum(p.times.time_end)
-        str = "\n" * repeat('=', 132) * "\n"
-        str = str * "Start time       = $time_start\n"
-        str = str * "Current time     = $time_curr\n"
-        str = str * "End time         = $time_end\n"
-        str = str * "Percent complete = $(time_curr / time_end * 100)%\n"
-        str = str * repeat('=', 132) * "\n"
-        @info str
-    end
-    return nothing
 end
 
 function _step_end_banner(o::ImplicitDynamicsObjective, p; verbose::Bool = true)

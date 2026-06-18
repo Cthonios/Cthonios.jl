@@ -39,6 +39,10 @@ function post_process_setup(sim::AbstractSimulation, output_settings::OutputSett
         push!(nodal_vars, VectorFunction(V, "displ"))
     end
 
+    if output_settings.temperature
+        push!(nodal_vars, ScalarFunction(V, "temperature"))
+    end
+
     if output_settings.velocity
         push!(nodal_vars, VectorFunction(V, "velocity"))
     end

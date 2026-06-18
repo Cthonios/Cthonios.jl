@@ -45,7 +45,7 @@ quasistatic_sim = SingleDomainSimulation(
     QuasiStaticObjective,
     mesh_file, output_file, 
     times, physics, props;
-    dirichlet_bcs=dirichlet_bcs
+    dirichlet_bcs = dirichlet_bcs
 )
 # u = create_unknowns(sim.objective)
 objective = Cthonios.get_objective(quasistatic_sim)

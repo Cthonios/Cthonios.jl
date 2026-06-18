@@ -67,9 +67,67 @@ function create_material_output(obj_cache, V_q, ::Type{T}) where T <: AbstractMa
 end
 
 #############################################################################
+# Heat conduction methods
+############################################################################
+struct HeatConduction <: AbstractPhysics{1, 3, 0}
+    constitutive_model::ConstitutiveModels.FouriersLaw
+end
+
+function HeatConduction()
+    return HeatConduction(ConstitutiveModels.FouriersLaw())
+end
+
+function FiniteElementContainers.create_properties(physics::HeatConduction, inputs)
+    density = inputs["density"]::Float64
+    cp = inputs["heat capacity"]
+    k = inputs["thermal conductivity"]
+    # mat_model_props = ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
+    # mat_model_props = Array(mat_model_props)
+    # return mat_model_props
+    return [density, cp, k]
+end
+
+function setup_function(fspace::FunctionSpace, ::HeatConduction)
+    return ScalarFunction(fspace, "temperature")
+end
+
+@inline function FiniteElementContainers.residual!(
+    storage, e,
+    physics::HeatConduction, t, dt, props_el, 
+    state_old_q, state_new_q,
+    conn, interps, x_el, u_el, u_el_old
+)
+    interps = map_interpolants(interps, x_el)
+    (; X_q, N, ∇N_X, JxW) = interps
+    u_q, ∇u_q = interpolate_field_values_and_gradients(physics, interps, u_el)
+    u_q_old = interpolate_field_values(physics, interps, u_el_old)
+    dudt = (u_q - u_q_old) / dt
+    # R_q = ∇u_q * ∇N_X'
+    form = GeneralFormulation{size(X_q, 1), num_fields(physics)}()
+    density, cp, k = props_el
+    scatter_with_values!(storage, form, e, conn, N, density * cp * JxW * dudt)
+    scatter_with_gradients!(storage, form, e, conn, ∇N_X, k * JxW * ∇u_q)
+end
+
+@inline function FiniteElementContainers.stiffness!(
+    storage, e,
+    physics::HeatConduction, t, dt, props_el, 
+    state_old_q, state_new_q,
+    conn, interps, x_el, u_el, u_el_old
+)
+    interps = map_interpolants(interps, x_el)
+    (; X_q, N, ∇N_X, JxW) = interps
+    # ∇u_q = interpolate_field_gradients(physics, interps, u_el)
+    # R_q = ∇u_q * ∇N_X' - N' * physics.func(X_q, 0.0)
+    form = GeneralFormulation{size(X_q, 1), num_fields(physics)}()
+    density, cp, k = props_el
+    scatter_with_values_and_values!(storage, form, e, conn, N, density * cp * JxW)
+    scatter_with_gradients_and_gradients!(storage, form, e, conn, ∇N_X, k * JxW)
+end
+
+#############################################################################
 # Solid mechanics methods
 ############################################################################
-
 struct SolidMechanics{NF, NP, NS, Form, Model} <: AbstractPhysics{NF, NP, NS}
     formulation::Form
     constitutive_model::Model

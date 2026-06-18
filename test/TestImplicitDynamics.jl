@@ -39,19 +39,22 @@ function test_implicit_dynamics()
         mesh_file, output_file, 
         times, physics, props
     )
-
+    objective = Cthonios.get_objective(sim)
+    u, p = Cthonios.get_unknowns_and_parameters(sim)
+    
     # small hack we should remove
     mesh = UnstructuredMesh(mesh_file)
-    vel_ics = InitialConditions(mesh, sim.objective.assembler.dof, vel_ics)
+    vel_ics = InitialConditions(mesh, objective.assembler.dof, vel_ics)
     # small hack above we should removes
 
-    Cthonios.initialize!(sim; vel_ics = vel_ics)
-    preconditioner = CholeskyPreconditioner(sim.objective, sim.u, sim.p)
-    predictor = NoPredictor(sim.objective, sim.u, sim.p)
-    nonlinear_solver = Cthonios.NewtonSolver(sim.objective, sim.u, sim.p)
+    preconditioner = NoPreconditioner(objective, u, p)
+    predictor = NoPredictor(objective, u, p)
+    nonlinear_solver = Cthonios.NewtonSolver(objective, u, p)
     solver = ImplicitSolver(nonlinear_solver, preconditioner, predictor)
-    # solver = Cthonios.TrustRegionSolver(objective_cache, p; use_predictor = true)
-    Cthonios.run!(sim, solver; output_exodus_every = 10)
+    Cthonios.run!(
+        solver, objective, u, p, mesh, "test-implicit-dynamics.exo";
+        initialize_settings = (; vel_ics = vel_ics)
+    )
 end
 
 test_implicit_dynamics()

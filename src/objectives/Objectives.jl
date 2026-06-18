@@ -54,6 +54,11 @@ function initialize_postprocessor(mesh, output_file, objective, output_settings)
             FEC.add_function!(pp, u)
         end
 
+        if output_settings.temperature
+            theta = ScalarFunction(fspace, "temperature")
+            FEC.add_function!(pp, theta)
+        end
+
         if output_settings.velocity
             v = VectorFunction(fspace, "velocity")
             FEC.add_function!(pp, v)
@@ -68,12 +73,13 @@ end
 
 function run!(
     solver, objective::AbstractObjective, u, p,
-    mesh, output_file, 
-    output_settings = default_output_settings(objective);
+    mesh, output_file;
+    initialize_settings = (;),
+    output_settings = default_output_settings(objective),
     verbose::Bool = true
 )
     pp = initialize_postprocessor(mesh, output_file, objective, output_settings)
-    initialize!(objective, u, p)
+    initialize!(objective, u, p; initialize_settings...)
     time_end = p.times.time_end
     n = 2
     try
@@ -94,6 +100,28 @@ end
 
 abstract type AbstractSolidMechanicsObjective{RT, RV, A} <: AbstractObjective{RT, RV, A} end
 
+function postprocess!(pp::PostProcessor, output_settings, n, ::AbstractSolidMechanicsObjective, u, p)
+    write_times(pp, n, FEC.current_time(p.times))
+    dim = size(p.field, 1)
+    if output_settings.acceleration
+        write_field(pp, n, _vector_field_names("acceleration", dim), p.field)
+    end
+    if output_settings.displacement
+        write_field(pp, n, _vector_field_names("displ", dim), p.field)
+    end
+    if output_settings.velocity
+        write_field(pp, n, _vector_field_names("velocity", dim), p.field)
+    end
+end
+
+function setup_assembler(::Type{<:AbstractSolidMechanicsObjective}, mesh)
+    fspace = FunctionSpace(mesh, H1Field, Lagrange)
+    u = VectorFunction(fspace, "displ")
+    dof = DofManager(u)
+    assembler = SparseMatrixAssembler(dof; use_inplace_methods = true)
+    return assembler
+end
+
 function _setup_solid_mechanics_assembler(
     mesh,
     q_degree = 2,
@@ -107,10 +135,44 @@ function _setup_solid_mechanics_assembler(
     return assembler
 end
 
+# helpers
+function _vector_field_names(base_name::String, dim::Int)
+    if dim == 2
+        field_names = map(x -> "$(base_name)_$x", ("x", "y"))
+    elseif dim == 3
+        field_names = map(x -> "$(base_name)_$x", ("x", "y", "z"))
+    else
+        @assert false
+    end
+    return field_names
+end
+
+# logging hooks
+function _step_begin_banner(::AbstractObjective, p; verbose::Bool = true)
+    if verbose
+        time_curr = FiniteElementContainers.current_time(p.times)
+        time_start = sum(p.times.time_start)
+        time_end = sum(p.times.time_end)
+        str = "\n" * repeat('=', 132) * "\n"
+        str = str * "Start time       = $time_start\n"
+        str = str * "Current time     = $time_curr\n"
+        str = str * "End time         = $time_end\n"
+        str = str * "Percent complete = $(time_curr / time_end * 100)%\n"
+        str = str * repeat('=', 132) * "\n"
+        @info str
+    end
+    return nothing
+end
+
+function _step_end_banner(::AbstractObjective, p; verbose::Bool = true)
+end
+
+
 # include("ContactObjective.jl")
 # include("ConstrainedObjective.jl")
 # include("DesignObjective.jl")
 include("EigenObjective.jl")
 include("ExplicitDynamicsObjective.jl")
+include("HeatConductionObjective.jl")
 include("ImplicitDynamicsObjective.jl")
 include("QuasiStaticObjective.jl")

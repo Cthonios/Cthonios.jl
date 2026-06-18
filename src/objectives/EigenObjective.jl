@@ -19,7 +19,7 @@ function initialize!(::EigenObjective, u, p)
 end
 
 function postprocess!(
-    pp, output_settings, n, objective::EigenObjective, u, p
+    pp::PostProcessor, output_settings, n, objective::EigenObjective, u, p
 )
     nat_circ_freqs = sqrt.(1 ./ objective.eigen_vals)
     for n in axes(nat_circ_freqs, 1)

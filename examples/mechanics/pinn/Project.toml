@@ -1,0 +1,7 @@
+[deps]
+ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
+Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
+FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"

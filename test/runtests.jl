@@ -84,7 +84,9 @@ end
 
 @testset "Regression Tests" begin
   include("TestExplicitDynamics.jl")
+  include("TestHeatConduction.jl")
   include("TestImplicitDynamics.jl")
+  include("TestQuasiStatic.jl")
 end
 
 @testset "Aqua.jl" begin
