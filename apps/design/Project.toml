@@ -1,0 +1,17 @@
+name = "CthoniosDesign"
+
+[deps]
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
+EngineeringSketchPad_jll = "dc1f1ded-c539-59a2-898d-fa059e5c1344"
+Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
+Exodus_jll = "fc7263ad-bce8-5229-97b1-c6ddabda41b1"
+OCCT_jll = "baad4e97-8daa-5946-aac2-2edac59d34e1"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources]
+Cthonios = {path = "../.."}
+EngineeringSketchPad_jll = {url = "https://github.com/cmhamel/EngineeringSketchPad_jll.jl"}
+
+[compat]
+OCCT_jll = "7.7.2"

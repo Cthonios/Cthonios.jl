@@ -11,7 +11,7 @@ rm(build_path; force = true, recursive = true)
 
 img = ImageRecipe(
     output_type    = "--output-exe",
-    file           = "$src_path/src/apps/Main.jl",
+    file           = "$src_path/apps/analyze/Main.jl",
     trim_mode      = "safe",
     add_ccallables = false,
     verbose        = false,

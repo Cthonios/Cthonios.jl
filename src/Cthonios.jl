@@ -69,45 +69,10 @@ using StructArrays
 using Tensors
 using TimerOutputs
 
-
-mutable struct DeveloperOptions
-    use_condensed::Bool
-    use_inplace_methods::Bool
-
-    function DeveloperOptions()
-        new(false, true)
-    end
-end
-
-const DEV_OPTIONS = DeveloperOptions()
-
-function set_developer_option!(key::Symbol, val)
-    setfield!(DEV_OPTIONS, key, val)
-    return nothing
-end
-
-# objectives
-include("objectives/Objectives.jl")
-
-# physics
-# include("physics/Physics.jl")
-include("Physics.jl")
-
-# contact
 include("contact/Contact.jl")
-
-# simulations
-# include("PostProcessor.jl")
+include("objectives/Objectives.jl")
+include("Physics.jl")
 include("simulations/Simulations.jl")
-
-# solvers
 include("solvers/Solvers.jl")
-
-#
-include("qoi_extractors/QOIExtractors.jl")
-# include("sensitivities/Sensitivities.jl")
-
-# optimizations
-include("optimizations/Optimizations.jl")
 
 end # module
