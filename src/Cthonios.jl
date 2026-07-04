@@ -60,7 +60,6 @@ using ForwardDiff
 using Krylov
 using LimitedLDLFactorizations
 using LinearAlgebra
-using NLopt
 using Printf
 using ReferenceFiniteElements
 using SparseArrays

@@ -6,6 +6,7 @@ Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
 EngineeringSketchPad_jll = "dc1f1ded-c539-59a2-898d-fa059e5c1344"
 Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
 Exodus_jll = "fc7263ad-bce8-5229-97b1-c6ddabda41b1"
+NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
 OCCT_jll = "baad4e97-8daa-5946-aac2-2edac59d34e1"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 

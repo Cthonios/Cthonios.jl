@@ -2033,6 +2033,9 @@ end
 function ocsmGetAuxPtr(oldAuxPtr)
     ccall((:ocsmGetAuxPtr, "libocsm"), Cint, (Ptr{Ptr{Cvoid}},), oldAuxPtr)
 end
+# function ocsmGetAuxPtr(oldAuxPtr)
+#     ccall((:ocsmGetAuxPtr, "libocsm"), Cint, (Ref{Ptr{Cvoid}},), oldAuxPtr)
+# end
 
 function ocsmLoad(filename, modl)
     ccall((:ocsmLoad, "libocsm"), Cint, (Ptr{Cchar}, Ptr{Ptr{Cvoid}}), filename, modl)

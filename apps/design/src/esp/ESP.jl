@@ -2,8 +2,9 @@ module ESP
 
 export CoordinateSensitivity
 export Geometry
+export get_design_parameters
 export Parameters
-export Tesselation
+# export Tesselation
 export tesselate!
 
 using CEnum
@@ -44,11 +45,9 @@ end
 end
 
 include("Wrappers.jl")
-
+include("Analysis.jl")
 include("Parameters.jl")
 include("Geometry.jl")
-include("Tesselation.jl")
-include("Sensitivity.jl")
 
 function __init__()
     esp_jll_dir = EngineeringSketchPad_jll.artifact_dir

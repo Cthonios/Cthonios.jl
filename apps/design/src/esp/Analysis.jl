@@ -1,73 +1,223 @@
-# struct CapsProblem{Obj}
-#     obj::Obj
-# end
+struct CapsInputInfo
+    vtype::capsvType
+    nrow::Int
+    ncol::Int
+    units::Union{Nothing, String}
+end
+
+function _caps_info(obj::capsObj)
+    name    = Ref{Ptr{Cchar}}()
+    type    = Ref{capsoType}()
+    subtype = Ref{capssType}()
+    link    = Ref{capsObj}()
+    parent  = Ref{capsObj}()
+    last    = Ref{capsOwn}()
+    ierr = caps_info(obj, name, type, subtype, link, parent, last)
+
+    if ierr != 0
+        @error "CAPS INFO ERROR CODE: $ierr"
+    end
+
+    return unsafe_string(name[]), type[], subtype[],
+        link[], parent[], last[]
+end
 
 function _caps_problem(csm_file, pr_name)
-    ph_name = C_NULL
-
-    if isdir(pr_name)
-        @info "Removing old AIM directory"
-        rm(pr_name, force=true, recursive=true)
-    end
-
-    flag = Cint(oFileName)
-    pptr = Ptr{Cvoid}(pointer(Vector{UInt8}(csm_file)))
-    out_level = Cint(0)
-    problem_obj = Ref{capsObj}()
+    csm_file_c = Vector{Cchar}(collect(csm_file))
     n_err = Ref{Cint}()
+    caps = Ref{capsObj}()
     errs = Ref{Ptr{capsErrs}}()
-    status = caps_open(pr_name, ph_name, flag, pptr, out_level, problem_obj, n_err, errs)
-    if status != 0
-        error("CAPS ERROR CODE: $status")
-    end
-
-    return problem_obj
-end
-
-struct Analysis
-    obj::Ref{capsObj}
-end
-
-function Analysis(problem_obj, aim_name, name; verbose=false)
-    # problem_obj = prob.obj
-    intent = Ptr{Int8}(C_NULL)
-    unit_sys = Ptr{Int8}(C_NULL)
-    execute = Cint(1)
-    analysis_obj = Ref{capsObj}()
-    n_err = Ref(Cint(0))
-    errs = Ref{Ptr{capsErrs}}()
-    status = caps_makeAnalysis(
-        problem_obj[], aim_name, name, unit_sys, intent,
-        Ref(execute), analysis_obj,
+    status = caps_open(
+        pr_name, C_NULL, oFileName, 
+        pointer(csm_file_c), Cint(0), caps,
         n_err, errs
     )
     if status != 0
         error("CAPS ERROR CODE: $status")
     end
+    return caps
+end
 
-    # @show unsafe_load(analysis[]).info
-    # get info # TODO make optional
-    if verbose
-        name = Ref{Ptr{Cchar}}()
-        otype = Ref{capsoType}()
-        stype = Ref{capssType}()
-        link = Ref{capsObj}()
-        parent = Ref{capsObj}()
-        last = Ref{capsOwn}()
-        status = caps_info(analysis_obj[], name, otype, stype, link, parent, last)
-        if status != 0
-            error("CAPS ERROR CODE: $status")
-        end
-
-        str = "AIM info:\n"
-        str = str * "  name = $(Base.unsafe_string(name[]))"
-        @info str
+function Base.close(problem::capsObj)
+    status = caps_close(problem, Cint(0), C_NULL)
+    if status != 0
+        @error "Error inc lose caps obj: $status"
     end
+end
 
-    return Analysis(analysis_obj)
-end 
+function convert_to_caps(info::CapsInputInfo, value)
+    if info.vtype == Boolean
+        value isa Bool || error("Expected Bool, got $(typeof(value))")
+        storage = Ref{Cint}(value ? 1 : 0)
+        return (
+            info.vtype,
+            1,
+            1,
+            Base.unsafe_convert(Ptr{Cvoid}, storage),
+            storage,
+        )
+    elseif info.vtype == Double
+        if value isa Real
+            storage = Ref{Cdouble}(Float64(value))
+            return (
+                info.vtype,
+                1,
+                1,
+                Base.unsafe_convert(Ptr{Cvoid}, storage),
+                storage,
+            )
+        elseif value isa AbstractVector{<:Real}
+            storage = Vector{Cdouble}(Float64.(value))
+            return (
+                info.vtype,
+                length(storage),
+                1,
+                # pointer(storage),
+                # Ref(storage),
+                pointer(storage),
+                # storage,
+                storage,
+            )
+        else
+            error("Cannot convert $(typeof(value)) to CAPS Double")
+        end
+    elseif info.vtype == mString
+        value isa String || error("Expected String")
+        storage = Base.cconvert(Cstring, value)
+        return (
+            info.vtype,
+            1,
+            1,
+            Ptr{Cvoid}(storage),
+            storage,
+        )
+    elseif info.vtype == Tuple
+        value isa Nothing || error("Expected Nothing. Need to support tuples")
+        storage = Ptr{C_NULL}(C_NULL)
+        return (
+            info.vtype,
+            1,
+            1,
+            storage,
+            storage
+        )
+    else
+        error("Conversion for CAPS type $(info.vtype) not implemented")
+    end
+end
 
-function children(an::Analysis, otype, stype)
+function input_info(obj::capsObj)
+    vtype = Ref{capsvType}()
+    nrow  = Ref{Cint}()
+    ncol  = Ref{Cint}()
+
+    data    = Ref{Ptr{Cvoid}}()
+    partial = Ref{Ptr{Cint}}()
+    units   = Ref{Ptr{Cchar}}()
+
+    n_err = Ref{Cint}()
+    errs  = Ref{Ptr{capsErrs}}()
+
+    status = caps_getValue(
+        obj,
+        vtype,
+        nrow,
+        ncol,
+        data,
+        partial,
+        units,
+        n_err,
+        errs,
+    )
+
+    status == 0 || error("CAPS ERROR CODE: $status")
+
+    return CapsInputInfo(
+        vtype[],
+        Int(nrow[]),
+        Int(ncol[]),
+        units[] == C_NULL ? nothing : unsafe_string(units[])
+    )
+end
+
+function get_value(obj::capsObj)
+    vtype = Ref{capsvType}()
+    nrow  = Ref{Cint}()
+    ncol  = Ref{Cint}()
+
+    data    = Ref{Ptr{Cvoid}}()
+    partial = Ref{Ptr{Cint}}()
+    units   = Ref{Ptr{Cchar}}()
+
+    n_err = Ref{Cint}()
+    errs  = Ref{Ptr{capsErrs}}()
+
+    status = caps_getValue(
+        obj, vtype, nrow, ncol,
+        data, partial, units,
+        n_err, errs
+    )
+    status == 0 || error("CAPS ERROR CODE: $status")
+
+    if vtype[] == Boolean
+        data = unsafe_load(Base.unsafe_convert(Ptr{Bool}, data[]))
+    elseif vtype[] == Integer
+        if ncol[] > 1
+            @assert false "Probably not supported"
+        else
+            data = unsafe_wrap(Vector{Int32}, Base.unsafe_convert(Ptr{Int32}, data[]), nrow[])
+        end
+        if length(data) == 1
+            data = data[1]
+        end
+    # is the deriv right?
+    elseif vtype[] == Double || vtype[] == DoubleDeriv
+        if ncol[] > 1
+            @assert false "Probably not supported"
+        else
+            data = unsafe_wrap(Vector{Float64}, Base.unsafe_convert(Ptr{Float64}, data[]), nrow[])
+        end
+        if length(data) == 1
+            data = data[1]
+        end
+    elseif vtype[] == mString
+        if data[] == Ptr{C_NULL}(C_NULL)
+            data = ""
+        else
+            data = unsafe_string(Base.unsafe_convert(Ptr{Cchar}, data[]))
+        end
+    elseif vtype[] == Tuple
+        data = data[]
+        if data == Ptr{C_NULL}(C_NULL)
+            data = nothing
+        else
+            @assert false "Unsupported tuple type"
+        end
+    else
+        @assert false "Not implemented yet capsvType $(vtype[]) with data = $(data)"
+    end
+    return data
+end
+
+abstract type AbstractCapsWrapper end
+
+function Base.close(an::AbstractCapsWrapper)
+    close(an.obj[])
+end
+
+function Base.size(an::AbstractCapsWrapper, otype, stype)
+    size = Ref{Cint}()
+    n_err = Ref{Cint}()
+    errs = Ref{Ptr{capsErrs}}()
+    status = caps_size(an.obj[], otype, stype, size, n_err, errs)
+    if status != 0
+        error("CAPS ERROR CODE: $status")
+    end
+    size = size[]
+    return size
+end
+
+function children(an::AbstractCapsWrapper, otype, stype)
     val_objs = []
     for i in 1:size(an, otype, stype)
         child = Ref{capsObj}()
@@ -80,27 +230,66 @@ function children(an::Analysis, otype, stype)
     return val_objs
 end
 
-function _convert_data(data)
-    type = typeof(data)
-    vtype = get_value_type(data)
-    n_row, n_col = get_value_size(data)
+struct Problem <: AbstractCapsWrapper
+    obj::Ref{capsObj}
+end
 
-    # TODO
-    # if vtype == Boolean || vtype == Integers || vtype == DoubleDeriv
-    if type == Bool || type == Integer || type <: AbstractFloat
-        partial = [Cint(1)]
-        val = [data]
-    elseif type <: AbstractArray
-        partial = Vector{Cint}(undef, length(data))
-        partial .= Cint(1)
-        val = data
-    else
-        @warn "$vtype is still experimental"
-        partial = [Cint(1)]
-        val = [data]
-        # @assert false "vtype unsupported"
-    end
-    return vtype, n_row, n_col, val, partial
+function Problem(csm_file::String; name = "ESP_Mesh")
+    obj = _caps_problem(csm_file, name)
+    return Problem(obj)
+end
+
+function get_geometry_output(prob::Problem, name::String)
+    obj = Ref{capsObj}()
+
+    n_err = Ref{Cint}()
+    errs  = Ref{Ptr{capsErrs}}()
+
+    status = caps_childByName(
+        prob.obj[],
+        VALUE,
+        GEOMETRYOUT,
+        name,
+        obj,
+        n_err,
+        errs,
+    )
+
+    status == 0 || error("CAPS ERROR CODE: $status")
+
+    return obj[]
+end
+
+struct Analysis <: AbstractCapsWrapper
+    problem::Problem
+    obj::Ref{capsObj}
+end
+
+function Analysis(prob::Problem, aim_name, name; verbose=false)
+    analysis_obj = Ref{capsObj}()
+
+    intent   = C_NULL
+    unit_sys = C_NULL
+    execute  = Ref{Cint}(1)
+
+    n_err = Ref{Cint}()
+    errs  = Ref{Ptr{capsErrs}}()
+
+    status = caps_makeAnalysis(
+        prob.obj[],
+        aim_name,
+        name,
+        unit_sys,
+        intent,
+        execute,
+        analysis_obj,
+        n_err,
+        errs,
+    )
+
+    status == 0 || error("CAPS ERROR CODE: $status")
+
+    return Analysis(prob, analysis_obj)
 end
 
 function dirty_analyses(an)
@@ -137,46 +326,6 @@ function get_output_value(an::Analysis, name::String)
     return ch[index]
 end
 
-function get_value_size(val)
-    type = typeof(val)
-    n_row = length(val)
-    if type == Bool
-        n_col = 1
-    elseif type <: AbstractArray
-        # data = [data]
-        # n_col = length(val)
-        n_col = length(val[1])
-    elseif type == Ptr{Nothing}
-        n_col = 1
-    end
-
-    return n_row, n_col
-end
-
-function get_value_type(val)
-    type = typeof(val)
-    if type <: AbstractArray
-        vtype = get_value_type(val[1])
-        for i in axes(val, 1)
-            if vtype != get_value_type(val[i])
-                error("Types not equivalent")
-            end
-        end
-    elseif type == Bool
-        vtype = Boolean
-    # elseif type <: Integer
-        # vtype = Integers
-    elseif type <: Real
-        vtype = Double
-    elseif type <: String
-        vtype = mString
-    elseif type == Ptr{Nothing}
-        # @error "DO me"
-        vtype = Integers
-    end
-    return vtype
-end
-
 function link_value!(source::capsObj, destination::capsObj)
     n_err = Ref{Cint}()
     errs = Ref{Ptr{capsErrs}}()
@@ -210,47 +359,24 @@ function pre_analysis!(an::Analysis)
     return nothing
 end
 
-function Base.size(an::Analysis, otype, stype)
-    size = Ref{Cint}()
+function set_input_value!(an::Analysis, name::String, value)
+    obj = get_input_value(an, name)
+    info = input_info(obj)
+    @info "Setting CAPS input" name info.vtype info.nrow info.ncol
+    vtype, nrow, ncol, data_ptr, storage = convert_to_caps(info, value)
+    # TODO
+    units = C_NULL
     n_err = Ref{Cint}()
-    errs = Ref{Ptr{capsErrs}}()
-    status = caps_size(an.obj[], otype, stype, size, n_err, errs)
-    if status != 0
-        error("CAPS ERROR CODE: $status")
-    end
-    size = size[]
-    return size
-end
+    errs  = Ref{Ptr{capsErrs}}()
 
-function set_input_value!(an::Analysis, name, data)
-    val = get_input_value(an, name)
-
-    units = Ptr{Int8}(C_NULL)
-    
-    # convert data
-    type = typeof(data)
-    if type != Bool && type != Ptr{Nothing}
-        if type <: AbstractArray
-            # do nothing
-        else
-            error("Data type $type not supported")
-        end
-    end
-
-    vtype, n_row, n_col, pdata, partial = _convert_data(data)
-
-    # errors
-    n_err = Ref(Cint(0))
-    errs = Ref{Ptr{capsErrs}}()
-
-    status = caps_setValue(
-        val, vtype, 
-        n_row, n_col,
-        pdata, partial, units, 
-        n_err, errs
-    )
-    if status != 0
-        error("CAPS ERROR CODE: $status")
+    GC.@preserve storage begin
+        status = caps_setValue(
+            obj, vtype, Cint(nrow), Cint(ncol),
+            data_ptr, C_NULL, # never use partial updates
+            units,
+            n_err, errs,
+        )
+        status == 0 || error("CAPS ERROR CODE: $status")
     end
 
     return nothing
