@@ -4,11 +4,14 @@ name = "CthoniosDesign"
 CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
 EngineeringSketchPad_jll = "dc1f1ded-c539-59a2-898d-fa059e5c1344"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
 Exodus_jll = "fc7263ad-bce8-5229-97b1-c6ddabda41b1"
+FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
 OCCT_jll = "baad4e97-8daa-5946-aac2-2edac59d34e1"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [sources]
 Cthonios = {path = "../.."}
