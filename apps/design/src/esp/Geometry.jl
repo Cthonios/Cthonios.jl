@@ -3,8 +3,6 @@ struct TesselationOptions
 end
 
 struct ESPModel
-    m_build_to::Ref{Cint}
-    model::modl_T
     model_ptr::Ptr{modl_T}
 end
 
@@ -142,57 +140,63 @@ function build_model(csm_file::String)
     context = Ref{ego}() # Maybe ok?
     model = Ref{Ptr{Cvoid}}()
 
-    # open
-    status = EG_open(context)
-    _check_egads_status(status)
-    ocsmLoad(csm_file, model)
-    _check_ocsm_status(status)
-    @info "Model $(csm_file) loaded"
+    GC.@preserve context model begin
+        # open
+        status = EG_open(context)
+        _check_egads_status(status)
+        ocsmLoad(csm_file, model)
+        _check_ocsm_status(status)
+        @info "Model $(csm_file) loaded"
 
-    # setup model object
-    model_ptr = Ptr{modl_T}(model[])
-    model = unsafe_load(model_ptr)
-    model.context = context[]
+        # setup model object
+        model_ptr = Ptr{modl_T}(model[])
+        model = unsafe_load(model_ptr)
+        model.context = context[]
+        # ctx_offset = fieldoffset(modl_T, findfirst(==(:context), fieldnames(modl_T)))
+        # unsafe_store!(Ptr{ego}(model_ptr + ctx_offset), context[])
 
-    # check file
-    status = ocsmCheck(model_ptr)
-    _check_ocsm_status(status)
-    @info "Checks OK"
+        # check file
+        status = ocsmCheck(model_ptr)
+        _check_ocsm_status(status)
+        @info "Checks OK"
 
-    # build geometry
-    t_build_to = Cint(0)
-    m_build_to = Ref{Cint}()
-    n_body = Ref{Cint}()
-    status = ocsmBuild(model_ptr, t_build_to, m_build_to, n_body, C_NULL)
-    _check_ocsm_status(status)
-    EG_deleteObject(context[])
-    model.context = C_NULL
-    @info "Model geometry built"
+        # build geometry
+        t_build_to = Cint(0)
+        m_build_to = Ref{Cint}()
+        n_body = Ref{Cint}()
+        status = ocsmBuild(model_ptr, t_build_to, m_build_to, n_body, C_NULL)
+        _check_ocsm_status(status)
+        # EG_deleteObject(context[])
+        # model.context = C_NULL
+        @info "Model geometry built"
 
-    # do some checks
-    model = unsafe_load(model_ptr)
-    n_body = 0
-    for i in 1:model.nbody
-        body = unsafe_load(model.body, i + 1)
-        if body.onstack != 1 || body.botype == OCSM_NULL_BODY
-            continue
+        # do some checks
+        model = unsafe_load(model_ptr)
+        n_body = 0
+        for i in 1:model.nbody
+            body = unsafe_load(model.body, i + 1)
+            if body.onstack != 1 || body.botype == OCSM_NULL_BODY
+                continue
+            end
+            n_body = n_body + 1
         end
-        n_body = n_body + 1
+
+        if n_body <= 0
+            error("No bodies found.")
+        end
     end
 
-    if n_body <= 0
-        error("No bodies found.")
-    end
-
-    return ESPModel(m_build_to, model, model_ptr)
+    return ESPModel(model_ptr)
 end
 
-#TODO
+# #TODO
 function close_model(model::ESPModel)
-    model_ptr = Ptr{Cvoid}(pointer_from_objref(model.model))
-    ocsmFree(Ref(model_ptr))
-    ocsmFree(C_NULL)
-    EG_close(model.model.context)
+    # model_ptr = Ptr{Cvoid}(pointer_from_objref(model.model))
+    model_ref = unsafe_load(model.model_ptr)
+    EG_close(model_ref.context)
+    ocsmFree(Ref(model.model_ptr))
+    # ocsmFree(C_NULL)
+    # EG_close(model.model.context)
 end
 
 # this method assumes that you have an exodus mesh already
@@ -243,14 +247,21 @@ function _esp_julia(temp_file, param_vals)
     pre_analysis!(plato)
     post_analysis!(plato)
 
-    # TODO do proper cleanup
-    # close(plato)
-    # close(aflr2)
-    # close(prob)
-    # close(plato)
+    # dirty_analyses(aflr2)
+    # dirty_analyses(plato)
+
+    # # TODO do proper cleanup
+    # # close(plato)
+    # # close(aflr2)
+    # # close(prob)
+    # # close(plato)
+    # @show prob
+    # GC.gc(true)        # force a full, immediate collection
+    close(prob)
 end
 
 function _esp_python(temp_file, param_vals)
+    @info "Using python code path"
     if isdir("ESP_Mesh")
         rm("ESP_Mesh", force = true, recursive = true)
     end
@@ -290,16 +301,18 @@ function load_tesselation(g::Geometry)
     cp(og_exo, exo_file_name, force = true)
     cp(og_tess, tess_file_name, force = true)
 
+    model_ref = unsafe_load(model.model_ptr)
     num_active_bodies = 0
-    for i = 1:model.model.nbody
-        body = unsafe_load(model.model.body, i + 1)
+    # for i = 1:model.model.nbody
+    for i in 1:model_ref.nbody
+        body = unsafe_load(model_ref.body, i + 1)
         if body.onstack == 1
             num_active_bodies = num_active_bodies + 1
         end
     end
 
-    for i = 1:model.model.nbody
-        body = unsafe_load(model.model.body, i + 1)
+    for i = 1:model_ref.nbody
+        body = unsafe_load(model_ref.body, i + 1)
         if body.onstack != 1 || body.botype == OCSM_NULL_BODY
             continue
         end
@@ -330,7 +343,8 @@ function _sensitivity(model::ESPModel, param_name; verbose::Bool = false)
     temp_type = Cint(0)
     temp_param_name = Vector{UInt8}(undef, 129)
 
-    for j in 1:model.model.npmtr
+    model_ref = unsafe_load(model.model_ptr)
+    for j in 1:model_ref.npmtr
         temp_index = Cint(j)
         status = ocsmGetPmtr(
             model.model_ptr, temp_index, 
@@ -358,13 +372,15 @@ function _sensitivity(model::ESPModel, param_name; verbose::Bool = false)
     ocsmSetVelD(model.model_ptr, param_index, 1, 1, 1.0)
 
     # @info "Before build"
-    status = ocsmBuild(model.model_ptr, Cint(0), model.m_build_to, Ref(Cint(0)), C_NULL)
+    m_build_to = Ref{Cint}()
+    status = ocsmBuild(model.model_ptr, Cint(0), m_build_to, Ref(Cint(0)), C_NULL)
     _check_ocsm_status(status)
 
     p_sens_ref = Ref{Ptr{Cdouble}}()
 
-    for ibody in 1:model.model.nbody
-        body = unsafe_load(model.model.body, ibody + 1)
+    model_ref = unsafe_load(model.model_ptr)
+    for ibody in 1:model_ref.nbody
+        body = unsafe_load(model_ref.body, ibody + 1)
         if body.onstack != 1
             continue
         end
@@ -504,7 +520,7 @@ function update!(g::Geometry, p; verbose::Bool = false)
         _update_sensitivities!(g, model; verbose = verbose)
 
         # TODO do proper cleanup
-        # close_model(model)
+        close_model(model)
     end
 end
 

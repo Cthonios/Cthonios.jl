@@ -22,27 +22,152 @@ function _caps_info(obj::capsObj)
         link[], parent[], last[]
 end
 
-function _caps_problem(csm_file, pr_name)
-    csm_file_c = Vector{Cchar}(collect(csm_file))
-    n_err = Ref{Cint}()
-    caps = Ref{capsObj}()
-    errs = Ref{Ptr{capsErrs}}()
-    status = caps_open(
-        pr_name, C_NULL, oFileName, 
-        pointer(csm_file_c), Cint(0), caps,
-        n_err, errs
-    )
-    if status != 0
-        error("CAPS ERROR CODE: $status")
+# function _caps_problem(csm_file, pr_name)
+#     # csm_file_c = Vector{Cchar}(collect(csm_file))
+#     csm_file_c = push!(Vector{Cchar}(collect(csm_file)), 0)
+#     @show csm_file_c
+#     n_err = Ref{Cint}()
+#     caps = Ref{capsObj}()
+#     # caps = capsObj()
+#     errs = Ref{Ptr{capsErrs}}()
+#     # # GC.@preserve csm_file_c begin
+#     #     status = caps_open(
+#     #         pr_name, C_NULL, oFileName, 
+#     #         csm_file_c, Cint(0), caps,
+#     #         n_err, errs
+#     #     )
+#     # # end
+#     csm_file_conv = Base.cconvert(Cstring, csm_file)  # GC root; guarantees NUL-terminated buffer
+#     # GC.@preserve csm_file_conv begin
+#         filename_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, csm_file_conv))
+#         status = caps_open(
+#             pr_name, C_NULL, oFileName,
+#             filename_ptr, Cint(0), caps,
+#             n_err, errs
+#         )
+#     # end
+#     @show caps[]
+#     if status != 0
+#         error("CAPS ERROR CODE: $status")
+#     end
+#     return caps[]
+# end
+
+# function Base.close(problem::capsObj)
+#     status = caps_close(problem, Cint(1), C_NULL)
+#     if status != 0
+#         @error "Error in close caps obj: $status"
+#     end
+# end
+# const _CAPS_STRING_KEEPALIVE = Any[]  # module-level, never collected
+
+# function _caps_problem(csm_file::String, pr_name::String)
+#     n_err = Ref{Cint}()
+#     caps  = Ref{capsObj}()
+#     errs  = Ref{Ptr{capsErrs}}()
+
+#     csm_file_conv = Base.cconvert(Cstring, csm_file)  # NUL-terminated, GC root
+#     push!(_CAPS_STRING_KEEPALIVE, csm_file_conv)   # never let GC touch this
+#     # GC.@preserve csm_file_conv begin
+#         filename_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, csm_file_conv))
+#         status = caps_open(
+#             pr_name, C_NULL, oFileName,
+#             filename_ptr, Cint(0), caps,
+#             n_err, errs
+#         )
+#     # end
+#     status == 0 || error("CAPS ERROR CODE: $status")
+
+#     return caps[]   # unwrap: capsObj, not Ref{capsObj}
+# end
+
+# function _caps_problem(csm_file::String, pr_name::String)
+#     n_err = Ref{Cint}()
+#     caps  = Ref{capsObj}()
+#     errs  = Ref{Ptr{capsErrs}}()
+
+#     csm_conv = Base.cconvert(Cstring, csm_file)
+#     name_conv = Base.cconvert(Cstring, pr_name)
+
+#     filename_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, csm_conv))
+#     # name_ptr     = Base.unsafe_convert(Cstring, name_conv)
+#     name_ptr     = pointer(name_conv)
+#     status = GC.@preserve csm_conv name_conv begin
+#         caps_open(name_ptr, C_NULL, oFileName, filename_ptr, Cint(1), caps, n_err, errs)
+#     end
+
+#     status == 0 || error("CAPS ERROR CODE: $status")
+
+#     return caps[], Any[csm_conv, name_conv]   # hand the roots back up
+# end
+# function _caps_problem(csm_file::String, pr_name::String)
+#     # Save current signal dispositions before calling into CAPS
+#     old_sigint  = ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 2,  C_NULL)  # SIGINT = 2 on Linux
+#     old_sigsegv = ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 11, C_NULL) # SIGSEGV = 11
+#     old_sigabrt = ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 6,  C_NULL) # SIGABRT = 6
+
+#     n_err = Ref{Cint}()
+#     caps  = Ref{capsObj}()
+#     errs  = Ref{Ptr{capsErrs}}()
+
+#     csm_conv  = Base.cconvert(Cstring, csm_file)
+#     # name_conv = Base.cconvert(Cstring, pr_name)
+#     filename_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, csm_conv))
+#     # name_ptr     = Base.unsafe_convert(Cstring, name_conv)
+
+#     status = GC.@preserve csm_conv begin
+#         caps_open(pr_name, C_NULL, oFileName, filename_ptr, Cint(1), caps, n_err, errs)
+#     end
+
+#     # Restore Julia's original handlers immediately — don't let CAPS's handlers persist
+#     ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 2,  old_sigint)
+#     ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 11, old_sigsegv)
+#     ccall(:signal, Ptr{Cvoid}, (Cint, Ptr{Cvoid}), 6,  old_sigabrt)
+
+#     status == 0 || error("CAPS ERROR CODE: $status")
+#     return caps[]#, Any[csm_conv, name_conv]
+# end
+# Minimal struct matching Linux x86_64 struct sigaction layout well enough
+# to read/restore opaquely (we never interpret the fields ourselves).
+const SIGACTION_SIZE = 152  # generous upper bound; real struct is smaller but padding varies
+
+function _get_sigaction(signum::Cint)
+    old = Vector{UInt8}(undef, SIGACTION_SIZE)
+    ccall(:sigaction, Cint, (Cint, Ptr{Cvoid}, Ptr{UInt8}), signum, C_NULL, old)
+    return old
+end
+
+function _set_sigaction(signum::Cint, act::Vector{UInt8})
+    ccall(:sigaction, Cint, (Cint, Ptr{UInt8}, Ptr{Cvoid}), signum, act, C_NULL)
+end
+
+function _caps_problem(csm_file::String, pr_name::String)
+    SIGSEGV = Cint(11); SIGABRT = Cint(6); SIGINT = Cint(2); SIGBUS = Cint(7); SIGHUP = Cint(1)
+    saved = Dict(s => _get_sigaction(s) for s in (SIGSEGV, SIGABRT, SIGINT, SIGBUS, SIGHUP))
+
+    n_err = Ref{Cint}(); caps = Ref{capsObj}(); errs = Ref{Ptr{capsErrs}}()
+    csm_conv  = Base.cconvert(Cstring, csm_file)
+    # name_conv = Base.cconvert(Cstring, pr_name)
+    filename_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, csm_conv))
+    # name_ptr     = Base.unsafe_convert(Cstring, name_conv)
+
+    status = GC.@preserve csm_conv begin
+        caps_open(pr_name, C_NULL, oFileName, filename_ptr, Cint(0), caps, n_err, errs)
     end
-    return caps
+
+    # restore Julia's exact original handlers (flags, mask, and all)
+    for (s, act) in saved
+        _set_sigaction(s, act)
+    end
+
+    status == 0 || error("CAPS ERROR CODE: $status")
+    return caps[]#, Any[csm_conv, name_conv]
 end
 
 function Base.close(problem::capsObj)
     status = caps_close(problem, Cint(0), C_NULL)
-    if status != 0
-        @error "Error inc lose caps obj: $status"
-    end
+    status == 0 || @error "Error in close caps obj: $status"
+    return nothing
 end
 
 function convert_to_caps(info::CapsInputInfo, value)
@@ -83,14 +208,17 @@ function convert_to_caps(info::CapsInputInfo, value)
         end
     elseif info.vtype == mString
         value isa String || error("Expected String")
-        storage = Base.cconvert(Cstring, value)
-        return (
-            info.vtype,
-            1,
-            1,
-            Ptr{Cvoid}(storage),
-            storage,
-        )
+        storage = value  # keep the String alive as the GC root
+        data_ptr = Ptr{Cvoid}(Base.unsafe_convert(Cstring, storage))
+        return (info.vtype, 1, 1, data_ptr, storage)
+        # storage = Base.cconvert(Cstring, value)
+        # return (
+        #     info.vtype,
+        #     1,
+        #     1,
+        #     Ptr{Cvoid}(storage),
+        #     storage,
+        # )
     elseif info.vtype == Tuple
         value isa Nothing || error("Expected Nothing. Need to support tuples")
         storage = Ptr{C_NULL}(C_NULL)
@@ -165,7 +293,12 @@ function get_value(obj::capsObj)
         if ncol[] > 1
             @assert false "Probably not supported"
         else
-            data = unsafe_wrap(Vector{Int32}, Base.unsafe_convert(Ptr{Int32}, data[]), nrow[])
+            new_data = Vector{Int32}(undef, nrow[])
+            temp_data = unsafe_wrap(Vector{Int32}, Base.unsafe_convert(Ptr{Int32}, data[]), nrow[])
+            for n in eachindex(new_data)
+                new_data[n] = temp_data[n]
+            end
+            data = new_data
         end
         if length(data) == 1
             data = data[1]
@@ -175,7 +308,12 @@ function get_value(obj::capsObj)
         if ncol[] > 1
             @assert false "Probably not supported"
         else
-            data = unsafe_wrap(Vector{Float64}, Base.unsafe_convert(Ptr{Float64}, data[]), nrow[])
+            new_data = Vector{Float64}(undef, nrow[])
+            temp_data = unsafe_wrap(Vector{Float64}, Base.unsafe_convert(Ptr{Float64}, data[]), nrow[])
+            for n in eachindex(new_data)
+                new_data[n] = temp_data[n]
+            end
+            data = new_data
         end
         if length(data) == 1
             data = data[1]
@@ -202,14 +340,14 @@ end
 abstract type AbstractCapsWrapper end
 
 function Base.close(an::AbstractCapsWrapper)
-    close(an.obj[])
+    close(an.obj)
 end
 
 function Base.size(an::AbstractCapsWrapper, otype, stype)
     size = Ref{Cint}()
     n_err = Ref{Cint}()
     errs = Ref{Ptr{capsErrs}}()
-    status = caps_size(an.obj[], otype, stype, size, n_err, errs)
+    status = caps_size(an.obj, otype, stype, size, n_err, errs)
     if status != 0
         error("CAPS ERROR CODE: $status")
     end
@@ -221,7 +359,7 @@ function children(an::AbstractCapsWrapper, otype, stype)
     val_objs = []
     for i in 1:size(an, otype, stype)
         child = Ref{capsObj}()
-        status = caps_childByIndex(an.obj[], otype, stype, Cint(i), child)
+        status = caps_childByIndex(an.obj, otype, stype, Cint(i), child)
         if status != 0
             error("CAPS ERROR CODE: $status")
         end
@@ -231,7 +369,7 @@ function children(an::AbstractCapsWrapper, otype, stype)
 end
 
 struct Problem <: AbstractCapsWrapper
-    obj::Ref{capsObj}
+    obj::capsObj
 end
 
 function Problem(csm_file::String; name = "ESP_Mesh")
@@ -246,7 +384,7 @@ function get_geometry_output(prob::Problem, name::String)
     errs  = Ref{Ptr{capsErrs}}()
 
     status = caps_childByName(
-        prob.obj[],
+        prob.obj,
         VALUE,
         GEOMETRYOUT,
         name,
@@ -262,7 +400,7 @@ end
 
 struct Analysis <: AbstractCapsWrapper
     problem::Problem
-    obj::Ref{capsObj}
+    obj::capsObj
 end
 
 function Analysis(prob::Problem, aim_name, name; verbose=false)
@@ -276,7 +414,7 @@ function Analysis(prob::Problem, aim_name, name; verbose=false)
     errs  = Ref{Ptr{capsErrs}}()
 
     status = caps_makeAnalysis(
-        prob.obj[],
+        prob.obj,
         aim_name,
         name,
         unit_sys,
@@ -289,7 +427,7 @@ function Analysis(prob::Problem, aim_name, name; verbose=false)
 
     status == 0 || error("CAPS ERROR CODE: $status")
 
-    return Analysis(prob, analysis_obj)
+    return Analysis(prob, analysis_obj[])
 end
 
 function dirty_analyses(an)
@@ -342,7 +480,7 @@ end
 function post_analysis!(an::Analysis)
     n_err = Ref{Cint}()
     errs = Ref{Ptr{capsErrs}}()
-    status = caps_postAnalysis(an.obj[], n_err, errs)
+    status = caps_postAnalysis(an.obj, n_err, errs)
     if status != 0
         error("CAPS ERROR CODE: $status")
     end
@@ -352,7 +490,7 @@ end
 function pre_analysis!(an::Analysis)
     n_err = Ref{Cint}()
     errs = Ref{Ptr{capsErrs}}()
-    status = caps_preAnalysis(an.obj[], n_err, errs)
+    status = caps_preAnalysis(an.obj, n_err, errs)
     if status != 0
         error("CAPS ERROR CODE: $status")
     end
@@ -369,7 +507,7 @@ function set_input_value!(an::Analysis, name::String, value)
     n_err = Ref{Cint}()
     errs  = Ref{Ptr{capsErrs}}()
 
-    GC.@preserve storage begin
+    # GC.@preserve storage begin
         status = caps_setValue(
             obj, vtype, Cint(nrow), Cint(ncol),
             data_ptr, C_NULL, # never use partial updates
@@ -377,7 +515,7 @@ function set_input_value!(an::Analysis, name::String, value)
             n_err, errs,
         )
         status == 0 || error("CAPS ERROR CODE: $status")
-    end
+    # end
 
     return nothing
 end
