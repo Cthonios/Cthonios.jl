@@ -26,7 +26,7 @@ export QuasiStaticObjective
 export SolidMechanics
 
 # qois
-export QOIExtractor
+# export QOIExtractor
 
 # sims
 export SingleDomainSimulation
