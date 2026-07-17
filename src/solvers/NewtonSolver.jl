@@ -10,7 +10,7 @@ struct NewtonSolver{L}
     settings::NewtonSolverSettings
 end
 
-function NewtonSolver(objective, u, p; kwargs...)
+function NewtonSolver(objective, u, p, timer; kwargs...)
     linear_solver = KrylovSolver(Val{:cg}(), objective, u, p)
     return NewtonSolver(linear_solver, NewtonSolverSettings(; kwargs...))
 end 

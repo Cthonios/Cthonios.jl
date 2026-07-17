@@ -29,7 +29,7 @@ props = (;
 #md # # Functions for BCs
 func_1(x, t) = 0.0
 func_2(x, t) = -0.5 * t
-func_3(x, t) = @SVector [0., -0.025 * t, 0.]
+func_3(x, t) = @SVector [0., 0.1 * t, 0.]
 
 #md # # Boundary conditions
 dirichlet_bcs = [
@@ -40,26 +40,35 @@ dirichlet_bcs = [
   DirichletBC("displ_z", func_1; sideset_name = "sset_y_positive")
   DirichletBC("displ_y", func_2; sideset_name = "sset_y_positive")
 ]
-# traction_bcs = [
-#   NeumannBC("sset_y_positive", func_3)
-# ]
+neumann_bcs = NeumannBC[
+  # NeumannBC("displ", func_3, "sset_y_positive")
+]
 
 #md # # Simulation setup
 sim = SingleDomainSimulation(
+    QuasiStaticObjective,
     mesh_file, output_file, 
     times, physics, props;
-    dirichlet_bcs=dirichlet_bcs
+    dirichlet_bcs = dirichlet_bcs,
+    neumann_bcs = neumann_bcs
 )
 
-#md # # objective setup
-objective = Cthonios.QuasiStaticObjective()
-objective_cache, U, p = Cthonios.setup_caches(objective, sim)
+#md # # objective and solution/parameters setup
+objective = Cthonios.get_objective(sim)
+u, p = Cthonios.get_unknowns_and_parameters(sim)
+
+#md # # qoi extractor example
+qoi = ScalarQOIExtractor(objective, energy, +, :scalar_material)
 
 #md # # solver setup
-solver = Cthonios.TrustRegionSolver(objective_cache, p; use_warm_start = true)
-# solver = Cthonios.NewtonSolver(objective_cache)
+timer = TimerOutput()
+preconditioner = CholeskyPreconditioner(objective, u, p, timer)
+predictor = TangentPredictor(objective, u, p, Val{:gmres}(), timer)
+nonlinear_solver = TrustRegionSolver(objective, u, p, timer; max_trust_iters = 500)
+solver = ImplicitSolver(nonlinear_solver, preconditioner, predictor; timer = timer)
 
-Cthonios.run!(solver, objective_cache, U, p, sim)
+#md # # run the simulation
+Cthonios.run!(solver, objective, u, p, sim.mesh, "output.exo")
 
 #md # # Interactive plotting
 # exo = ExodusDatabase("output.e", "r")
