@@ -1,25 +1,43 @@
+abstract type AbstractParameters{T <: Number, V <: AbstractVector{T}} end
+Base.getindex(params::AbstractParameters, i::Int) = params.values[i]
+function Base.getindex(params::AbstractParameters, str::String)
+    index = findfirst(==(str), params.names)
+    if index === nothing
+        @assert false "Failed to find parameter with name $str. Available parameter names are $(params.names)"
+    end
+    return params.values[index]
+end
+Base.length(params::AbstractParameters) = length(params.values)
+function Base.setindex!(params::AbstractParameters, v, i::Int)
+    params.values[i] = v
+    return nothing
+end
+function Base.setindex!(params::AbstractParameters, v, str::String)
+    index = findfirst(==(str), params.names)
+    if index === nothing
+        @assert false "Failed to find parameter with name $str. Available parameter names are $(params.names)"
+    end
+    params.values[index] = v
+end
+
 struct ConstantParameters{
     T <: Number,
     V <: AbstractVector{T}
-}
+} <: AbstractParameters{T, V}
     names::Vector{String}
     values::V
 end
-Base.getindex(params::ConstantParameters, i::Int) = params.values[i]
-Base.length(params::ConstantParameters) = length(params.values)
 
 struct DesignParameters{
     T <: Number,
     V <: AbstractVector{T}
-}
+} <: AbstractParameters{T, V}
     names::Vector{String}
     initials::V
     lbs::V
     ubs::V
     values::V
 end
-Base.getindex(params::DesignParameters, i::Int) = params.values[i]
-Base.length(params::DesignParameters) = length(params.values)
 
 struct Parameters{
     T <: Number,

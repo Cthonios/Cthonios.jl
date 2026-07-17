@@ -55,8 +55,9 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
     conns = connectivity(fspace, 1)
     ref_fe = FiniteElementContainers.block_reference_element(fspace, 1)
 
+    timer = TimerOutput()
     preconditioner = NoPreconditioner(sim.objective, sim.u, sim.p)
-    solver = Cthonios.NewtonSolver(sim.objective, sim.u, sim.p)
+    solver = Cthonios.NewtonSolver(sim.objective, sim.u, sim.p, timer)
 
     Uu = create_unknowns(sim.objective)
     FiniteElementContainers.extract_field_unknowns!(Uu, sim.objective.assembler.dof, U)

@@ -9,24 +9,27 @@ end
 mutable struct Geometry{
     T <: Number,
     V <: AbstractVector{T},
-    D <: AbstractVector{V}
+    M <: AbstractMatrix{T}
 }
     csm_file::String
-    dxdps::D
+    num_dim::Int
+    num_nodes::Int
+    dxdps::M
     params::Parameters{T, V}
     temp_csm_file::String
     tess_options::TesselationOptions
 end
 
-function Geometry(csm_file::String; mode = "python", verbose::Bool = false)
+function Geometry(csm_file::String; mode = "julia", verbose::Bool = false)
     if !verbose
         ocsmSetOutLevel(0)
     end
 
     # get params
     parameters = Parameters(csm_file)
-    dxdps = [Vector{Float64}(undef, 0) for _ in 1:length(parameters.design_params)]
-    geometry = Geometry(csm_file, dxdps, parameters, csm_file, TesselationOptions(mode))
+    # setup as empty matrix with no nodes and reset ref later
+    dxdps = Matrix{Float64}(undef, 0, length(parameters.design_params))
+    geometry = Geometry(csm_file, 0, 0, dxdps, parameters, csm_file, TesselationOptions(mode))
     return geometry
 end
 
@@ -216,7 +219,7 @@ function dump_sensitivities(g::Geometry, exo_file_name)
         write_names(exo, NodalVariable, names_all)
 
         for (n, name) in enumerate(names)
-            temp_dxdp = reshape(g.dxdps[n], 3, n_nodes)
+            temp_dxdp = reshape(g.dxdps[:, n], 3, n_nodes)
             write_values(exo, NodalVariable, 1, "d$(name)_x", temp_dxdp[1, :])
             write_values(exo, NodalVariable, 1, "d$(name)_y", temp_dxdp[2, :])
             write_values(exo, NodalVariable, 1, "d$(name)_z", temp_dxdp[3, :])
@@ -275,8 +278,12 @@ function _esp_python(temp_file, param_vals)
     run(`$script_path $temp_file $params_str`)
 end
 
+function get_constant_parameters(g::Geometry)
+    return g.params.constant_params
+end
+
 function get_design_parameters(g::Geometry)
-    return g.params.design_params.values
+    return g.params.design_params
 end
 
 function load_tesselation(g::Geometry)
@@ -525,9 +532,19 @@ function update!(g::Geometry, p; verbose::Bool = false)
 end
 
 function _update_sensitivities!(g::Geometry, model::ESPModel; verbose::Bool = false)
+    # need to get num nodes
+    exo_file = splitext(g.csm_file)[1] * ".exo"
+    num_dim, num_nodes = ExodusDatabase(exo_file, "r") do exo
+        exo.init.num_dimensions, exo.init.num_nodes
+    end
+    g.num_dim = num_dim
+    g.num_nodes = num_nodes
+    g.dxdps = zeros(num_dim * num_nodes, length(g.params.design_params))
+
     for (n, param_name) in enumerate(g.params.design_params.names)
         dxdp_temp = _sensitivity(model, param_name; verbose = verbose)
-        g.dxdps[n] = dxdp_temp
+        dxdp_temp = reshape(dxdp_temp, 3, num_nodes)
+        g.dxdps[:, n] .= vec(dxdp_temp[1:num_dim, :])
 
         if verbose
             @info "CoordinateSensitivity for parameter $param_name calculated"

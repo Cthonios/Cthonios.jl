@@ -3,6 +3,7 @@ module Cthonios
 # Re-exports
 export DirichletBC
 export InitialCondition
+export NeumannBC
 export PlaneStrain
 export ThreeDimensional
 export TimerOutput
@@ -26,7 +27,7 @@ export QuasiStaticObjective
 export SolidMechanics
 
 # qois
-# export QOIExtractor
+export ScalarQOIExtractor
 
 # sims
 export SingleDomainSimulation
@@ -71,7 +72,8 @@ using TimerOutputs
 include("contact/Contact.jl")
 include("objectives/Objectives.jl")
 include("Physics.jl")
-include("simulations/Simulations.jl")
+include("QOIExtractors.jl")
+include("Simulations.jl")
 include("solvers/Solvers.jl")
 
 end # module

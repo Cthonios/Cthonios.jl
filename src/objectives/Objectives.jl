@@ -114,26 +114,29 @@ function postprocess!(pp::PostProcessor, output_settings, n, ::AbstractSolidMech
     end
 end
 
-function setup_assembler(::Type{<:AbstractSolidMechanicsObjective}, mesh)
-    fspace = FunctionSpace(mesh, H1Field, Lagrange)
-    u = VectorFunction(fspace, "displ")
-    dof = DofManager(u)
-    assembler = SparseMatrixAssembler(dof; use_inplace_methods = true)
-    return assembler
-end
-
-function _setup_solid_mechanics_assembler(
-    mesh,
-    q_degree = 2,
-    use_condensed = false,
-    use_inplace_methods = true
+function setup_assembler(
+    ::Type{<:AbstractSolidMechanicsObjective}, mesh;
+    use_inplace_methods::Bool = true
 )
     fspace = FunctionSpace(mesh, H1Field, Lagrange)
     u = VectorFunction(fspace, "displ")
-    dof = DofManager(u; use_condensed = use_condensed)
+    dof = DofManager(u)
     assembler = SparseMatrixAssembler(dof; use_inplace_methods = use_inplace_methods)
     return assembler
 end
+
+# function _setup_solid_mechanics_assembler(
+#     mesh,
+#     q_degree = 2,
+#     use_condensed = false,
+#     use_inplace_methods = true
+# )
+#     fspace = FunctionSpace(mesh, H1Field, Lagrange)
+#     u = VectorFunction(fspace, "displ")
+#     dof = DofManager(u; use_condensed = use_condensed)
+#     assembler = SparseMatrixAssembler(dof; use_inplace_methods = use_inplace_methods)
+#     return assembler
+# end
 
 # helpers
 function _vector_field_names(base_name::String, dim::Int)

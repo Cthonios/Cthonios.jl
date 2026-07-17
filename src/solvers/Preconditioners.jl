@@ -73,8 +73,10 @@ function update_preconditioner!(P::CholeskyPreconditioner, obj, u, p; verbose = 
           cholesky!(P.preconditioner, H)
         else
           shift = 10.0^(-5 + attempt)
-          # cholesky!(P.preconditioner, H; shift=shift)
-          cholesky!(P.preconditioner, H + Diagonal(shift .* abs(diag(H))))
+          cholesky!(P.preconditioner, H; shift=shift)
+
+          # below might be more correct but seems to make column buckling fail
+          # cholesky!(P.preconditioner, H + Diagonal(shift .* abs(diag(H))))
         end
         return nothing
       catch e
