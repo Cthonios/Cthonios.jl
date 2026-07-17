@@ -47,9 +47,10 @@ function test_implicit_dynamics()
     vel_ics = InitialConditions(mesh, objective.assembler.dof, vel_ics)
     # small hack above we should removes
 
+    timer = TimerOutput()
     preconditioner = NoPreconditioner(objective, u, p)
     predictor = NoPredictor(objective, u, p)
-    nonlinear_solver = Cthonios.NewtonSolver(objective, u, p)
+    nonlinear_solver = Cthonios.NewtonSolver(objective, u, p, timer)
     solver = ImplicitSolver(nonlinear_solver, preconditioner, predictor)
     Cthonios.run!(
         solver, objective, u, p, mesh, "test-implicit-dynamics.exo";

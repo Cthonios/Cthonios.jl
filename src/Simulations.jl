@@ -47,7 +47,7 @@ function SingleDomainSimulation(
     use_inplace_methods::Bool = true
 )
     mesh = UnstructuredMesh(mesh_file)
-    assembler = setup_assembler(objective_type, mesh; use_inplace_methods = use_inplace_methods)
+    assembler = setup_assembler(objective_type, mesh)
     objective = objective_type(assembler)
     properties = _create_properties(physics, properties)
     p = create_parameters(
