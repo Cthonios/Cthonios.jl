@@ -25,11 +25,13 @@ end
     # constitutive
     θ = 0.0 # TODO
     ψ_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
 
     σ_q = ConstitutiveModels.cauchy_stress(
-        physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     σ_q = σ_q |> symmetric
     return StandardMaterialOutput(ψ_q, σ_q, ∇u_q)
@@ -193,12 +195,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
     ψ_q = ConstitutiveModels.helmholtz_free_energy(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return JxW * ψ_q
 end
@@ -215,12 +218,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return ψ_q
 end
@@ -236,12 +240,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return JxW * ψ_q
 end
@@ -346,12 +351,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
     P_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )    
     # turn into voigt notation
     P_q = extract_stress(physics.formulation, P_q)
@@ -374,12 +380,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
     P_q = ConstitutiveModels.pk1_stress(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients!(storage, physics.formulation, e, conn, ∇N_X, JxW * P_q)
     return nothing
@@ -395,12 +402,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     # turn into voigt notation
     K_q = extract_stiffness(physics.formulation, A_q)
@@ -421,12 +429,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients_and_gradients!(
       storage, physics.formulation, e, conn, ∇N_X, JxW * A_q
@@ -442,12 +451,13 @@ end
     ∇u_q = interpolate_field_gradients(physics, interps, u_el)
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     # turn into voigt notation
     K_q = extract_stiffness(physics.formulation, A_q)
@@ -466,12 +476,13 @@ end
     ∇u_q = interpolate_field_gradients(physics, interps, u_el)
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    mat_props = @views props_el[2:end]
+    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
+        physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients_and_gradients!(storage, physics.formulation, e, conn, ∇N_X, JxW * A_q, v_el)
     return nothing

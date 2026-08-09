@@ -8,12 +8,12 @@ function test_explicit_dynamics()
 
     # Physics
     physics = (;
-        cube = SolidMechanics(
+        sphere = SolidMechanics(
             ThreeDimensional(), NeoHookean()
         )
     )
     props = (;
-        cube = Dict{String, Any}(
+        sphere = Dict{String, Any}(
             "density"         => 1.e3,
             "Young's modulus" => 1.e4,
             "Poisson's ratio" => 0.33

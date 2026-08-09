@@ -8,11 +8,14 @@ mesh_file = Base.source_dir() * "/mesh/hole_array.exo"
 output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
-times = TimeStepper(0., 1., 20)
+t_end = 100.0
+times = TimeStepper(0., 2. * t_end, 40)
 
 # Physics
 physics = (;
-    Block1 = SolidMechanics(PlaneStrain(), NeoHookean())
+    # Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(NeoHookean()))
+    Block1 = SolidMechanics(PlaneStrain(), FeFv())
+    # Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(Hencky()))
 )
 props = (;
     Block1 = Dict{String, Any}(
@@ -20,11 +23,20 @@ props = (;
         "Young's modulus" => 1.,
         "Poisson's ratio" => 0.48,
         # "Jm"              => 3.
+        "G neq"           => 50.0,
+        "relaxation time" => 50.0
     )
 )
 
 # Boundary Conditions
-func_1(x, t) = -7.5 * t
+# func_1(x, t) = -9. * (t / t_end)
+function func_1(x, t)
+    if t >= t_end
+        return -9.
+    else
+        return -9. * (t / t_end)
+    end
+end
 func_2(x, t) = 0.0
 
 dirichlet_bcs = [
