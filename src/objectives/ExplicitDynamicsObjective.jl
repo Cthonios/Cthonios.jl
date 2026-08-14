@@ -171,41 +171,17 @@ end
 # copied from Carina.jl
 function _compute_stable_dt(asm, p, CFL)
     fspace = FEC.function_space(asm.dof)
-
-    # Pre-allocate per-block storage for element char lengths (nq × nelem)
-    # char_len_storage = Array{Float64, 3}[]
-    # for (b, ref_fe) in enumerate(fspace.ref_fes)
-    # for b in 1:FEC.num_blocks(fspace)
-    #     ref_fe = FEC.block_reference_element(fspace, b)
-    #     nquad = num_cell_quadrature_points(ref_fe)
-    #     nelem = num_elements(fspace, b)
-    #     push!(char_len_storage, zeros(Float64, 1, nquad, nelem))
-    # end
-    # char_len_storage = NamedTuple{keys(fspace.ref_fes)}(char_len_storage)
-    char_len_storage = L2Field(undef, Float64, 1, FEC.block_quadrature_sizes(fspace))
-    fill!(char_len_storage, 0.0)
+    stable_dts = L2Field(undef, Float64, 1, FEC.block_quadrature_sizes(fspace))
+    fill!(stable_dts, 0.0)
 
     # Assemble per-element char lengths on device
     U_zeros = zeros(Float64, length(asm.dof.unknown_dofs))
     FEC.assemble_quadrature_quantity!(
-        char_len_storage, nothing, asm.dof,
-        characteristic_element_length,
+        stable_dts, nothing, asm.dof,
+        stable_time_step,
         U_zeros, p
     )
-
-    # Min-reduction over all blocks
-    stable_dt = Inf
-    for (b, (block_physics, props)) in enumerate(zip(
-        values(p.physics), values(p.properties),
-    ))
-        block_storage = FEC.block_view(char_len_storage, b)
-        ρ   = props[1]
-        M   = p_wave_modulus(block_physics.constitutive_model, props)
-        c_p = sqrt(M / ρ)
-        h_min = minimum(block_storage)   # GPU-native reduction if on device
-        block_dt = CFL * h_min / c_p
-        stable_dt = min(stable_dt, block_dt)
-    end
+    stable_dt = reduce(min, stable_dts)
     return stable_dt
 end
 

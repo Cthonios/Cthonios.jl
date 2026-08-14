@@ -25,12 +25,10 @@ end
     # constitutive
     θ = 0.0 # TODO
     ψ_q = ConstitutiveModels.helmholtz_free_energy(
-        # physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
 
     σ_q = ConstitutiveModels.cauchy_stress(
-        # physics.constitutive_model, props_el, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     σ_q = σ_q |> symmetric
@@ -159,28 +157,43 @@ function setup_function(fspace::FunctionSpace, ::SolidMechanics)
     return VectorFunction(fspace, "displ")
 end
 
-function characteristic_element_length(
-    physics::SolidMechanics, interps, x_el,
-    t, dt, u_el, u_el_old,
-    state_old_q, state_new_q, props_el,
-)
+@inline function characteristic_element_length(x_el::SMatrix{2, N, T, N2}, u_el::SMatrix{2, N, T, N2}) where {N, T, N2}
+    x_cur = x_el + u_el
+    ndim = 2
+    nnpe = length(x_cur) ÷ ndim
+    cx = cy = zero(T)
+    for i in 1:nnpe
+        cx += x_cur[(i - 1) * ndim + 1]
+        cy += x_cur[(i - 1) * ndim + 2]
+    end
+    cx /= nnpe; cy /= nnpe
+    total = zero(T)
+    for i in 1:nnpe
+        dx = x_cur[(i - 1) * ndim + 1] - cx
+        dy = x_cur[(i - 1) * ndim + 2] - cy
+        total += sqrt(dx * dx + dy * dy)
+    end
+    return 2 * total / nnpe
+end
+
+@inline function characteristic_element_length(x_el::SMatrix{3, N, T, N3}, u_el::SMatrix{3, N, T, N3}) where {N, T, N3}
     x_cur = x_el + u_el
     ndim = 3
     nnpe = length(x_cur) ÷ ndim
-    T = eltype(x_cur)
+    # T = eltype(x_cur)
     cx = cy = cz = zero(T)
     for i in 1:nnpe
-        cx += x_cur[(i-1)*ndim + 1]
-        cy += x_cur[(i-1)*ndim + 2]
-        cz += x_cur[(i-1)*ndim + 3]
+        cx += x_cur[(i - 1) * ndim + 1]
+        cy += x_cur[(i - 1) * ndim + 2]
+        cz += x_cur[(i - 1) * ndim + 3]
     end
     cx /= nnpe; cy /= nnpe; cz /= nnpe
     total = zero(T)
     for i in 1:nnpe
-        dx = x_cur[(i-1)*ndim + 1] - cx
-        dy = x_cur[(i-1)*ndim + 2] - cy
-        dz = x_cur[(i-1)*ndim + 3] - cz
-        total += sqrt(dx*dx + dy*dy + dz*dz)
+        dx = x_cur[(i - 1) * ndim + 1] - cx
+        dy = x_cur[(i - 1) * ndim + 2] - cy
+        dz = x_cur[(i - 1) * ndim + 3] - cz
+        total += sqrt(dx * dx + dy * dy + dz * dz)
     end
     return 2 * total / nnpe
 end
@@ -200,7 +213,6 @@ end
     # constitutive
     θ = 0.0 # TODO
     ψ_q = ConstitutiveModels.helmholtz_free_energy(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return JxW * ψ_q
@@ -218,12 +230,9 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return ψ_q
@@ -240,12 +249,9 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0.0 # TODO
     ψ_q = func(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )  
     return JxW * ψ_q
@@ -294,19 +300,9 @@ end
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
-    # ∇u_q = interpolate_field_gradients(physics, interps, u_el)
-  
-    # kinematics
-    # ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
     ρ = props_el[1]
 
-    # constitutive
-    # θ = 0. # TODO
-    # A_q = ConstitutiveModels.material_tangent(
-    #     physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
-    # )
     scatter_with_values_and_values!(
       storage, physics.formulation, e, conn, N, JxW * ρ
     )
@@ -351,17 +347,13 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0.0 # TODO
     P_q = ConstitutiveModels.pk1_stress(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )    
     # turn into voigt notation
     P_q = extract_stress(physics.formulation, P_q)
-    # P_q = tovoigt(SVector, P_q)
     G_q = discrete_gradient(physics.formulation, ∇N_X)
     f_q = G_q * P_q
     return JxW * f_q[:]
@@ -380,16 +372,28 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0.0 # TODO
     P_q = ConstitutiveModels.pk1_stress(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients!(storage, physics.formulation, e, conn, ∇N_X, JxW * P_q)
     return nothing
+end
+
+@inline function stable_time_step(
+    physics::SolidMechanics, interps, x_el, t, dt, u_el, u_el_old, state_old_q, state_new_q, props_el
+)   
+    N, D = size(interps.∇N_ξ)
+    x_el = SMatrix{D, N, eltype(x_el), N * D}(x_el.data)
+    u_el = SMatrix{D, N, eltype(u_el), N * D}(u_el.data)
+    l = characteristic_element_length(x_el, u_el)
+    ρ = props_el[1]
+    M = p_wave_modulus(physics.constitutive_model, props_el)
+    c_p = sqrt(M / ρ)
+    CFL = 0.1
+    stable_dt = CFL * l / c_p
+    return stable_dt
 end
 
 @inline function FiniteElementContainers.stiffness(  
@@ -402,12 +406,9 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     # turn into voigt notation
@@ -429,12 +430,9 @@ end
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients_and_gradients!(
@@ -451,12 +449,9 @@ end
     ∇u_q = interpolate_field_gradients(physics, interps, u_el)
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     # turn into voigt notation
@@ -476,12 +471,9 @@ end
     ∇u_q = interpolate_field_gradients(physics, interps, u_el)
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
 
-    # mat_props = @views props_el[2:end]
-
     # constitutive
     θ = 0. # TODO
     A_q = ConstitutiveModels.material_tangent(
-        # physics.constitutive_model, mat_props, dt, ∇u_q, θ, state_old_q, state_new_q
         physics.constitutive_model, props_el, state_old_q, state_new_q, dt, ∇u_q, θ
     )
     scatter_with_gradients_and_gradients!(storage, physics.formulation, e, conn, ∇N_X, JxW * A_q, v_el)

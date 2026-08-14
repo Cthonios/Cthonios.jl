@@ -9,7 +9,7 @@ function test_explicit_dynamics()
     # Physics
     physics = (;
         sphere = SolidMechanics(
-            ThreeDimensional(), NeoHookean()
+            ThreeDimensional(), Hyperelastic(NeoHookean())
         )
     )
     props = (;

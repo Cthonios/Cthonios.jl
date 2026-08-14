@@ -5,10 +5,10 @@ function test_heat_conduction()
     times = TimeStepper(0.0, 75.0, 100)
     
     physics = (;
-        unnamed_block_1 = Cthonios.HeatConduction()
+        var"" = Cthonios.HeatConduction()
     )
     props = (;
-        unnamed_block_1 = Dict{String, Any}(
+        var"" = Dict{String, Any}(
             "density"              => 1.0,
             "heat capacity"        => 20.0,
             "thermal conductivity" => 1.0
