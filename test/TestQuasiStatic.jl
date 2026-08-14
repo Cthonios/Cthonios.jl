@@ -8,7 +8,7 @@ function test_quasistatic()
 
     # Physics
     physics = (;
-        Block1 = SolidMechanics(PlaneStrain(), NeoHookean())
+        Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(NeoHookean()))
     )
     props = (;
         Block1 = Dict{String, Any}(
