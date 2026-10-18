@@ -6,8 +6,8 @@ function linear_patch_test_dirichlet(mesh_file, q_degree)
             PlaneStrain(), LinearElastic()
         )
     )
-    props = (;
-        var"" = Dict{String, Any}(
+    props = Dict(
+        "" => Dict{String, Any}(
             "density"       => 1.0,
             "bulk modulus"  => 1.0,
             "shear modulus" => 0.25

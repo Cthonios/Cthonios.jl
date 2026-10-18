@@ -13,8 +13,8 @@ function test_implicit_dynamics()
             ThreeDimensional(), Hyperelastic(NeoHookean())
         )
     )
-    props = (;
-        sphere = Dict{String, Any}(
+    props = Dict(
+        "sphere" => Dict{String, Any}(
             "density"         => 1.e3,
             "Young's modulus" => 1.e4,
             "Poisson's ratio" => 0.33

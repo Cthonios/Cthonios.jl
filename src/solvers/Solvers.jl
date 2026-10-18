@@ -71,9 +71,9 @@ struct ImplicitSolver{
     end
 end
 
-
 function solve!(solver::ImplicitSolver, objective, u, p)
     P = solver.preconditioner
+    # update_preconditioner!(P, objective, u, p)
     @info "ImplicitSolver"
     @info "  Predictor"
     solve!(solver.predictor, objective, u, p, P)

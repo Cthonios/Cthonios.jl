@@ -1,15 +1,21 @@
 function _create_properties(physics, props)
     @assert length(physics) == length(props)
-    for (k1, k2) in zip(keys(physics), keys(props))
-        @assert k1 == k2
+    # for (k1, k2) in zip(keys(physics), keys(props))
+    #     @assert k1 == k2
+    # end
+    # props = map(
+    #     (x, y) -> FiniteElementContainers.create_properties(x, y), 
+    #     values(physics), values(props)
+    # )
+    # props = map(Array, props)
+    # props = NamedTuple{keys(physics)}(props)
+    # return props
+    props_new = Dict{String, Any}()
+    for (key, val) in pairs(physics)
+        key = string(key)
+        props_new[key] = FiniteElementContainers.create_properties(val, props[key])
     end
-    props = map(
-        (x, y) -> FiniteElementContainers.create_properties(x, y), 
-        values(physics), values(props)
-    )
-    props = map(Array, props)
-    props = NamedTuple{keys(physics)}(props)
-    return props
+    return props_new
 end
 
 abstract type AbstractSimulation end
@@ -37,7 +43,7 @@ function SingleDomainSimulation(
     output_file::String,
     times::TimeStepper,
     physics::NamedTuple,
-    properties::NamedTuple;
+    properties::Dict{String};
     solution_ics::Vector{<:InitialCondition} = InitialCondition[],
     solution_rate_ics::Vector{<:InitialCondition} = InitialCondition[],
     solution_rate_rate_ics::Vector{<:InitialCondition} = InitialCondition[],

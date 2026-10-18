@@ -48,7 +48,7 @@ end
 
 function solve!(solver::KrylovSolver, H::AbstractMatrix, g, P)
     @timeit solver.timer "KrylovSolver - solve!" begin
-        @timeit solver.timer "krylov_solve!" begin
+        @timeit solver.timer "krylov_solve! - here" begin
             Krylov.krylov_solve!(solver.workspace, H, g, M = P, ldiv = true)
         end
         Δu, stats = Krylov.results(solver.workspace)
