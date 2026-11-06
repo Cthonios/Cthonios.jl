@@ -3,11 +3,15 @@ uuid = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
 version = "0.4.0"
 authors = ["Craig M. Hamel <cmhamel32@gmail.com> and contributors"]
 
+[workspace]
+projects = ["lib/FiniteElementPhysicsKernels", "test"]
+
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
+FiniteElementPhysicsKernels = "fd8b7080-6849-4bc9-b17d-14b62305e3c8"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
@@ -21,6 +25,9 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
+[sources]
+FiniteElementContainers = {path = "../FiniteElementContainers.jl"}
+
 [extensions]
 
 [compat]
@@ -30,6 +37,7 @@ ConstitutiveModels = "0.4"
 Distributions = "0.25"
 DocStringExtensions = "0.9"
 FiniteElementContainers = "0.15"
+FiniteElementPhysicsKernels = "0.1"
 ForwardDiff = "1"
 KernelAbstractions = "0.9"
 Krylov = "0.10"
@@ -44,7 +52,7 @@ StructArrays = "0.7"
 Tensors = "1"
 Test = "1"
 TimerOutputs = "0.5"
-julia = "1"
+julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"

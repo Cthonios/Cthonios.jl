@@ -57,6 +57,7 @@ using Arpack
 using ConstitutiveModels
 using DocStringExtensions
 using FiniteElementContainers
+using FiniteElementPhysicsKernels
 using ForwardDiff
 using Krylov
 using LimitedLDLFactorizations
