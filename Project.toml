@@ -47,7 +47,7 @@ StaticArrays = "1"
 StructArrays = "0.7"
 Tensors = "1"
 Test = "1"
-TimerOutputs = "0.5"
+TimerOutputs = "1"
 julia = "1"
 
 [extras]
