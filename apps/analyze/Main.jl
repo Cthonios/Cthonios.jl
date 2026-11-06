@@ -51,7 +51,7 @@ function _setup_physics(sim, fspace)
         mat_name, model_name = assigned_blocks[block]["mat_name"], assigned_blocks[block]["model_name"]
         params = materials_settings[mat_name]::Dict{String, Any}
         params = params[model_name]::Dict{String, Any}
-
+        params = PropertyInputs(params)
         println(Core.stdout, "Block = ", block)
         if model_name == "Gent"
             temp_physics = PHYSICS_LIBRARY[1]

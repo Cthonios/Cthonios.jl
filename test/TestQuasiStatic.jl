@@ -10,8 +10,8 @@ function test_quasistatic()
     physics = (;
         Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(NeoHookean()))
     )
-    props = (;
-        Block1 = Dict{String, Any}(
+    props = Dict(
+        "Block1" => Dict{String, Any}(
             "density"         => 1.,
             "Young's modulus" => 1.,
             "Poisson's ratio" => 0.48,

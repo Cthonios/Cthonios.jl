@@ -7,11 +7,12 @@ function test_heat_conduction()
     physics = (;
         var"" = Cthonios.HeatConduction()
     )
-    props = (;
-        var"" = Dict{String, Any}(
-            "density"              => 1.0,
-            "heat capacity"        => 20.0,
-            "thermal conductivity" => 1.0
+    props = Dict(
+        "" => Dict{String, Any}(
+            "density"                => 1.0,
+            "reference temperature"  => 23.0,
+            "specific heat capacity" => 20.0,
+            "thermal conductivity"   => 1.0
         )
     )
     one_func(_, _) = 1.0

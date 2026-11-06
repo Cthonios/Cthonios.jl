@@ -9,7 +9,7 @@ end
 
 function test_sm_material_model_input_neohookean()
     props = neohookean_props()
-    model = NeoHookean()
+    model = Hyperelastic(NeoHookean())
     formulation = PlaneStrain()
     physics = SolidMechanics(formulation, model)
 

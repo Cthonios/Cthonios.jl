@@ -9,16 +9,17 @@ output_file = splitext(mesh_file)[1] * "-output.exo"
 
 # Times
 t_end = 100.0
-times = TimeStepper(0., 2. * t_end, 40)
+times = TimeStepper(0., t_end, 40)
 
 # Physics
 physics = (;
-    # Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(NeoHookean()))
-    Block1 = SolidMechanics(PlaneStrain(), FeFv())
+    Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(NeoHookean()))
+    # Block1 = SolidMechanics(PlaneStrain(), FeFv())
     # Block1 = SolidMechanics(PlaneStrain(), Hyperelastic(Hencky()))
 )
-props = (;
-    Block1 = Dict{String, Any}(
+# props = (;
+props = Dict(
+    "Block1" => Dict{String, Any}(
         "density"         => 1.,
         "Young's modulus" => 1.,
         "Poisson's ratio" => 0.48,

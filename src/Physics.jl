@@ -70,21 +70,18 @@ end
 # Heat conduction methods
 ############################################################################
 struct HeatConduction <: AbstractPhysics{1, 3, 0}
-    constitutive_model::ConstitutiveModels.FouriersLaw
+    constitutive_model::ConstitutiveModels.Thermal
 end
 
 function HeatConduction()
-    return HeatConduction(ConstitutiveModels.FouriersLaw())
+    return HeatConduction(ConstitutiveModels.Thermal(
+        ConstitutiveModels.SimpleHeatCapacity(),
+        FouriersLaw()
+    ))
 end
 
 function FiniteElementContainers.create_properties(physics::HeatConduction, inputs)
-    density = inputs["density"]::Float64
-    cp = inputs["heat capacity"]
-    k = inputs["thermal conductivity"]
-    # mat_model_props = ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
-    # mat_model_props = Array(mat_model_props)
-    # return mat_model_props
-    return [density, cp, k]
+    return ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
 end
 
 function setup_function(fspace::FunctionSpace, ::HeatConduction)
@@ -102,10 +99,9 @@ end
     u_q, ∇u_q = interpolate_field_values_and_gradients(physics, interps, u_el)
     u_q_old = interpolate_field_values(physics, interps, u_el_old)
     dudt = (u_q - u_q_old) / dt
-    # R_q = ∇u_q * ∇N_X'
     form = GeneralFormulation{size(X_q, 1), num_fields(physics)}()
-    density, cp, k = props_el
-    scatter_with_values!(storage, form, e, conn, N, density * cp * JxW * dudt)
+    ρ, θ_0, c, k = props_el
+    scatter_with_values!(storage, form, e, conn, N, ρ * c * JxW * dudt)
     scatter_with_gradients!(storage, form, e, conn, ∇N_X, k * JxW * ∇u_q)
 end
 
@@ -117,11 +113,9 @@ end
 )
     interps = map_interpolants(interps, x_el)
     (; X_q, N, ∇N_X, JxW) = interps
-    # ∇u_q = interpolate_field_gradients(physics, interps, u_el)
-    # R_q = ∇u_q * ∇N_X' - N' * physics.func(X_q, 0.0)
     form = GeneralFormulation{size(X_q, 1), num_fields(physics)}()
-    density, cp, k = props_el
-    scatter_with_values_and_values!(storage, form, e, conn, N, density * cp * JxW)
+    ρ, θ_0, c, k = props_el
+    scatter_with_values_and_values!(storage, form, e, conn, N, ρ * c * JxW)
     scatter_with_gradients_and_gradients!(storage, form, e, conn, ∇N_X, k * JxW)
 end
 
@@ -143,10 +137,7 @@ function SolidMechanics(formulation, model)
 end
 
 function FiniteElementContainers.create_properties(physics::SolidMechanics, inputs)
-    density = inputs["density"]::Float64
-    mat_model_props = ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
-    mat_model_props = Array(mat_model_props)
-    return pushfirst!(mat_model_props, density)
+    return ConstitutiveModels.initialize_props(physics.constitutive_model, inputs)
 end
 
 function FiniteElementContainers.create_initial_state(physics::SolidMechanics)
@@ -180,7 +171,6 @@ end
     x_cur = x_el + u_el
     ndim = 3
     nnpe = length(x_cur) ÷ ndim
-    # T = eltype(x_cur)
     cx = cy = cz = zero(T)
     for i in 1:nnpe
         cx += x_cur[(i - 1) * ndim + 1]
@@ -207,8 +197,6 @@ end
   
     # kinematics
     ∇u_q = modify_field_gradients(physics.formulation, ∇u_q)
-
-    # mat_props = @views props_el[2:end]
 
     # constitutive
     θ = 0.0 # TODO
@@ -438,6 +426,10 @@ end
     scatter_with_gradients_and_gradients!(
       storage, physics.formulation, e, conn, ∇N_X, JxW * A_q
     )
+    # K_q = extract_stiffness(physics.formulation, A_q)
+    # scatter_with_gradients_and_gradients!(
+    #   storage, physics.formulation, e, conn, ∇N_X, JxW * K_q
+    # )
     return nothing
 end
 

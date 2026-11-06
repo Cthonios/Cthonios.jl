@@ -9,8 +9,8 @@ function test_single_domain_simulation()
             ThreeDimensional(), NeoHookean()
         )
     )
-    props = (;
-        block_1 = Dict{String, Any}(
+    props = Dict(
+        "block_1" => Dict{String, Any}(
             "density"       => 1.0,
             "bulk modulus"  => 10.0,
             "shear modulus" => 1.0
