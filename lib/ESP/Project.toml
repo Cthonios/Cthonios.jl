@@ -1,0 +1,22 @@
+name = "ESP"
+uuid = "bfb41d7d-aa4b-4e2c-b33e-f15b97b94f77"
+version = "0.1.0"
+authors = ["Craig M. Hamel <cmhamel32@gmail.com>"]
+
+[deps]
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+EngineeringSketchPad_jll = "dc1f1ded-c539-59a2-898d-fa059e5c1344"
+Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
+Exodus_jll = "fc7263ad-bce8-5229-97b1-c6ddabda41b1"
+OCCT_jll = "baad4e97-8daa-5946-aac2-2edac59d34e1"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources]
+EngineeringSketchPad_jll = {rev = "main", url = "https://github.com/cmhamel/EngineeringSketchPad_jll.jl"}
+
+[compat]
+CEnum = "0.5.0"
+Exodus = "0.15.1"
+Exodus_jll = "9.4.0"
+OCCT_jll = "=7.7.2"
+Printf = "1.11.0"
