@@ -1,0 +1,16 @@
+name = "FiniteElementPhysicsKernels"
+uuid = "fd8b7080-6849-4bc9-b17d-14b62305e3c8"
+version = "0.1.0"
+authors = ["Craig M. Hamel <cmhamel32@gmail.com>"]
+
+[deps]
+ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
+FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Tensors = "48a634ad-e948-5137-8d70-aa71f2a747f4"
+
+[compat]
+ConstitutiveModels = "0.4.2"
+FiniteElementContainers = "0.15.4"
+StaticArrays = "1.9.24"
+Tensors = "1.17.2"

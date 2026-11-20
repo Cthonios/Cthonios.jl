@@ -2,7 +2,7 @@ using JuliaC
 using Pkg
 build_path = joinpath(@__DIR__, "build")
 src_path = joinpath(@__DIR__)
-Pkg.activate(src_path)
+# Pkg.activate(src_path)
 # @show build_path
 # @show src_path
 println(Core.stdout, "build_path = ", build_path)
@@ -11,8 +11,9 @@ rm(build_path; force = true, recursive = true)
 
 img = ImageRecipe(
     output_type    = "--output-exe",
-    file           = "$src_path/apps/analyze/Main.jl",
-    trim_mode      = "safe",
+    file           = "$src_path/apps/analyze/src/CthoniosAnalyze.jl",
+    # trim_mode      = "safe",
+    trim_mode      = "no",
     add_ccallables = false,
     verbose        = false,
 )

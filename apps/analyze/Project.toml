@@ -1,0 +1,12 @@
+name = "CthoniosAnalyze"
+
+[deps]
+ConstitutiveModels = "fc6ee7eb-129a-416f-804b-d7271ece6a3a"
+Cthonios = "a67e86c2-42a5-4f10-921b-1e94bb8ae306"
+Exodus = "f57ae99e-f805-4780-bdca-96e224be1e5a"
+FiniteElementContainers = "d08262e4-672f-4e7f-a976-f2cea5767631"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[sources]
+Cthonios = {path = "../.."}
